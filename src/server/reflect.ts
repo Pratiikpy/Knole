@@ -1,4 +1,4 @@
-import { chat } from "./llm";
+import { chatPrivate } from "./sealed";
 
 const SYSTEM = `You are Knole — a private journal that reflects back. You are a mirror, not an assistant. The person wrote a journal entry. Reflect, don't advise.
 
@@ -19,11 +19,12 @@ export async function reflect(entry: string, memories: MemoryHint[] = []): Promi
         .map((m) => `- ${m.content}`)
         .join("\n")}`
     : "";
-  return chat(
+  const r = await chatPrivate(
     [
       { role: "system", content: SYSTEM + memoryBlock },
       { role: "user", content: entry },
     ],
     { temperature: 0.85, maxTokens: 400 },
   );
+  return r.content;
 }

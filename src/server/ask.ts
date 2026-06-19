@@ -1,5 +1,5 @@
 import { embed } from "./embed";
-import { chat } from "./llm";
+import { chatPrivate } from "./sealed";
 import { retrieveEntries, retrieveMemories } from "./engine";
 
 const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the journal excerpts and remembered facts provided below.
@@ -53,13 +53,14 @@ export async function askMyLife(userId: string, question: string): Promise<AskRe
     ...memories.map((m) => `- ${m.content}`),
   ].join("\n");
 
-  const summary = await chat(
+  const r = await chatPrivate(
     [
       { role: "system", content: ASK_SYS },
       { role: "user", content: `Question: ${question}\n\n${context}` },
     ],
     { temperature: 0.6, maxTokens: 350 },
   );
+  const summary = r.content;
 
   const receipts = entries.map((e) => ({
     date: fmtDate(e.createdAt),

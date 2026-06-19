@@ -1,4 +1,5 @@
-import { chat as llm, type ChatMsg } from "./llm";
+import { type ChatMsg } from "./llm";
+import { chatPrivate } from "./sealed";
 import { retrieveMemories } from "./engine";
 
 const CHAT_SYS = `You are Knole — a private, warm, sharp thinking-partner the user talks to. Not a yes-man, not a generic assistant.
@@ -24,5 +25,6 @@ export async function chatReply(
     ...history.slice(-10).map((t) => ({ role: t.role, content: t.content }) as ChatMsg),
     { role: "user", content: message },
   ];
-  return llm(msgs, { temperature: 0.8, maxTokens: 500 });
+  const r = await chatPrivate(msgs, { temperature: 0.8, maxTokens: 500 });
+  return r.content;
 }
