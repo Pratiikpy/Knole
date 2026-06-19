@@ -10,8 +10,10 @@ import {
   exportFn,
   forgetRangeFn,
   deleteAccountFn,
+  syncSessionFn,
+  clearSessionFn,
 } from "@/server/fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 
 export const Route = createFileRoute("/settings")({
@@ -140,7 +142,23 @@ function SettingsPage() {
 
   const doForget = useServerFn(forgetRangeFn);
   const doDelete = useServerFn(deleteAccountFn);
-  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
+  const doSync = useServerFn(syncSessionFn);
+  const doClear = useServerFn(clearSessionFn);
+
+  // Keep the server session in step with Privy: exchange the access token for a
+  // sealed session cookie on login, clear it on logout.
+  useEffect(() => {
+    if (!ready) return;
+    if (authenticated) {
+      void getAccessToken()
+        .then((token) => (token ? doSync({ data: { token } }) : null))
+        .catch(() => {});
+    } else {
+      void doClear().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authenticated]);
   const [forgetOpen, setForgetOpen] = useState(false);
   const [forgetFrom, setForgetFrom] = useState("");
   const [forgetTo, setForgetTo] = useState("");

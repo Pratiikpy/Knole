@@ -16,6 +16,7 @@ import {
   getMemoryProvenance,
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
+import { currentUserId, startSessionFromToken, endSession } from "./session";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
@@ -31,7 +32,7 @@ import { forgetRange, deleteAccount } from "./dataops";
 export const journalFn = createServerFn({ method: "POST" })
   .validator(z.object({ entry: z.string().min(1).max(20000) }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     const qVec = await embed(data.entry);
     const recalled = await retrieveMemories(userId, qVec, 6, data.entry);
     const reflection = await reflect(data.entry, recalled);
@@ -53,14 +54,14 @@ export const journalFn = createServerFn({ method: "POST" })
   });
 
 export const listMemoriesFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return { memories: await listMemories(userId) };
 });
 
 export const setMemoryStatusFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), status: z.enum(["active", "pinned", "forgotten"]) }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     await setMemoryStatus(userId, data.id, data.status);
     return { ok: true };
   });
@@ -68,7 +69,7 @@ export const setMemoryStatusFn = createServerFn({ method: "POST" })
 export const editMemoryFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), content: z.string().min(1).max(2000) }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     await updateMemoryContent(userId, data.id, data.content);
     return { ok: true };
   });
@@ -76,7 +77,7 @@ export const editMemoryFn = createServerFn({ method: "POST" })
 export const provenanceFn = createServerFn({ method: "POST" })
   .validator(z.object({ memoryId: z.string().uuid() }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     return getMemoryProvenance(userId, data.memoryId);
   });
 
@@ -87,27 +88,45 @@ export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
   return { ok: true };
 });
 
+// Auth session: the client exchanges a verified Privy token for a sealed session
+// cookie; every other fn then resolves the user via currentUserId() (session → demo).
+export const syncSessionFn = createServerFn({ method: "POST" })
+  .validator(z.object({ token: z.string().min(1).max(4096) }))
+  .handler(async ({ data }) => {
+    return { ok: await startSessionFromToken(data.token) };
+  });
+
+export const clearSessionFn = createServerFn({ method: "POST" }).handler(async () => {
+  await endSession();
+  return { ok: true };
+});
+
+export const whoamiFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return { userId, isDemo: userId === (await getDemoUserId()) };
+});
+
 export const exportFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return exportMindfile(userId);
 });
 
 export const forgetRangeFn = createServerFn({ method: "POST" })
   .validator(z.object({ from: z.string().min(8), to: z.string().min(8) }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     return forgetRange(userId, `${data.from}T00:00:00.000Z`, `${data.to}T23:59:59.999Z`);
   });
 
 export const deleteAccountFn = createServerFn({ method: "POST" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return deleteAccount(userId);
 });
 
 export const askFn = createServerFn({ method: "POST" })
   .validator(z.object({ question: z.string().min(1).max(500) }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     return askMyLife(userId, data.question);
   });
 
@@ -122,7 +141,7 @@ export const chatFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     const qVec = await embed(data.message);
     const reply = await chatReply(userId, data.history, data.message, qVec);
     const entryRow = await saveEntry(userId, data.message, qVec, "chat");
@@ -137,17 +156,17 @@ export const chatFn = createServerFn({ method: "POST" })
   });
 
 export const mirrorFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return buildMirror(userId);
 });
 
 export const ownershipFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return ownershipSummary(userId);
 });
 
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return getSettings(userId);
 });
 
@@ -161,7 +180,7 @@ export const updateSettingsFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     await updateSettings(userId, data);
     return { ok: true };
   });
@@ -175,7 +194,7 @@ export const saveFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     const parts = [`"${data.highlight}"`];
     if (data.source) parts.push(`— ${data.source}`);
     if (data.thought?.trim()) parts.push(`\nMy note: ${data.thought.trim()}`);
@@ -204,14 +223,14 @@ function hourInTz(tz: string): number {
 }
 
 export const nudgeFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   const settings = await getSettings(userId);
   const nowHour = hourInTz(settings?.timezone || "UTC");
   return generateNudge(userId, nowHour);
 });
 
 export const resurfaceFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await getDemoUserId();
+  const userId = await currentUserId();
   return resurface(userId);
 });
 
@@ -223,7 +242,7 @@ export const respondFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     const text = data.pastQuote
       ? `Answering my past self ("${data.pastQuote.slice(0, 140)}…"): ${data.response}`
       : data.response;
@@ -246,7 +265,7 @@ export const onboardFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     await updateSettings(userId, { voice: data.voice });
     const text = data.thing
       ? `${data.opener}\n(Quietly on my mind this week: ${data.thing})`
@@ -268,14 +287,14 @@ export const importFn = createServerFn({ method: "POST" })
     z.object({ text: z.string().min(1).max(200000), source: z.string().max(40).optional() }),
   )
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     return importHistory(userId, data.text, data.source);
   });
 
 export const verifyOnChainFn = createServerFn({ method: "POST" })
   .validator(z.object({ root: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }))
   .handler(async ({ data }) => {
-    const userId = await getDemoUserId();
+    const userId = await currentUserId();
     const payload = await restoreEntryFromChain(userId, data.root);
     return { recovered: payload.text.slice(0, 180) };
   });
