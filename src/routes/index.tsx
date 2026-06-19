@@ -217,8 +217,9 @@ function LandingPage() {
             Unreadable even by us.
           </p>
           <p className="mx-auto mt-5 max-w-[40ch] text-[13px] leading-relaxed text-muted-foreground">
-            No tracking. No audience. Export everything, anytime, as a single Mindfile. Walk away
-            and take your whole mind with you.
+            No tracking. No audience. Your memory is encrypted under your key and stored on 0G —
+            recoverable even if Knole vanished. Export it anytime, and walk away with your whole
+            mind.
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Link
