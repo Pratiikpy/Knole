@@ -8,7 +8,12 @@ let ticking = false;
 // history. Re-entrant calls are skipped so a slow tick can't overlap the next one
 // (which would double-dream users and contend on the DB). Per-user errors are
 // isolated so one failure never stops the rest.
-export async function tick(): Promise<{ users: number; dreamed: number; skipped?: boolean }> {
+export async function tick(): Promise<{
+  users: number;
+  dreamed: number;
+  pruned?: number;
+  skipped?: boolean;
+}> {
   if (ticking) return { users: 0, dreamed: 0, skipped: true };
   ticking = true;
   try {
@@ -27,10 +32,37 @@ export async function tick(): Promise<{ users: number; dreamed: number; skipped?
         console.error("dreaming failed for", userId, (e as Error).message);
       }
     }
-    return { users: rows.length, dreamed };
+
+    let pruned = 0;
+    try {
+      pruned = await pruneStaleCaches();
+    } catch (e) {
+      console.error("cache prune failed:", (e as Error).message);
+    }
+    return { users: rows.length, dreamed, pruned };
   } finally {
     ticking = false;
   }
+}
+
+/**
+ * Drop superseded cache artifacts (mirror / nudge / resurface) — only the latest per
+ * user+thread is ever read, so the rest are dead weight. Dreams are kept as a history.
+ * Returns the number removed.
+ */
+export async function pruneStaleCaches(): Promise<number> {
+  const removed = (await db.execute(sql`
+    DELETE FROM reflection_artifacts
+    WHERE thread_key IN ('mirror', 'nudge', 'resurface')
+      AND id NOT IN (
+        SELECT DISTINCT ON (user_id, thread_key) id
+        FROM reflection_artifacts
+        WHERE thread_key IN ('mirror', 'nudge', 'resurface')
+        ORDER BY user_id, thread_key, created_at DESC
+      )
+    RETURNING id
+  `)) as unknown as Record<string, unknown>[];
+  return removed.length;
 }
 
 export function startWorker(intervalMs: number): NodeJS.Timeout {
