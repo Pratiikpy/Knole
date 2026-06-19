@@ -15,7 +15,7 @@ import {
   updateSettings,
   getMemoryProvenance,
 } from "./engine";
-import { embed } from "./embed";
+import { embed, warmEmbed } from "./embed";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
@@ -77,6 +77,13 @@ export const provenanceFn = createServerFn({ method: "POST" })
     const userId = await getDemoUserId();
     return getMemoryProvenance(userId, data.memoryId);
   });
+
+// Pre-load the local embedding model server-side on first page view, so the
+// first reflection/journal isn't a ~10s cold start.
+export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
+  await warmEmbed();
+  return { ok: true };
+});
 
 export const askFn = createServerFn({ method: "POST" })
   .validator(z.object({ question: z.string().min(1).max(500) }))

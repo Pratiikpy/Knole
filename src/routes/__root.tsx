@@ -7,9 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 
 import appCss from "../styles.css?url";
+import { warmupFn } from "@/server/fns";
 
 function NotFoundComponent() {
   return (
@@ -108,6 +110,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const warmup = useServerFn(warmupFn);
+
+  // Warm the local embedding model server-side on first view (kills the cold start).
+  useEffect(() => {
+    void warmup().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

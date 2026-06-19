@@ -11,6 +11,11 @@ function getExtractor(): Promise<FeatureExtractionPipeline> {
   return extractorP;
 }
 
+/** Eagerly load the model so the first real embed isn't a cold start. */
+export function warmEmbed(): Promise<FeatureExtractionPipeline> {
+  return getExtractor();
+}
+
 export async function embed(text: string): Promise<number[]> {
   const extractor = await getExtractor();
   const out = await extractor(text, { pooling: "mean", normalize: true });
