@@ -8,6 +8,9 @@ import {
   extractMemories,
   retrieveMemories,
   storeEntryOn0G,
+  listMemories,
+  setMemoryStatus,
+  updateMemoryContent,
 } from "./engine";
 import { embed } from "./embed";
 
@@ -35,4 +38,25 @@ export const journalFn = createServerFn({ method: "POST" })
       reflection,
       recalled: recalled.map((r) => ({ content: r.content, quote: r.sourceQuote })),
     };
+  });
+
+export const listMemoriesFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return { memories: await listMemories(userId) };
+});
+
+export const setMemoryStatusFn = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid(), status: z.enum(["active", "pinned", "forgotten"]) }))
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    await setMemoryStatus(userId, data.id, data.status);
+    return { ok: true };
+  });
+
+export const editMemoryFn = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid(), content: z.string().min(1).max(2000) }))
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    await updateMemoryContent(userId, data.id, data.content);
+    return { ok: true };
   });

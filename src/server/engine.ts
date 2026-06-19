@@ -5,7 +5,7 @@ import { embed, toVectorLiteral } from "./embed";
 import { chat } from "./llm";
 import { putData } from "./og";
 
-const { users, entries, replies, memories } = schema;
+const { users, entries, replies, memories, memoryHistory } = schema;
 
 const VALID_TYPES = new Set([
   "fact", "pattern", "commitment", "relationship", "preference", "value", "emotion",
@@ -148,4 +148,80 @@ export async function storeEntryOn0G(
   const { rootHash } = await putData(payload, { key });
   await db.update(entries).set({ kvRef: rootHash }).where(eq(entries.id, entryId));
   return rootHash;
+}
+
+// ── memory dashboard: list / pin / forget / edit ─────────
+export type MemoryRow = {
+  id: string;
+  content: string;
+  type: string;
+  status: string;
+  sourceQuote: string | null;
+  recallCount: number;
+  createdAt: string;
+  kvRef: string | null;
+};
+
+export async function listMemories(userId: string): Promise<MemoryRow[]> {
+  const rows = await db.execute(sql`
+    SELECT m.id, m.content, m.type, m.status, m.source_quote, m.recall_count, m.created_at, e.kv_ref
+    FROM memories m
+    LEFT JOIN entries e ON e.id = m.source_entry_id
+    WHERE m.user_id = ${userId} AND m.status NOT IN ('forgotten', 'superseded', 'rejected')
+    ORDER BY (m.status = 'pinned') DESC, m.created_at DESC
+  `);
+  return (rows as unknown as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    content: String(r.content),
+    type: String(r.type),
+    status: String(r.status),
+    sourceQuote: r.source_quote == null ? null : String(r.source_quote),
+    recallCount: Number(r.recall_count ?? 0),
+    createdAt: String(r.created_at),
+    kvRef: r.kv_ref == null ? null : String(r.kv_ref),
+  }));
+}
+
+async function logHistory(
+  memoryId: string,
+  userId: string,
+  operation: string,
+  oldValue: unknown,
+  newValue: unknown,
+) {
+  await db.insert(memoryHistory).values({
+    memoryId,
+    userId,
+    operation,
+    oldValue: oldValue as object,
+    newValue: newValue as object,
+    actor: "user",
+  });
+}
+
+export async function setMemoryStatus(
+  userId: string,
+  id: string,
+  status: "active" | "pinned" | "forgotten",
+) {
+  await db
+    .update(memories)
+    .set({ status, updatedAt: new Date() })
+    .where(and(eq(memories.id, id), eq(memories.userId, userId)));
+  await logHistory(id, userId, status === "forgotten" ? "forgotten" : "status", null, { status });
+}
+
+export async function updateMemoryContent(userId: string, id: string, content: string) {
+  const v = await embed(content);
+  await db
+    .update(memories)
+    .set({
+      content,
+      contentHash: hash(normalize(content)),
+      embedding: v,
+      userVerifiedAt: new Date(), // user-edit-wins lock
+      updatedAt: new Date(),
+    })
+    .where(and(eq(memories.id, id), eq(memories.userId, userId)));
+  await logHistory(id, userId, "updated", null, { content });
 }
