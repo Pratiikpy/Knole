@@ -19,6 +19,7 @@ import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
+import { generateNudge } from "./proactivity";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -152,6 +153,12 @@ export const saveFn = createServerFn({ method: "POST" })
     );
     return { ok: true, entryId: entryRow.id };
   });
+
+export const nudgeFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  const nowHour = new Date().getUTCHours();
+  return generateNudge(userId, nowHour);
+});
 
 export const verifyOnChainFn = createServerFn({ method: "POST" })
   .validator(z.object({ root: z.string().min(4) }))

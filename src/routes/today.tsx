@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { journalFn } from "@/server/fns";
-import { useState } from "react";
+import { journalFn, nudgeFn } from "@/server/fns";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/today")({
   head: () => ({
@@ -26,6 +26,9 @@ const sampleEntry =
 
 function TodayPage() {
   const doReflect = useServerFn(journalFn);
+  const getNudge = useServerFn(nudgeFn);
+  const [nudge, setNudge] = useState<string | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [prompt, setPrompt] = useState(prompts[1]);
   const [entry, setEntry] = useState(sampleEntry);
   const [reflected, setReflected] = useState(false);
@@ -49,6 +52,15 @@ function TodayPage() {
     }
   }
 
+  useEffect(() => {
+    getNudge()
+      .then((n) => {
+        if (n.allowed) setNudge(n.nudge);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -59,6 +71,20 @@ function TodayPage() {
     <Shell>
       <section className="px-6 pb-24 pt-12">
         <div className="mx-auto max-w-[58ch]">
+          {nudge && !nudgeDismissed && (
+            <div className="animate-fade-up mb-6 flex items-start gap-3 rounded-xl border border-tan/30 bg-tan/[0.05] px-5 py-4">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-tan animate-breathe" />
+              <p className="flex-1 font-display text-[16px] italic leading-snug text-ink-soft">
+                {nudge}
+              </p>
+              <button
+                onClick={() => setNudgeDismissed(true)}
+                className="text-[11px] text-muted-foreground hover:text-ink"
+              >
+                dismiss
+              </button>
+            </div>
+          )}
           <div className="mb-10 flex items-baseline justify-between">
             <h1 className="font-display text-[44px] italic leading-none">Today</h1>
             <span suppressHydrationWarning className="text-[12px] tabular-nums text-muted-foreground">{today}</span>
