@@ -114,6 +114,14 @@
   }
 }
 
+/* Visible, on-brand keyboard focus ring on every interactive element.
+   Unlayered so it overrides Tailwind's focus:outline-none utilities; :focus-visible
+   keeps it to keyboard navigation only (no ring on mouse clicks). */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 @utility font-display {
   font-family: var(--font-serif);
   font-weight: 400;
