@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { MemoryPill } from "@/components/knole/MemoryPill";
+import { chatFn } from "@/server/fns";
 import { useState, useRef, useEffect } from "react";
 
 export const Route = createFileRoute("/chat")({
@@ -22,59 +24,42 @@ type Msg = {
 const seed: Msg[] = [
   {
     who: "knole",
-    text:
-      "Take your time. What's the shape of the thing you're carrying tonight — a sentence, a feeling, a place?",
-  },
-  {
-    who: "you",
-    text:
-      "I think I've been avoiding writing to my dad. It's been almost a year and I don't even know what I'd say.",
-  },
-  {
-    who: "knole",
-    text:
-      "Avoidance is information, not a verdict. In April you wrote that his last letter sat unopened for three weeks, and that opening it felt like \"choosing a weather.\" Is the avoidance about the writing itself, or about which weather you'd be agreeing to feel?",
-    remembered: {
-      label: "Knole remembered",
-      receipts: [
-        {
-          date: "Apr 09 · your entry",
-          quote:
-            "Dad's letter has been sitting on the counter for three weeks. Opening it would be choosing a weather.",
-        },
-        {
-          date: "Jun 22 · your entry",
-          quote: "I keep drafting messages to him in my head and never sending them.",
-        },
-      ],
-    },
+    text: "I'm here. What's on your mind tonight — a sentence, a feeling, a place?",
   },
 ];
 
 function ChatPage() {
+  const doChat = useServerFn(chatFn);
   const [messages, setMessages] = useState<Msg[]>(seed);
   const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+  }, [messages, loading]);
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || loading) return;
+    const history = messages.map((m) => ({
+      role: (m.who === "you" ? "user" : "assistant") as "user" | "assistant",
+      content: m.text,
+    }));
     setMessages((m) => [...m, { who: "you", text }]);
     setDraft("");
-    setTimeout(() => {
+    setLoading(true);
+    try {
+      const res = await doChat({ data: { message: text, history } });
+      setMessages((m) => [...m, { who: "knole", text: res.reply }]);
+    } catch {
       setMessages((m) => [
         ...m,
-        {
-          who: "knole",
-          text:
-            "I hear that. Before I say anything back — what would you want me to do with it? Sit with you, ask one more question, or reflect what I'm noticing?",
-        },
+        { who: "knole", text: "Something interrupted me — say that again?" },
       ]);
-    }, 900);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -123,6 +108,14 @@ function ChatPage() {
                 )}
               </div>
             ))}
+            {loading && (
+              <div className="animate-fade-up border-l-2 border-tan/30 pl-5">
+                <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan/80">
+                  Knole
+                </div>
+                <p className="font-display text-[19px] italic text-muted-foreground">thinking…</p>
+              </div>
+            )}
             <div ref={endRef} />
           </div>
         </div>
@@ -146,7 +139,7 @@ function ChatPage() {
             <button
               onClick={send}
               className="inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-[13px] font-medium text-paper transition-opacity disabled:opacity-30"
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || loading}
             >
               Send
             </button>

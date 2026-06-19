@@ -14,6 +14,7 @@ import {
 } from "./engine";
 import { embed } from "./embed";
 import { askMyLife } from "./ask";
+import { chatReply } from "./chat";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -67,4 +68,29 @@ export const askFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const userId = await getDemoUserId();
     return askMyLife(userId, data.question);
+  });
+
+export const chatFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      message: z.string().min(1).max(4000),
+      history: z
+        .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+        .max(40)
+        .default([]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    const qVec = await embed(data.message);
+    const reply = await chatReply(userId, data.history, data.message, qVec);
+    const entryRow = await saveEntry(userId, data.message, qVec, "chat");
+    await saveReply(entryRow.id, reply, true);
+    void extractMemories(userId, entryRow.id, data.message).catch((e) =>
+      console.error("extractMemories failed:", e),
+    );
+    void storeEntryOn0G(userId, entryRow.id, data.message).catch((e) =>
+      console.error("0G store failed:", e),
+    );
+    return { reply };
   });
