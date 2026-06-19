@@ -80,13 +80,41 @@ export async function retrieveMemories(
     ORDER BY embedding <=> ${lit}::vector
     LIMIT ${k}
   `);
-  return (rows as unknown as Record<string, unknown>[]).map((r) => ({
+  const result = (rows as unknown as Record<string, unknown>[]).map((r) => ({
     id: String(r.id),
     content: String(r.content),
     sourceQuote: r.source_quote == null ? null : String(r.source_quote),
     createdAt: r.created_at == null ? null : String(r.created_at),
     score: Number(r.score),
   }));
+  // recall-driven importance (OpenClaw): a memory earns importance by being recalled.
+  if (result.length)
+    void bumpRecall(
+      userId,
+      result.map((r) => r.id),
+    ).catch(() => {});
+  return result;
+}
+
+/** Bump recall stats for memories that were just surfaced (fire-and-forget). */
+export async function bumpRecall(userId: string, ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  await db.execute(sql`
+    UPDATE memories SET
+      recall_count = recall_count + 1,
+      distinct_day_count = distinct_day_count + (
+        CASE WHEN last_recalled_at IS NULL
+               OR date_trunc('day', last_recalled_at) < date_trunc('day', now())
+          THEN 1 ELSE 0 END
+      ),
+      last_recalled_at = now(),
+      importance = LEAST(1.0, COALESCE(importance, 0.5) + 0.02),
+      updated_at = now()
+    WHERE user_id = ${userId} AND id IN (${sql.join(
+      ids.map((id) => sql`${id}`),
+      sql`, `,
+    )})
+  `);
 }
 
 // ── retrieve relevant raw entries (for Ask My Life receipts) ──
