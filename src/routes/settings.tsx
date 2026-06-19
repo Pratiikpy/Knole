@@ -8,6 +8,8 @@ import {
   updateSettingsFn,
   importFn,
   exportFn,
+  forgetRangeFn,
+  deleteAccountFn,
 } from "@/server/fns";
 import { useState } from "react";
 
@@ -114,6 +116,47 @@ function SettingsPage() {
       URL.revokeObjectURL(url);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const doForget = useServerFn(forgetRangeFn);
+  const doDelete = useServerFn(deleteAccountFn);
+  const [forgetOpen, setForgetOpen] = useState(false);
+  const [forgetFrom, setForgetFrom] = useState("");
+  const [forgetTo, setForgetTo] = useState("");
+  const [forgetting, setForgetting] = useState(false);
+  const [forgetResult, setForgetResult] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<string | null>(null);
+
+  const runForget = async () => {
+    if (!forgetFrom || !forgetTo || forgetting) return;
+    setForgetting(true);
+    try {
+      const r = await doForget({ data: { from: forgetFrom, to: forgetTo } });
+      setForgetResult(`Forgot ${r.entries} entries and ${r.memories} memories.`);
+      setForgetOpen(false);
+    } catch {
+      setForgetResult("Couldn't complete that — try again.");
+    } finally {
+      setForgetting(false);
+    }
+  };
+
+  const runDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const r = await doDelete();
+      setDeleteResult(
+        `Erased ${r.entries} entries and ${r.memories} memories. Your space is empty.`,
+      );
+      setConfirmDelete(false);
+    } catch {
+      setDeleteResult("Couldn't complete that — try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -287,19 +330,95 @@ function SettingsPage() {
               <Row
                 label="Save to Knole · Chrome"
                 detail="Explicit save only. Never silent capture."
-                value="Connected"
+                value="Explicit only"
               />
-              <Row
-                label="Forget a date range"
-                detail="Remove entries from a specific period."
-                action="Choose dates"
-              />
-              <Row
-                label="Delete your account"
-                detail="Everything is erased. No copies kept."
-                action="Delete"
-                destructive
-              />
+
+              {/* Forget a date range — real */}
+              <div className="border-t border-rule pt-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[14px] text-ink">Forget a date range</div>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">
+                      Permanently remove entries + memories from a period.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setForgetOpen((o) => !o)}
+                    className="shrink-0 rounded-full border border-rule px-3.5 py-1.5 text-[12px] text-ink hover:border-ink/20"
+                  >
+                    {forgetOpen ? "cancel" : "Choose dates"}
+                  </button>
+                </div>
+                {forgetOpen && (
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <label className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      From
+                      <input
+                        type="date"
+                        value={forgetFrom}
+                        onChange={(e) => setForgetFrom(e.target.value)}
+                        className="mt-1 block rounded-md border border-rule bg-paper p-2 text-[13px] text-ink"
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Until
+                      <input
+                        type="date"
+                        value={forgetTo}
+                        onChange={(e) => setForgetTo(e.target.value)}
+                        className="mt-1 block rounded-md border border-rule bg-paper p-2 text-[13px] text-ink"
+                      />
+                    </label>
+                    <button
+                      onClick={runForget}
+                      disabled={!forgetFrom || !forgetTo || forgetting}
+                      className="rounded-full bg-ink px-4 py-2 text-[12px] text-paper disabled:opacity-40"
+                    >
+                      {forgetting ? "Forgetting…" : "Forget these days"}
+                    </button>
+                  </div>
+                )}
+                {forgetResult && <p className="mt-2 text-[11px] text-tan">{forgetResult}</p>}
+              </div>
+
+              {/* Delete everything — real */}
+              <div className="border-t border-rule pt-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[14px] text-ink">Delete everything</div>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">
+                      Erase every entry and memory. No copies kept.
+                    </div>
+                  </div>
+                  {!confirmDelete ? (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="shrink-0 rounded-full border border-destructive/30 px-3.5 py-1.5 text-[12px] text-destructive hover:bg-destructive/5"
+                    >
+                      Delete
+                    </button>
+                  ) : (
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="rounded-full border border-rule px-3 py-1.5 text-[12px] text-muted-foreground"
+                      >
+                        cancel
+                      </button>
+                      <button
+                        onClick={runDelete}
+                        disabled={deleting}
+                        className="rounded-full bg-destructive px-3.5 py-1.5 text-[12px] text-paper disabled:opacity-40"
+                      >
+                        {deleting ? "Erasing…" : "Yes, erase all"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {deleteResult && (
+                  <p className="mt-2 text-[11px] text-destructive">{deleteResult}</p>
+                )}
+              </div>
             </div>
           </Group>
 

@@ -24,6 +24,7 @@ import { generateNudge } from "./proactivity";
 import { resurface } from "./resurface";
 import { importHistory } from "./import";
 import { exportMindfile } from "./mindfile";
+import { forgetRange, deleteAccount } from "./dataops";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -89,6 +90,18 @@ export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
 export const exportFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await getDemoUserId();
   return exportMindfile(userId);
+});
+
+export const forgetRangeFn = createServerFn({ method: "POST" })
+  .validator(z.object({ from: z.string().min(8), to: z.string().min(8) }))
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    return forgetRange(userId, `${data.from}T00:00:00.000Z`, `${data.to}T23:59:59.999Z`);
+  });
+
+export const deleteAccountFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return deleteAccount(userId);
 });
 
 export const askFn = createServerFn({ method: "POST" })
