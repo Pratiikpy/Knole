@@ -26,6 +26,9 @@ export async function resurface(userId: string): Promise<Resurfaced> {
       { role: "user", content: `Their past entry:\n"${text}"\n\nWrite the one short note.` },
     ],
     { temperature: 0.7, maxTokens: 120 },
-  );
-  return { entry: { text, date }, note: r.content };
+  ).catch(() => null);
+  // If the LLM is unavailable, still resurface the entry with a gentle default note.
+  const note =
+    r?.content.trim() || "Here's something you wrote a while ago. Sit with it for a moment.";
+  return { entry: { text, date }, note };
 }

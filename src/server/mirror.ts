@@ -80,7 +80,21 @@ export async function buildMirror(userId: string): Promise<Mirror> {
       { role: "user", content: context },
     ],
     { temperature: 0.6, maxTokens: 600 },
-  );
+  ).catch(() => null);
+  // LLM unavailable — still render the streak + dream with a gentle placeholder.
+  if (!r) {
+    return {
+      ready: true,
+      throughline: "Knole couldn't compose your mirror just now — try again in a moment.",
+      loop: "",
+      contradiction: "",
+      avoided: "",
+      themes: [],
+      dayCount,
+      entryCount,
+      dream,
+    };
+  }
 
   let parsed: Record<string, unknown> = {};
   try {
