@@ -113,7 +113,7 @@ function ChatPage() {
         </div>
 
         {/* Composer */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-paper/85 backdrop-blur-md">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-paper/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
           <div className="mx-auto flex max-w-[58ch] items-end gap-3 px-6 py-4">
             <textarea
               value={draft}

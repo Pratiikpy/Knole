@@ -256,7 +256,7 @@ function TheIndex() {
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         rows={3}
-                        className="w-full resize-none rounded-lg border border-rule bg-paper p-3 text-[14px] leading-relaxed text-ink focus:outline-none focus:ring-2 focus:ring-tan/30"
+                        className="w-full resize-none rounded-lg border border-rule bg-paper p-3 text-[14px] leading-relaxed text-ink focus:outline-none focus:ring-2 focus:ring-tan/30 max-md:text-base"
                       />
                       <div className="mt-3 flex justify-end gap-2">
                         <button

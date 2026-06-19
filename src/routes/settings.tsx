@@ -246,7 +246,7 @@ function SettingsPage() {
                 onChange={(e) => setImportText(e.target.value)}
                 rows={5}
                 placeholder="Paste your history here…"
-                className="mt-4 w-full resize-none rounded-lg border border-rule bg-paper p-3 text-[13px] leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-tan/30"
+                className="mt-4 w-full resize-none rounded-lg border border-rule bg-paper p-3 text-[13px] leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-tan/30 max-md:text-base"
               />
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span className="text-[11px] text-muted-foreground">
@@ -357,7 +357,7 @@ function SettingsPage() {
                         type="date"
                         value={forgetFrom}
                         onChange={(e) => setForgetFrom(e.target.value)}
-                        className="mt-1 block rounded-md border border-rule bg-paper p-2 text-[13px] text-ink"
+                        className="mt-1 block rounded-md border border-rule bg-paper p-2 text-[13px] text-ink max-md:text-base"
                       />
                     </label>
                     <label className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -366,7 +366,7 @@ function SettingsPage() {
                         type="date"
                         value={forgetTo}
                         onChange={(e) => setForgetTo(e.target.value)}
-                        className="mt-1 block rounded-md border border-rule bg-paper p-2 text-[13px] text-ink"
+                        className="mt-1 block rounded-md border border-rule bg-paper p-2 text-[13px] text-ink max-md:text-base"
                       />
                     </label>
                     <button

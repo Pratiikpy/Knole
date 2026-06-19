@@ -137,7 +137,7 @@ function ExtensionPage() {
                       onChange={(e) => setThought(e.target.value)}
                       rows={3}
                       placeholder="why this landed for you…"
-                      className="mt-2 w-full resize-none rounded-md border border-rule bg-card/50 p-2 font-display text-[14px] italic text-ink placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-tan/30"
+                      className="mt-2 w-full resize-none rounded-md border border-rule bg-card/50 p-2 font-display text-[14px] italic text-ink placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-tan/30 max-md:text-base"
                     />
                   </div>
 
