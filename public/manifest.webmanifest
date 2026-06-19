@@ -1,0 +1,14 @@
+{
+  "name": "Knole",
+  "short_name": "Knole",
+  "description": "A private journal that remembers your whole life — and that only you can read.",
+  "start_url": "/today",
+  "display": "standalone",
+  "background_color": "#faf9f6",
+  "theme_color": "#faf9f6",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ]
+}
