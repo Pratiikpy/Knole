@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { saveFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/extension")({
@@ -16,9 +18,28 @@ export const Route = createFileRoute("/extension")({
   component: ExtensionPage,
 });
 
+const HIGHLIGHT =
+  "attention is less a tool we use and more a posture we hold; what we attend to, over time, is who we become.";
+const SOURCE = "aeon.co · The quiet shape of attention";
+
 function ExtensionPage() {
+  const doSave = useServerFn(saveFn);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [thought, setThought] = useState("");
+
+  const onDone = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await doSave({ data: { highlight: HIGHLIGHT, source: SOURCE, thought } });
+      setSaved(true);
+    } catch {
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Shell>
@@ -128,10 +149,11 @@ function ExtensionPage() {
                       Encrypted · only you
                     </span>
                     <button
-                      onClick={() => setSaved(true)}
-                      className="rounded-full bg-ink px-3 py-1.5 text-[11px] text-paper"
+                      onClick={onDone}
+                      disabled={saving}
+                      className="rounded-full bg-ink px-3 py-1.5 text-[11px] text-paper disabled:opacity-50"
                     >
-                      Done
+                      {saving ? "Saving…" : "Done"}
                     </button>
                   </div>
                 </div>

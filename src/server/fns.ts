@@ -129,6 +129,30 @@ export const updateSettingsFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const saveFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      highlight: z.string().min(1).max(4000),
+      source: z.string().max(300).optional(),
+      thought: z.string().max(2000).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    const parts = [`"${data.highlight}"`];
+    if (data.source) parts.push(`— ${data.source}`);
+    if (data.thought?.trim()) parts.push(`\nMy note: ${data.thought.trim()}`);
+    const text = parts.join(" ");
+    const entryRow = await saveEntry(userId, text, undefined, "saved");
+    void extractMemories(userId, entryRow.id, text).catch((e) =>
+      console.error("extractMemories failed:", e),
+    );
+    void storeEntryOn0G(userId, entryRow.id, text).catch((e) =>
+      console.error("0G store failed:", e),
+    );
+    return { ok: true, entryId: entryRow.id };
+  });
+
 export const verifyOnChainFn = createServerFn({ method: "POST" })
   .validator(z.object({ root: z.string().min(4) }))
   .handler(async ({ data }) => {
