@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
-import { db } from "../db";
+import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
 import { latestDream, type Dream } from "./dreaming";
+
+const { reflectionArtifacts } = schema;
 
 const MIRROR_SYS = `You are Knole, writing a short, private "Pattern Mirror" for the user from their own recent journal entries and the things you remember about them. Honest, warm, specific — never flattering, never generic, never therapy-speak. Ground every line in what they actually wrote; if something isn't supported, leave it empty.
 Return ONLY a JSON object:
@@ -38,6 +40,27 @@ const empty = (dayCount: number, entryCount: number, dream: Dream | null): Mirro
   dream,
 });
 
+type Composition = Pick<Mirror, "throughline" | "loop" | "contradiction" | "avoided" | "themes">;
+
+// Reuse a recent composition when the entry set is unchanged — composing the mirror is
+// a ~15s LLM call. Defensive: any miss/error returns null and we just recompute.
+async function cachedMirror(userId: string, entryCount: number): Promise<Composition | null> {
+  try {
+    const rows = (await db.execute(sql`
+      SELECT content, sources FROM reflection_artifacts
+      WHERE user_id = ${userId} AND thread_key = 'mirror'
+        AND created_at > now() - interval '12 hours'
+      ORDER BY created_at DESC LIMIT 1
+    `)) as unknown as Record<string, unknown>[];
+    if (!rows[0]) return null;
+    const src = rows[0].sources as { entryCount?: number } | null;
+    if (Number(src?.entryCount ?? -1) !== entryCount) return null; // entries changed → stale
+    return rows[0].content as Composition;
+  } catch {
+    return null;
+  }
+}
+
 export async function buildMirror(userId: string): Promise<Mirror> {
   const entryRows = (await db.execute(sql`
     SELECT text FROM entries WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 30
@@ -68,6 +91,9 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     });
 
   if (entries.length < 2) return empty(dayCount, entryCount, dream);
+
+  const cached = await cachedMirror(userId, entryCount);
+  if (cached) return { ready: true, ...cached, dayCount, entryCount, dream };
 
   const memories = memRows.map((r) => `(${String(r.type)}) ${String(r.content)}`);
   const context = `RECENT ENTRIES:\n${entries
@@ -114,15 +140,24 @@ export async function buildMirror(userId: string): Promise<Mirror> {
         .slice(0, 5)
     : [];
 
-  return {
-    ready: true,
+  const composition: Composition = {
     throughline: String(parsed.throughline ?? ""),
     loop: String(parsed.loop ?? ""),
     contradiction: String(parsed.contradiction ?? ""),
     avoided: String(parsed.avoided ?? ""),
     themes,
-    dayCount,
-    entryCount,
-    dream,
   };
+  // Cache it, keyed by entryCount so a new entry invalidates it on the next view.
+  try {
+    await db.insert(reflectionArtifacts).values({
+      userId,
+      type: "pattern",
+      threadKey: "mirror",
+      content: composition,
+      sources: { entryCount },
+    });
+  } catch {
+    /* best-effort cache write */
+  }
+  return { ready: true, ...composition, dayCount, entryCount, dream };
 }
