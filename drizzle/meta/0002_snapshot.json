@@ -105,12 +105,8 @@
           "name": "entries_user_id_users_id_fk",
           "tableFrom": "entries",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -222,12 +218,8 @@
           "name": "imports_user_id_users_id_fk",
           "tableFrom": "imports",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -461,12 +453,8 @@
           "name": "memories_user_id_users_id_fk",
           "tableFrom": "memories",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -474,12 +462,8 @@
           "name": "memories_source_entry_id_entries_id_fk",
           "tableFrom": "memories",
           "tableTo": "entries",
-          "columnsFrom": [
-            "source_entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_entry_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -707,12 +691,8 @@
           "name": "reflection_artifacts_user_id_users_id_fk",
           "tableFrom": "reflection_artifacts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -783,12 +763,8 @@
           "name": "replies_parent_entry_id_entries_id_fk",
           "tableFrom": "replies",
           "tableTo": "entries",
-          "columnsFrom": [
-            "parent_entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_entry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -898,9 +874,7 @@
         "users_privy_id_unique": {
           "name": "users_privy_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "privy_id"
-          ]
+          "columns": ["privy_id"]
         }
       },
       "policies": {},
@@ -912,11 +886,7 @@
     "public.actor_type": {
       "name": "actor_type",
       "schema": "public",
-      "values": [
-        "user",
-        "ai",
-        "system"
-      ]
+      "values": ["user", "ai", "system"]
     },
     "public.artifact_type": {
       "name": "artifact_type",
@@ -934,34 +904,17 @@
     "public.entry_type": {
       "name": "entry_type",
       "schema": "public",
-      "values": [
-        "journal",
-        "chat",
-        "saved"
-      ]
+      "values": ["journal", "chat", "saved"]
     },
     "public.feedback_action": {
       "name": "feedback_action",
       "schema": "public",
-      "values": [
-        "helpful",
-        "wrong",
-        "too_much",
-        "creepy",
-        "save",
-        "forget"
-      ]
+      "values": ["helpful", "wrong", "too_much", "creepy", "save", "forget"]
     },
     "public.memory_sector": {
       "name": "memory_sector",
       "schema": "public",
-      "values": [
-        "episodic",
-        "semantic",
-        "procedural",
-        "emotional",
-        "reflective"
-      ]
+      "values": ["episodic", "semantic", "procedural", "emotional", "reflective"]
     },
     "public.memory_status": {
       "name": "memory_status",
@@ -980,15 +933,7 @@
     "public.memory_type": {
       "name": "memory_type",
       "schema": "public",
-      "values": [
-        "fact",
-        "pattern",
-        "commitment",
-        "relationship",
-        "preference",
-        "value",
-        "emotion"
-      ]
+      "values": ["fact", "pattern", "commitment", "relationship", "preference", "value", "emotion"]
     }
   },
   "schemas": {},
