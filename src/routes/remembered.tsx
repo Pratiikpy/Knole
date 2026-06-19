@@ -30,15 +30,17 @@ function RememberedPage() {
   const [response, setResponse] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState(false);
 
   const send = async () => {
     if (!response.trim() || sending) return;
     setSending(true);
+    setSendError(false);
     try {
       await doRespond({ data: { response, pastQuote: entry?.text } });
       setSent(true);
     } catch {
-      setSent(true);
+      setSendError(true);
     } finally {
       setSending(false);
     }
@@ -149,6 +151,11 @@ function RememberedPage() {
                 placeholder="answer your past self…"
                 className="w-full resize-none rounded-2xl border border-rule bg-card/50 p-5 font-display text-[18px] italic leading-snug text-ink placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-tan/30"
               />
+              {sendError && (
+                <p aria-live="polite" className="mt-3 text-[12px] text-destructive">
+                  Couldn't reach your journal — your words are still here. Try again.
+                </p>
+              )}
               <div className="mt-3 flex items-center justify-end gap-3">
                 <button
                   onClick={() => setAnswering(false)}
