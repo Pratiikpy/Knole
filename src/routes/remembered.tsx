@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { resurfaceFn, respondFn } from "@/server/fns";
+import { Composing } from "@/components/knole/Composing";
 import { useState } from "react";
 
 export const Route = createFileRoute("/remembered")({
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/remembered")({
   }),
   loader: async () => await resurfaceFn(),
   component: RememberedPage,
+  pendingComponent: () => <Composing label="Finding something to bring back…" />,
 });
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

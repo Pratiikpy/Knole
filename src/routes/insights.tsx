@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Shell } from "@/components/knole/Shell";
+import { Composing } from "@/components/knole/Composing";
 import { mirrorFn } from "@/server/fns";
 
 export const Route = createFileRoute("/insights")({
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/insights")({
   }),
   loader: async () => await mirrorFn(),
   component: InsightsPage,
+  pendingComponent: () => <Composing label="Composing your mirror…" />,
 });
 
 function Reveal({ label, text }: { label: string; text: string }) {
