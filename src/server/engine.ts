@@ -163,7 +163,8 @@ export async function extractMemories(userId: string, entryId: string, entryText
 // ── 0G Storage: encrypt + store each entry under a per-user key ──
 // Per-user AES key derived deterministically (testnet demo; production = HKDF + KMS).
 export function keyForUser(userId: string): Uint8Array {
-  const pk = process.env.EVM_PRIVATE_KEY ?? "knole-dev-master";
+  const pk = process.env.EVM_PRIVATE_KEY;
+  if (!pk) throw new Error("EVM_PRIVATE_KEY is required to derive the per-user encryption key");
   return new Uint8Array(createHash("sha256").update(`${pk}:${userId}`).digest());
 }
 
@@ -263,6 +264,7 @@ export async function getSettings(userId: string) {
       quietHoursStart: users.quietHoursStart,
       quietHoursEnd: users.quietHoursEnd,
       voice: users.voice,
+      timezone: users.timezone,
       proactivityPaused: users.proactivityPaused,
     })
     .from(users)

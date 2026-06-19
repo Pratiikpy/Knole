@@ -19,5 +19,10 @@ export async function embed(text: string): Promise<number[]> {
 
 // pgvector literal: '[0.1,0.2,...]'
 export function toVectorLiteral(v: number[]): string {
+  // Guard: these values are inlined into a pgvector SQL literal, so they must be
+  // strictly finite numbers (never user-controlled strings).
+  if (!v.every((n) => typeof n === "number" && Number.isFinite(n))) {
+    throw new Error("toVectorLiteral: vector must contain only finite numbers");
+  }
   return `[${v.join(",")}]`;
 }

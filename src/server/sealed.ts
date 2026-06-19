@@ -38,7 +38,11 @@ export async function chatSealed(
       stream: false,
     }),
   });
-  if (!res.ok) throw new Error(`0G compute ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    // Log upstream detail server-side; surface only a generic error.
+    console.error(`0G compute upstream error ${res.status}:`, (await res.text()).slice(0, 300));
+    throw new Error(`0G compute request failed (${res.status})`);
+  }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
     model?: string;

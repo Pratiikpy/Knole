@@ -63,13 +63,13 @@ You'll need: a Neon Postgres URL (with the `vector` extension), an NVIDIA NIM AP
 
 ## Scripts
 
-| Command          | Purpose                                  |
-| ---------------- | ---------------------------------------- |
-| `npm run dev`    | Dev server                               |
-| `npm run build`  | Production build (client + SSR)          |
-| `npm run lint`   | ESLint                                   |
-| `npm run format` | Prettier                                 |
-| `npm run evals`  | Memory-engine release gate → `eval_runs` |
+| Command          | Purpose                                         |
+| ---------------- | ----------------------------------------------- |
+| `npm run dev`    | Dev server                                      |
+| `npm run build`  | Production build (client + SSR)                 |
+| `npm run lint`   | ESLint                                          |
+| `npm run format` | Prettier                                        |
+| `npm run evals`  | Memory-engine release gate → `eval_runs`        |
 | `npm run dream`  | Dreaming consolidation → `reflection_artifacts` |
 
 ## Project layout

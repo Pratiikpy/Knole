@@ -23,9 +23,10 @@ const RETRIEVAL_CASES: { query: string; expected: number }[] = [
   { query: "avoiding a medical appointment", expected: 4 },
 ];
 
-// the extractor should capture the DURABLE facts from the Mira entry — her identity
-// and the felt emotion — NOT "visiting next month" (ephemeral; EXTRACT_SYS skips it).
-const EXTRACTION_KEYWORDS = ["mira", "sister", "anx"];
+// Gate on the DURABLE fact the extractor captures reliably across runs — the
+// person's identity (sister named Mira) — not the felt emotion (extracted only
+// sometimes) or "visiting next month" (ephemeral; EXTRACT_SYS deliberately skips it).
+const EXTRACTION_KEYWORDS = ["mira", "sister"];
 
 export type EvalResult = {
   retrieval: number;

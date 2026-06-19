@@ -24,7 +24,9 @@ export async function chat(
     }),
   });
   if (!res.ok) {
-    throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    // Log the upstream body server-side; never surface it to the client.
+    console.error(`LLM upstream error ${res.status}:`, (await res.text()).slice(0, 500));
+    throw new Error(`LLM request failed (${res.status})`);
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];

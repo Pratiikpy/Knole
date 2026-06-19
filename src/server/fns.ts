@@ -81,7 +81,7 @@ export const chatFn = createServerFn({ method: "POST" })
     z.object({
       message: z.string().min(1).max(4000),
       history: z
-        .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+        .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) }))
         .max(40)
         .default([]),
     }),
@@ -155,9 +155,23 @@ export const saveFn = createServerFn({ method: "POST" })
     return { ok: true, entryId: entryRow.id };
   });
 
+function hourInTz(tz: string): number {
+  try {
+    const h = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date());
+    return parseInt(h, 10) % 24;
+  } catch {
+    return new Date().getUTCHours();
+  }
+}
+
 export const nudgeFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await getDemoUserId();
-  const nowHour = new Date().getUTCHours();
+  const settings = await getSettings(userId);
+  const nowHour = hourInTz(settings?.timezone || "UTC");
   return generateNudge(userId, nowHour);
 });
 
@@ -215,7 +229,7 @@ export const onboardFn = createServerFn({ method: "POST" })
   });
 
 export const verifyOnChainFn = createServerFn({ method: "POST" })
-  .validator(z.object({ root: z.string().min(4) }))
+  .validator(z.object({ root: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }))
   .handler(async ({ data }) => {
     const userId = await getDemoUserId();
     const payload = await restoreEntryFromChain(userId, data.root);
