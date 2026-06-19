@@ -26,7 +26,7 @@ Every entry flows through one pipeline:
 3. **Reconcile** with a content-hash `UPSERT`: identical memories reinforce instead of duplicating.
 4. **Retrieve** with pgvector cosine search over both memories and raw entries.
 
-Reflections, chat, Ask My Life, the Pattern Mirror, and the proactive nudge all draw on this engine. A `npm run evals` gate measures it: retrieval@1 and extraction-coverage on a seeded fixture user, scored into the `eval_runs` table.
+Reflections, chat, Ask My Life, the Pattern Mirror, and the proactive nudge all draw on this engine. A `npm run evals` gate measures it across four suites — retrieval (precision@1 + recall@3), extraction-coverage, dedup-correctness, and reflection-groundedness (no invented facts) — on a seeded fixture user, scored into the `eval_runs` table.
 
 ## You own it — on 0G
 
