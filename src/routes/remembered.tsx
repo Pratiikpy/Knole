@@ -52,7 +52,7 @@ function RememberedPage() {
             </h1>
             <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
               Once you've been writing for a while, Knole will resurface the things worth hearing
-              again —at the moment they matter.{" "}
+              again — at the moment they matter.{" "}
               <Link to="/today" className="text-tan hover:text-ink">
                 Start today →
               </Link>
