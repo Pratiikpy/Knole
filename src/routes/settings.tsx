@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import {
@@ -145,17 +145,22 @@ function SettingsPage() {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const doSync = useServerFn(syncSessionFn);
   const doClear = useServerFn(clearSessionFn);
+  const router = useRouter();
 
   // Keep the server session in step with Privy: exchange the access token for a
-  // sealed session cookie on login, clear it on logout.
+  // sealed session cookie on login (clear on logout), then re-run loaders so the
+  // page immediately reflects the now-authenticated (or demo) user — no stale data.
   useEffect(() => {
     if (!ready) return;
     if (authenticated) {
       void getAccessToken()
         .then((token) => (token ? doSync({ data: { token } }) : null))
+        .then(() => router.invalidate())
         .catch(() => {});
     } else {
-      void doClear().catch(() => {});
+      void doClear()
+        .then(() => router.invalidate())
+        .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, authenticated]);
