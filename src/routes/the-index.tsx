@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { listMemoriesFn, setMemoryStatusFn, editMemoryFn } from "@/server/fns";
+import { listMemoriesFn, setMemoryStatusFn, editMemoryFn, provenanceFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/the-index")({
@@ -26,6 +26,15 @@ type Memory = {
   sourceQuote: string | null;
   recallCount: number;
   createdAt: string;
+  kvRef: string | null;
+};
+
+type Provenance = {
+  content: string;
+  sourceQuote: string | null;
+  recallCount: number;
+  sourceText: string | null;
+  entryAt: string | null;
   kvRef: string | null;
 };
 
@@ -60,6 +69,27 @@ function TheIndex() {
   const [facts, setFacts] = useState<Memory[]>(initial);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const doProv = useServerFn(provenanceFn);
+  const [traced, setTraced] = useState<string | null>(null);
+  const [prov, setProv] = useState<Provenance | null>(null);
+  const [tracing, setTracing] = useState(false);
+
+  const toggleTrace = async (id: string) => {
+    if (traced === id) {
+      setTraced(null);
+      return;
+    }
+    setTraced(id);
+    setProv(null);
+    setTracing(true);
+    try {
+      setProv(await doProv({ data: { memoryId: id } }));
+    } catch {
+      setProv(null);
+    } finally {
+      setTracing(false);
+    }
+  };
 
   const togglePin = async (m: Memory) => {
     const status = m.status === "pinned" ? "active" : "pinned";
@@ -169,6 +199,12 @@ function TheIndex() {
                       >
                         forget
                       </button>
+                      <button
+                        onClick={() => toggleTrace(f.id)}
+                        className="text-[11px] text-muted-foreground hover:text-tan"
+                      >
+                        {traced === f.id ? "close" : "trace"}
+                      </button>
                     </div>
                   </div>
 
@@ -204,6 +240,35 @@ function TheIndex() {
                         </p>
                       )}
                     </>
+                  )}
+
+                  {traced === f.id && (
+                    <div className="animate-fade-up mt-4 rounded-lg border border-rule bg-paper/60 p-4">
+                      {tracing ? (
+                        <p className="text-[12px] italic text-muted-foreground">tracing…</p>
+                      ) : prov ? (
+                        <>
+                          <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-tan">
+                            from your entry{prov.entryAt ? ` · ${fmtDate(prov.entryAt)}` : ""}
+                          </div>
+                          <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink-soft">
+                            {prov.sourceText ?? "(the source entry is no longer on file)"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                            <span>recalled {prov.recallCount}×</span>
+                            {prov.kvRef && (
+                              <span className="font-mono normal-case text-tan/80">
+                                ⬡ on 0G · {prov.kvRef.slice(0, 10)}…{prov.kvRef.slice(-6)}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-[12px] italic text-muted-foreground">
+                          No source on file.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </li>
               ))}

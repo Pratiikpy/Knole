@@ -13,6 +13,7 @@ import {
   updateMemoryContent,
   getSettings,
   updateSettings,
+  getMemoryProvenance,
 } from "./engine";
 import { embed } from "./embed";
 import { askMyLife } from "./ask";
@@ -68,6 +69,13 @@ export const editMemoryFn = createServerFn({ method: "POST" })
     const userId = await getDemoUserId();
     await updateMemoryContent(userId, data.id, data.content);
     return { ok: true };
+  });
+
+export const provenanceFn = createServerFn({ method: "POST" })
+  .validator(z.object({ memoryId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    return getMemoryProvenance(userId, data.memoryId);
   });
 
 export const askFn = createServerFn({ method: "POST" })

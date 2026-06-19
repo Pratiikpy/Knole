@@ -289,3 +289,37 @@ export async function updateSettings(
 ) {
   await db.update(users).set(patch).where(eq(users.id, userId));
 }
+
+// ── provenance X-ray: where a memory came from ───────────
+export type Provenance = {
+  content: string;
+  sourceQuote: string | null;
+  recallCount: number;
+  sourceText: string | null;
+  entryAt: string | null;
+  kvRef: string | null;
+};
+
+export async function getMemoryProvenance(
+  userId: string,
+  memoryId: string,
+): Promise<Provenance | null> {
+  const rows = (await db.execute(sql`
+    SELECT m.content, m.source_quote, m.recall_count,
+           e.text AS source_text, e.created_at AS entry_at, e.kv_ref
+    FROM memories m
+    LEFT JOIN entries e ON e.id = m.source_entry_id
+    WHERE m.id = ${memoryId} AND m.user_id = ${userId}
+    LIMIT 1
+  `)) as unknown as Record<string, unknown>[];
+  if (!rows[0]) return null;
+  const r = rows[0];
+  return {
+    content: String(r.content),
+    sourceQuote: r.source_quote == null ? null : String(r.source_quote),
+    recallCount: Number(r.recall_count ?? 0),
+    sourceText: r.source_text == null ? null : String(r.source_text),
+    entryAt: r.entry_at == null ? null : String(r.entry_at),
+    kvRef: r.kv_ref == null ? null : String(r.kv_ref),
+  };
+}
