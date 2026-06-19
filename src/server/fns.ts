@@ -20,6 +20,7 @@ import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { generateNudge } from "./proactivity";
+import { resurface } from "./resurface";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -159,6 +160,33 @@ export const nudgeFn = createServerFn({ method: "GET" }).handler(async () => {
   const nowHour = new Date().getUTCHours();
   return generateNudge(userId, nowHour);
 });
+
+export const resurfaceFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return resurface(userId);
+});
+
+export const respondFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      response: z.string().min(1).max(8000),
+      pastQuote: z.string().max(2000).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    const text = data.pastQuote
+      ? `Answering my past self ("${data.pastQuote.slice(0, 140)}…"): ${data.response}`
+      : data.response;
+    const entryRow = await saveEntry(userId, text, undefined, "journal");
+    void extractMemories(userId, entryRow.id, text).catch((e) =>
+      console.error("extractMemories failed:", e),
+    );
+    void storeEntryOn0G(userId, entryRow.id, text).catch((e) =>
+      console.error("0G store failed:", e),
+    );
+    return { ok: true };
+  });
 
 export const verifyOnChainFn = createServerFn({ method: "POST" })
   .validator(z.object({ root: z.string().min(4) }))
