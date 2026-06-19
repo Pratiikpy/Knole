@@ -103,7 +103,7 @@ function ExtensionPage() {
               </article>
 
               {/* The save popover */}
-              <aside className="relative">
+              <div className="relative">
                 <div className="sticky top-4 rounded-xl border border-rule bg-paper p-4 shadow-[0_20px_50px_-30px_rgba(28,25,23,0.4)]">
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-tan">
@@ -160,7 +160,7 @@ function ExtensionPage() {
                     <em className="italic text-tan">scattered weeks</em>.
                   </div>
                 )}
-              </aside>
+              </div>
             </div>
           </div>
 

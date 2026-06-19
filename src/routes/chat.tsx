@@ -85,7 +85,7 @@ function ChatPage() {
                   </div>
                 ) : (
                   <div className="max-w-[90%] border-l-2 border-tan/30 pl-5">
-                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan/80">
+                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan">
                       Knole
                     </div>
                     <p className="font-display text-[19px] leading-[1.5] italic text-ink-soft">
@@ -102,9 +102,7 @@ function ChatPage() {
             ))}
             {loading && (
               <div className="animate-fade-up border-l-2 border-tan/30 pl-5">
-                <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan/80">
-                  Knole
-                </div>
+                <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan">Knole</div>
                 <p className="font-display text-[19px] italic text-muted-foreground">thinking…</p>
               </div>
             )}

@@ -178,6 +178,7 @@ function SettingsPage() {
                 max={4}
                 value={freq}
                 onChange={(e) => onFreq(Number(e.target.value))}
+                aria-label="How often Knole reaches out"
                 className="w-full accent-[var(--tan)]"
               />
               <div className="mt-4 flex items-center justify-between">

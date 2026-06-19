@@ -211,13 +211,13 @@ function TheIndex() {
                       )}
                       <span>{typeLabel[f.type] ?? f.type}</span>
                       <span className="text-muted-foreground/50">·</span>
-                      <span className="text-muted-foreground/70">
+                      <span className="text-muted-foreground">
                         {f.recallCount > 0
                           ? `recalled ${f.recallCount}×`
                           : `noticed ${fmtDate(f.createdAt)}`}
                       </span>
                       {f.kvRef && (
-                        <span title={`Stored on 0G · ${f.kvRef}`} className="text-tan/80">
+                        <span title={`Stored on 0G · ${f.kvRef}`} className="text-tan">
                           ⬡ 0G
                         </span>
                       )}
@@ -299,7 +299,7 @@ function TheIndex() {
                           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                             <span>recalled {prov.recallCount}×</span>
                             {prov.kvRef && (
-                              <span className="font-mono normal-case text-tan/80">
+                              <span className="font-mono normal-case text-tan">
                                 ⬡ on 0G · {prov.kvRef.slice(0, 10)}…{prov.kvRef.slice(-6)}
                               </span>
                             )}

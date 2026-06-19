@@ -68,7 +68,7 @@
   --paper: #faf9f6;
   --ink: #1c1917;
   --ink-soft: #2a2724;
-  --tan: #8c7355;
+  --tan: #7c6545;
   --tan-soft: #b9a282;
   --rule: rgba(28, 25, 23, 0.08);
 
@@ -84,7 +84,7 @@
   --secondary: #f1ede5;
   --secondary-foreground: var(--ink);
   --muted: #efece5;
-  --muted-foreground: #71716a;
+  --muted-foreground: #6b6b63;
   --accent: var(--tan);
   --accent-foreground: var(--paper);
   --destructive: #a83232;

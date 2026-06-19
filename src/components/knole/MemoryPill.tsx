@@ -12,8 +12,8 @@ export function MemoryPill({ label, receipts }: { label: string; receipts: Recei
       >
         <span className="size-1.5 rounded-full bg-tan animate-breathe" />
         {label}
-        <span className="text-tan/60">·</span>
-        <span className="text-tan/60">why</span>
+        <span className="text-tan">·</span>
+        <span className="text-tan">why</span>
       </button>
       {open && (
         <div className="animate-fade-up absolute left-0 top-full z-30 mt-2 w-[320px] rounded-xl border border-rule bg-card p-4 shadow-[0_24px_60px_-30px_rgba(28,25,23,0.25)]">
