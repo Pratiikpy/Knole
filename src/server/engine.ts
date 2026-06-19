@@ -32,8 +32,8 @@ export function getDemoUserId(): Promise<string> {
 }
 
 // ── save an entry (+ local embedding) ────────────────────
-export async function saveEntry(userId: string, text: string) {
-  const v = await embed(text);
+export async function saveEntry(userId: string, text: string, vec?: number[]) {
+  const v = vec ?? (await embed(text));
   const [row] = await db
     .insert(entries)
     .values({ userId, text, type: "journal", embedding: v })

@@ -11,10 +11,17 @@ Do:
 Keep it short: 2-4 sentences, then the single question. Close by quietly inviting them to go live the answer, not keep journaling.
 Output plain prose only — no markdown, no lists, no headers.`;
 
-export async function reflect(entry: string): Promise<string> {
+export type MemoryHint = { content: string; sourceQuote?: string | null };
+
+export async function reflect(entry: string, memories: MemoryHint[] = []): Promise<string> {
+  const memoryBlock = memories.length
+    ? `\n\nYou already remember these things about this person from before. Weave in AT MOST ONE, naturally, and only if it genuinely connects to what they wrote — never list them, never say you have notes:\n${memories
+        .map((m) => `- ${m.content}`)
+        .join("\n")}`
+    : "";
   return chat(
     [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: SYSTEM + memoryBlock },
       { role: "user", content: entry },
     ],
     { temperature: 0.85, maxTokens: 400 },

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { reflectFn } from "@/server/fns";
+import { journalFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/today")({
@@ -25,12 +25,13 @@ const sampleEntry =
   "I'm thinking about the garden project again. It's been months since I actually sat out there and just enjoyed the silence. I feel like I've been running on a treadmill of minor tasks. Maybe the soil is ready now.";
 
 function TodayPage() {
-  const doReflect = useServerFn(reflectFn);
+  const doReflect = useServerFn(journalFn);
   const [prompt, setPrompt] = useState(prompts[1]);
   const [entry, setEntry] = useState(sampleEntry);
   const [reflected, setReflected] = useState(false);
   const [reflection, setReflection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [recalled, setRecalled] = useState<{ content: string; quote: string | null }[]>([]);
 
   async function handleReflect() {
     if (!entry.trim()) return;
@@ -38,6 +39,7 @@ function TodayPage() {
     try {
       const res = await doReflect({ data: { entry } });
       setReflection(res.reflection);
+      setRecalled(res.recalled ?? []);
       setReflected(true);
     } catch {
       setReflection("Something interrupted the reflection — try again in a moment.");
@@ -90,6 +92,7 @@ function TodayPage() {
                 setEntry(e.target.value);
                 setReflected(false);
                 setReflection(null);
+                setRecalled([]);
               }}
               rows={6}
               className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
@@ -116,6 +119,11 @@ function TodayPage() {
 
             {reflected && reflection && (
               <div className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6">
+                {recalled.length > 0 && (
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-tan/80">
+                    ↳ drew on {recalled.length} thing{recalled.length > 1 ? "s" : ""} you've shared before
+                  </p>
+                )}
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
                   {reflection}
                 </p>
