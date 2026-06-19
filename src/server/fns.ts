@@ -17,6 +17,7 @@ import {
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
 import { currentUserId, startSessionFromToken, endSession } from "./session";
+import { enforceRate } from "./rateLimit";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
@@ -32,6 +33,7 @@ import { forgetRange, deleteAccount } from "./dataops";
 export const journalFn = createServerFn({ method: "POST" })
   .validator(z.object({ entry: z.string().min(1).max(20000) }))
   .handler(async ({ data }) => {
+    enforceRate("journal", 30, 60_000);
     const userId = await currentUserId();
     const qVec = await embed(data.entry);
     const recalled = await retrieveMemories(userId, qVec, 6, data.entry);
@@ -126,6 +128,7 @@ export const deleteAccountFn = createServerFn({ method: "POST" }).handler(async 
 export const askFn = createServerFn({ method: "POST" })
   .validator(z.object({ question: z.string().min(1).max(500) }))
   .handler(async ({ data }) => {
+    enforceRate("ask", 30, 60_000);
     const userId = await currentUserId();
     return askMyLife(userId, data.question);
   });
@@ -141,6 +144,7 @@ export const chatFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    enforceRate("chat", 40, 60_000);
     const userId = await currentUserId();
     const qVec = await embed(data.message);
     const reply = await chatReply(userId, data.history, data.message, qVec);
@@ -287,6 +291,7 @@ export const importFn = createServerFn({ method: "POST" })
     z.object({ text: z.string().min(1).max(200000), source: z.string().max(40).optional() }),
   )
   .handler(async ({ data }) => {
+    enforceRate("import", 5, 60_000);
     const userId = await currentUserId();
     return importHistory(userId, data.text, data.source);
   });
