@@ -7,6 +7,7 @@ import {
   saveReply,
   extractMemories,
   retrieveMemories,
+  storeEntryOn0G,
 } from "./engine";
 import { embed } from "./embed";
 
@@ -25,6 +26,10 @@ export const journalFn = createServerFn({ method: "POST" })
     // (Production: this becomes a queued worker job; fire-and-forget is fine in the long-lived dev server.)
     void extractMemories(userId, entryRow.id, data.entry).catch((e) =>
       console.error("extractMemories failed:", e),
+    );
+    // Encrypt + store the entry on 0G Storage in the background (owned; ~20s tx).
+    void storeEntryOn0G(userId, entryRow.id, data.entry).catch((e) =>
+      console.error("0G store failed:", e),
     );
     return {
       reflection,

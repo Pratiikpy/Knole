@@ -3,6 +3,7 @@ import { sql, eq, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
 import { chat } from "./llm";
+import { putData } from "./og";
 
 const { users, entries, replies, memories } = schema;
 
@@ -128,4 +129,23 @@ export async function extractMemories(userId: string, entryId: string, entryText
     if (row) saved.push({ id: String(row.id), content: String(row.content) });
   }
   return saved;
+}
+
+// ── 0G Storage: encrypt + store each entry under a per-user key ──
+// Per-user AES key derived deterministically (testnet demo; production = HKDF + KMS).
+export function keyForUser(userId: string): Uint8Array {
+  const pk = process.env.EVM_PRIVATE_KEY ?? "knole-dev-master";
+  return new Uint8Array(createHash("sha256").update(`${pk}:${userId}`).digest());
+}
+
+export async function storeEntryOn0G(
+  userId: string,
+  entryId: string,
+  text: string,
+): Promise<string> {
+  const key = keyForUser(userId);
+  const payload = JSON.stringify({ entryId, text, savedAt: new Date().toISOString() });
+  const { rootHash } = await putData(payload, { key });
+  await db.update(entries).set({ kvRef: rootHash }).where(eq(entries.id, entryId));
+  return rootHash;
 }
