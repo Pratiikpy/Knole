@@ -43,7 +43,11 @@ function RememberedPage() {
 
             {/* Thread SVG */}
             <div className="relative mx-auto h-32 w-px">
-              <svg viewBox="0 0 2 128" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+              <svg
+                viewBox="0 0 2 128"
+                className="absolute inset-0 h-full w-full"
+                preserveAspectRatio="none"
+              >
                 <defs>
                   <linearGradient id="thread" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor="#8c7355" stopOpacity="0" />
@@ -72,8 +76,8 @@ function RememberedPage() {
               </div>
               <p className="text-[15px] leading-relaxed text-ink-soft">
                 You haven't mentioned the bulbs since. The first frost was last week. Before we
-                write tonight, I want to ask — gently — whether the question underneath the bulbs
-                is still living somewhere inside you.
+                write tonight, I want to ask — gently — whether the question underneath the bulbs is
+                still living somewhere inside you.
               </p>
               <div className="mt-5">
                 <MemoryPill
@@ -107,7 +111,13 @@ function RememberedPage() {
               className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[13px] font-medium text-paper"
             >
               answer it
-              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </Link>

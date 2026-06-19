@@ -127,9 +127,7 @@ function SettingsPage() {
                   key={v.id}
                   onClick={() => onVoice(v.id)}
                   className={`flex items-center justify-between rounded-xl border p-4 text-left ${
-                    voice === v.id
-                      ? "border-tan/40 bg-tan/[0.06]"
-                      : "border-rule bg-card/40"
+                    voice === v.id ? "border-tan/40 bg-tan/[0.06]" : "border-rule bg-card/40"
                   }`}
                 >
                   <span className="text-[14px]">{v.name}</span>
@@ -299,9 +297,7 @@ function Row({
         {detail && <div className="mt-0.5 text-[12px] text-muted-foreground">{detail}</div>}
       </div>
       {value && (
-        <span className="shrink-0 text-[12px] uppercase tracking-[0.18em] text-tan">
-          {value}
-        </span>
+        <span className="shrink-0 text-[12px] uppercase tracking-[0.18em] text-tan">{value}</span>
       )}
       {action && (
         <button

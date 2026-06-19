@@ -70,9 +70,7 @@ function ChatPage() {
             <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               An open conversation
             </p>
-            <h1 className="font-display text-[40px] italic leading-none">
-              Think out loud.
-            </h1>
+            <h1 className="font-display text-[40px] italic leading-none">Think out loud.</h1>
             <p className="mt-3 text-[14px] text-muted-foreground">
               One question at a time. You can correct me anytime — just say so.
             </p>
@@ -80,10 +78,7 @@ function ChatPage() {
 
           <div className="space-y-8">
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={m.who === "you" ? "flex justify-end" : "animate-fade-up"}
-              >
+              <div key={i} className={m.who === "you" ? "flex justify-end" : "animate-fade-up"}>
                 {m.who === "you" ? (
                   <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-ink px-5 py-3.5 text-[15px] leading-relaxed text-paper">
                     {m.text}
@@ -98,10 +93,7 @@ function ChatPage() {
                     </p>
                     {m.remembered && (
                       <div className="mt-4">
-                        <MemoryPill
-                          label={m.remembered.label}
-                          receipts={m.remembered.receipts}
-                        />
+                        <MemoryPill label={m.remembered.label} receipts={m.remembered.receipts} />
                       </div>
                     )}
                   </div>

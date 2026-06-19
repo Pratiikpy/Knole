@@ -65,8 +65,8 @@ function AskPage() {
             Your past, with receipts.
           </h1>
           <p className="mt-4 max-w-[44ch] text-[14px] leading-relaxed text-muted-foreground">
-            Search your own words. Knole will quote you back to yourself — never paraphrase
-            without showing where it came from.
+            Search your own words. Knole will quote you back to yourself — never paraphrase without
+            showing where it came from.
           </p>
 
           <form
@@ -76,7 +76,13 @@ function AskPage() {
             }}
             className="mt-10 flex items-center gap-2 rounded-2xl border border-rule bg-card px-4 py-3 focus-within:ring-2 focus-within:ring-tan/30"
           >
-            <svg viewBox="0 0 24 24" className="size-5 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-5 text-muted-foreground"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
               <circle cx="11" cy="11" r="7" />
               <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
             </svg>

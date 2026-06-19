@@ -140,13 +140,12 @@ function TheIndex() {
                       <span>{typeLabel[f.type] ?? f.type}</span>
                       <span className="text-muted-foreground/50">·</span>
                       <span className="text-muted-foreground/70">
-                        {f.recallCount > 0 ? `recalled ${f.recallCount}×` : `noticed ${fmtDate(f.createdAt)}`}
+                        {f.recallCount > 0
+                          ? `recalled ${f.recallCount}×`
+                          : `noticed ${fmtDate(f.createdAt)}`}
                       </span>
                       {f.kvRef && (
-                        <span
-                          title={`Stored on 0G · ${f.kvRef}`}
-                          className="text-tan/80"
-                        >
+                        <span title={`Stored on 0G · ${f.kvRef}`} className="text-tan/80">
                           ⬡ 0G
                         </span>
                       )}

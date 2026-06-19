@@ -14,7 +14,11 @@ export const Route = createFileRoute("/onboarding")({
 
 const voices = [
   { id: "warm", name: "Warm & patient", note: "A soft presence that encourages reflection." },
-  { id: "structural", name: "Structural & clear", note: "Helps organize thoughts and find patterns." },
+  {
+    id: "structural",
+    name: "Structural & clear",
+    note: "Helps organize thoughts and find patterns.",
+  },
   { id: "honest", name: "Direct & honest", note: "Cuts to the core of what you're saying." },
   { id: "curious", name: "Quietly curious", note: "Asks one good question at a time." },
 ];
@@ -35,9 +39,7 @@ function Onboarding() {
             {[0, 1, 2, 3].map((i) => (
               <span
                 key={i}
-                className={`h-px transition-all ${
-                  i <= step ? "w-10 bg-ink" : "w-6 bg-rule"
-                }`}
+                className={`h-px transition-all ${i <= step ? "w-10 bg-ink" : "w-6 bg-rule"}`}
               />
             ))}
             <span className="ml-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -106,7 +108,9 @@ function Onboarding() {
                       }`}
                     >
                       <div>
-                        <div className={`text-[14px] font-medium ${active ? "text-ink" : "text-ink"}`}>
+                        <div
+                          className={`text-[14px] font-medium ${active ? "text-ink" : "text-ink"}`}
+                        >
                           {v.name}
                         </div>
                         <div className="mt-0.5 text-[12px] text-muted-foreground">{v.note}</div>
@@ -122,7 +126,10 @@ function Onboarding() {
               </div>
 
               <div className="mt-10 flex items-center justify-between">
-                <button onClick={() => setStep(0)} className="text-[12px] text-muted-foreground hover:text-ink">
+                <button
+                  onClick={() => setStep(0)}
+                  className="text-[12px] text-muted-foreground hover:text-ink"
+                >
                   ← back
                 </button>
                 <button
@@ -168,7 +175,10 @@ function Onboarding() {
               </div>
 
               <div className="mt-10 flex items-center justify-between">
-                <button onClick={() => setStep(1)} className="text-[12px] text-muted-foreground hover:text-ink">
+                <button
+                  onClick={() => setStep(1)}
+                  className="text-[12px] text-muted-foreground hover:text-ink"
+                >
                   ← back
                 </button>
                 <button
@@ -187,7 +197,9 @@ function Onboarding() {
               <p className="mb-3 text-[12px] uppercase tracking-[0.18em] text-tan">
                 The first reflection
               </p>
-              <h1 className="font-display text-[40px] leading-[1.05] italic">Then let's start there.</h1>
+              <h1 className="font-display text-[40px] leading-[1.05] italic">
+                Then let's start there.
+              </h1>
 
               <div className="mt-8 border-l-2 border-tan/40 pl-5">
                 <p className="text-[15px] leading-relaxed text-ink-soft">
@@ -197,20 +209,34 @@ function Onboarding() {
                   <span className="italic">{thing.toLowerCase()}</span>.
                 </p>
                 <p className="mt-4 text-[15px] leading-relaxed text-ink-soft">
-                  That's a lot for one Tuesday. We don't have to solve it — only notice it. I'll
-                  sit with this, and when you come back tomorrow, I'll still be here.
+                  That's a lot for one Tuesday. We don't have to solve it — only notice it. I'll sit
+                  with this, and when you come back tomorrow, I'll still be here.
                 </p>
               </div>
 
               <div className="animate-fade-up mt-8 inline-flex items-center gap-2 rounded-full bg-tan/[0.08] px-4 py-2 text-[12px] text-tan ring-1 ring-tan/20">
-                <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 8v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
-                Knole will remember: <span className="italic">{thing.toLowerCase()}</span> is quietly with you this week.
+                Knole will remember: <span className="italic">{thing.toLowerCase()}</span> is
+                quietly with you this week.
               </div>
 
               <div className="mt-12 flex items-center justify-between">
-                <button onClick={() => setStep(2)} className="text-[12px] text-muted-foreground hover:text-ink">
+                <button
+                  onClick={() => setStep(2)}
+                  className="text-[12px] text-muted-foreground hover:text-ink"
+                >
                   ← back
                 </button>
                 <Link
@@ -218,7 +244,13 @@ function Onboarding() {
                   className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[13px] font-medium text-paper"
                 >
                   Open today
-                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
                 </Link>

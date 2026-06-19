@@ -60,7 +60,10 @@ export async function chatPrivate(
     try {
       return await chatSealed(messages, opts);
     } catch (e) {
-      console.error("0G sealed inference unavailable, falling back to NVIDIA:", (e as Error).message);
+      console.error(
+        "0G sealed inference unavailable, falling back to NVIDIA:",
+        (e as Error).message,
+      );
     }
   }
   const content = await chat(messages, opts);

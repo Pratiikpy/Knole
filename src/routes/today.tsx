@@ -87,7 +87,12 @@ function TodayPage() {
           )}
           <div className="mb-10 flex items-baseline justify-between">
             <h1 className="font-display text-[44px] italic leading-none">Today</h1>
-            <span suppressHydrationWarning className="text-[12px] tabular-nums text-muted-foreground">{today}</span>
+            <span
+              suppressHydrationWarning
+              className="text-[12px] tabular-nums text-muted-foreground"
+            >
+              {today}
+            </span>
           </div>
 
           <div className="mb-6 flex flex-wrap gap-2">
@@ -136,7 +141,13 @@ function TodayPage() {
                   className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper transition-opacity disabled:opacity-50"
                 >
                   {loading ? "Reflecting…" : "Reflect"}
-                  <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
                 </button>
@@ -147,7 +158,8 @@ function TodayPage() {
               <div className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6">
                 {recalled.length > 0 && (
                   <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-tan/80">
-                    ↳ drew on {recalled.length} thing{recalled.length > 1 ? "s" : ""} you've shared before
+                    ↳ drew on {recalled.length} thing{recalled.length > 1 ? "s" : ""} you've shared
+                    before
                   </p>
                 )}
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">

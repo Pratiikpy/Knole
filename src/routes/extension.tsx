@@ -10,8 +10,7 @@ export const Route = createFileRoute("/extension")({
       { title: "Save to Knole — Chrome extension" },
       {
         name: "description",
-        content:
-          "Highlight anything on the web. Save it to your Knole memory in one click.",
+        content: "Highlight anything on the web. Save it to your Knole memory in one click.",
       },
     ],
   }),
@@ -48,13 +47,11 @@ function ExtensionPage() {
           <p className="mb-3 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             Chrome · v1
           </p>
-          <h1 className="font-display text-[48px] italic leading-[1.02]">
-            Save to Knole.
-          </h1>
+          <h1 className="font-display text-[48px] italic leading-[1.02]">Save to Knole.</h1>
           <p className="mt-4 max-w-[44ch] text-[14px] leading-relaxed text-muted-foreground">
-            Highlight a tweet, an article, a reel — anything that lands. One click and it
-            becomes part of your memory. Knole brings it back when it's relevant, and you can
-            talk to it later.
+            Highlight a tweet, an article, a reel — anything that lands. One click and it becomes
+            part of your memory. Knole brings it back when it's relevant, and you can talk to it
+            later.
           </p>
 
           {/* Mock browser */}
@@ -89,19 +86,19 @@ function ExtensionPage() {
                   By M. Salgado · 11 min read
                 </p>
                 <p className="mt-6">
-                  We tend to imagine attention as a spotlight — narrow, directed, ours to aim.
-                  But the older traditions describe it differently:{" "}
+                  We tend to imagine attention as a spotlight — narrow, directed, ours to aim. But
+                  the older traditions describe it differently:{" "}
                   <mark className="rounded bg-tan/25 px-1 py-0.5 text-ink no-underline">
-                    attention is less a tool we use and more a posture we hold; what we attend
-                    to, over time, is who we become.
+                    attention is less a tool we use and more a posture we hold; what we attend to,
+                    over time, is who we become.
                   </mark>{" "}
-                  The implication is gentle and unforgiving. A life of scattered noticing
-                  produces a scattered self.
+                  The implication is gentle and unforgiving. A life of scattered noticing produces a
+                  scattered self.
                 </p>
                 <p className="mt-4">
                   This is why every contemplative tradition has, at its center, a practice of
-                  returning. Not of forcing the mind to obey, but of noticing, kindly, where it
-                  has gone — and coming home again.
+                  returning. Not of forcing the mind to obey, but of noticing, kindly, where it has
+                  gone — and coming home again.
                 </p>
               </article>
 
@@ -145,9 +142,7 @@ function ExtensionPage() {
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">
-                      Encrypted · only you
-                    </span>
+                    <span className="text-[10px] text-muted-foreground">Encrypted · only you</span>
                     <button
                       onClick={onDone}
                       disabled={saving}

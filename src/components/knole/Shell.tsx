@@ -11,7 +11,6 @@ const nav = [
   { to: "/settings", label: "Settings" },
 ];
 
-
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (

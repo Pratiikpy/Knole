@@ -8,7 +8,13 @@ import { putData } from "./og";
 const { users, entries, replies, memories, memoryHistory } = schema;
 
 const VALID_TYPES = new Set([
-  "fact", "pattern", "commitment", "relationship", "preference", "value", "emotion",
+  "fact",
+  "pattern",
+  "commitment",
+  "relationship",
+  "preference",
+  "value",
+  "emotion",
 ]);
 
 // ── demo user (until Privy auth lands) ───────────────────
@@ -40,18 +46,12 @@ export async function saveEntry(
   type: "journal" | "chat" | "saved" = "journal",
 ) {
   const v = vec ?? (await embed(text));
-  const [row] = await db
-    .insert(entries)
-    .values({ userId, text, type, embedding: v })
-    .returning();
+  const [row] = await db.insert(entries).values({ userId, text, type, embedding: v }).returning();
   return row;
 }
 
 export async function saveReply(entryId: string, text: string, isAi = true) {
-  const [row] = await db
-    .insert(replies)
-    .values({ parentEntryId: entryId, text, isAi })
-    .returning();
+  const [row] = await db.insert(replies).values({ parentEntryId: entryId, text, isAi }).returning();
   return row;
 }
 

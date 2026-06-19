@@ -47,8 +47,8 @@ function InsightsPage() {
           {!m.ready ? (
             <div className="mt-12 rounded-2xl border border-rule bg-card/50 p-8">
               <p className="font-display text-[20px] italic leading-snug text-muted-foreground">
-                Knole needs a few more entries before it can show you a pattern. Write on Today for a
-                few days, then come back — the mirror fills in from your own words.
+                Knole needs a few more entries before it can show you a pattern. Write on Today for
+                a few days, then come back — the mirror fills in from your own words.
               </p>
             </div>
           ) : (

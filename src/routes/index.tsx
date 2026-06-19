@@ -17,8 +17,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:description",
-        content:
-          "Not an assistant. A mirror. Remembers your whole life. Unreadable even by us.",
+        content: "Not an assistant. A mirror. Remembers your whole life. Unreadable even by us.",
       },
     ],
   }),
@@ -85,7 +84,13 @@ function LandingPage() {
               className="group inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[14px] font-medium text-paper transition-transform hover:translate-y-[-1px]"
             >
               <span>Start writing</span>
-              <svg viewBox="0 0 24 24" className="size-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4 transition-transform group-hover:translate-x-0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </Link>
@@ -116,9 +121,9 @@ function LandingPage() {
             {showReply && (
               <div className="animate-fade-up mt-6 border-l-2 border-tan/40 pl-5">
                 <p className="text-[14px] leading-relaxed text-ink-soft">
-                  You've described this exact feeling three times since March — always on the
-                  flat days after you push hard. It usually softens after a long walk. What kind
-                  of alone are you looking for tonight?
+                  You've described this exact feeling three times since March — always on the flat
+                  days after you push hard. It usually softens after a long walk. What kind of alone
+                  are you looking for tonight?
                 </p>
                 <div className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
                   Knole · grounded in your own words
@@ -132,17 +137,15 @@ function LandingPage() {
       {/* 14-DAY MIRROR */}
       <section className="border-t border-rule px-6 py-24">
         <div className="mx-auto max-w-[60ch]">
-          <p className="mb-4 text-[11px] uppercase tracking-[0.22em] text-tan">
-            The 14-Day Mirror
-          </p>
+          <p className="mb-4 text-[11px] uppercase tracking-[0.22em] text-tan">The 14-Day Mirror</p>
           <h2 className="font-display text-balance text-[44px] italic leading-[1.04] md:text-[52px]">
             Write for fourteen days. On day fifteen, Knole shows you something
             <span className="text-tan"> only it could.</span>
           </h2>
           <p className="mt-6 max-w-[48ch] text-[15px] leading-relaxed text-muted-foreground">
-            Most journals are a graveyard for your thoughts. This one notices. A pattern you'd
-            never name yourself, written back to you gently and with receipts. That moment is
-            the whole product — everything else is just the path to it.
+            Most journals are a graveyard for your thoughts. This one notices. A pattern you'd never
+            name yourself, written back to you gently and with receipts. That moment is the whole
+            product — everything else is just the path to it.
           </p>
 
           <div className="mt-12 grid grid-cols-7 gap-2">
@@ -196,7 +199,13 @@ function LandingPage() {
       <section className="border-t border-rule px-6 py-24">
         <div className="mx-auto max-w-[54ch] text-center">
           <div className="mb-5 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-tan">
-            <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
               <rect x="4" y="11" width="16" height="9" rx="2" />
               <path d="M8 11V8a4 4 0 018 0v3" />
             </svg>
@@ -208,8 +217,8 @@ function LandingPage() {
             Unreadable even by us.
           </p>
           <p className="mx-auto mt-5 max-w-[40ch] text-[13px] leading-relaxed text-muted-foreground">
-            No tracking. No audience. Export everything, anytime, as a single Mindfile. Walk
-            away and take your whole mind with you.
+            No tracking. No audience. Export everything, anytime, as a single Mindfile. Walk away
+            and take your whole mind with you.
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Link

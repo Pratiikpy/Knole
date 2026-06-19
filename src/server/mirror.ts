@@ -6,9 +6,9 @@ const MIRROR_SYS = `You are Knole, writing a short, private "Pattern Mirror" for
 Return ONLY a JSON object:
 {
   "throughline": "<2-3 sentences, second person: the single most honest pattern across these entries>",
-  "loop": "<1-2 sentences: a repeating cycle they seem caught in — or \"\" if none is clear>",
-  "contradiction": "<1-2 sentences: two things they want that pull against each other — or \"\">",
-  "avoided": "<1-2 sentences: the thing they keep circling but not facing — or \"\">",
+  "loop": "<1-2 sentences: a repeating cycle they seem caught in — or "" if none is clear>",
+  "contradiction": "<1-2 sentences: two things they want that pull against each other — or "">",
+  "avoided": "<1-2 sentences: the thing they keep circling but not facing — or "">",
   "themes": [{"name":"<short lowercase theme>","weight":<1-5>}]
 }
 Up to 5 themes, most prominent first. No prose outside the JSON.`;
@@ -89,7 +89,10 @@ export async function buildMirror(userId: string): Promise<Mirror> {
   const themes = Array.isArray(parsed.themes)
     ? (parsed.themes as { name?: unknown; weight?: unknown }[])
         .filter((t) => t?.name)
-        .map((t) => ({ name: String(t.name), weight: Math.max(1, Math.min(5, Number(t.weight) || 1)) }))
+        .map((t) => ({
+          name: String(t.name),
+          weight: Math.max(1, Math.min(5, Number(t.weight) || 1)),
+        }))
         .slice(0, 5)
     : [];
 

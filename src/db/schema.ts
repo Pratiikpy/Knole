@@ -19,20 +19,48 @@ export const EMBED_DIM = 384;
 // ── enums ────────────────────────────────────────────────
 export const entryType = pgEnum("entry_type", ["journal", "chat", "saved"]);
 export const memoryType = pgEnum("memory_type", [
-  "fact", "pattern", "commitment", "relationship", "preference", "value", "emotion",
+  "fact",
+  "pattern",
+  "commitment",
+  "relationship",
+  "preference",
+  "value",
+  "emotion",
 ]);
 export const memorySector = pgEnum("memory_sector", [
-  "episodic", "semantic", "procedural", "emotional", "reflective",
+  "episodic",
+  "semantic",
+  "procedural",
+  "emotional",
+  "reflective",
 ]);
 export const memoryStatus = pgEnum("memory_status", [
-  "candidate", "active", "pinned", "corrected", "archived", "forgotten", "superseded", "rejected",
+  "candidate",
+  "active",
+  "pinned",
+  "corrected",
+  "archived",
+  "forgotten",
+  "superseded",
+  "rejected",
 ]);
 export const actorType = pgEnum("actor_type", ["user", "ai", "system"]);
 export const feedbackAction = pgEnum("feedback_action", [
-  "helpful", "wrong", "too_much", "creepy", "save", "forget",
+  "helpful",
+  "wrong",
+  "too_much",
+  "creepy",
+  "save",
+  "forget",
 ]);
 export const artifactType = pgEnum("artifact_type", [
-  "daily_mirror", "weekly_mirror", "monthly_essence", "open_loop", "pattern", "commitment", "state",
+  "daily_mirror",
+  "weekly_mirror",
+  "monthly_essence",
+  "open_loop",
+  "pattern",
+  "commitment",
+  "state",
 ]);
 
 // ── users ────────────────────────────────────────────────
@@ -58,7 +86,9 @@ export const entries = pgTable(
   "entries",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     type: entryType("type").default("journal").notNull(),
     text: text("text").notNull(),
     mood: text("mood"),
@@ -78,7 +108,9 @@ export const replies = pgTable(
   "replies",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    parentEntryId: uuid("parent_entry_id").notNull().references(() => entries.id, { onDelete: "cascade" }),
+    parentEntryId: uuid("parent_entry_id")
+      .notNull()
+      .references(() => entries.id, { onDelete: "cascade" }),
     isAi: boolean("is_ai").default(false).notNull(),
     text: text("text").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -91,7 +123,9 @@ export const memories = pgTable(
   "memories",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     contentHash: text("content_hash").notNull(), // sha256(normalized) — dedup
     type: memoryType("type").default("fact").notNull(),
@@ -140,7 +174,9 @@ export const memoryHistory = pgTable("memory_history", {
 // ── reflection artifacts (Daily/Weekly Mirror, state consolidation) ──
 export const reflectionArtifacts = pgTable("reflection_artifacts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   type: artifactType("type").notNull(),
   threadKey: text("thread_key"),
   content: jsonb("content").notNull(),
@@ -162,7 +198,9 @@ export const memoryFeedback = pgTable("memory_feedback", {
 // ── imports (the refugee wedge) ──────────────────────────
 export const imports = pgTable("imports", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   sourcePlatform: text("source_platform"), // chatgpt|replika|claude|text
   status: text("status").default("pending"),
   rawRef: text("raw_ref"),

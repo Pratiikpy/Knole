@@ -25,7 +25,9 @@ export async function putData(
   const [, treeErr] = await mem.merkleTree();
   if (treeErr !== null) throw new Error(`merkleTree: ${treeErr}`);
 
-  const uploadOpts = opts?.key ? { encryption: { type: "aes256" as const, key: opts.key } } : undefined;
+  const uploadOpts = opts?.key
+    ? { encryption: { type: "aes256" as const, key: opts.key } }
+    : undefined;
   const retry = { Retries: 3, Interval: 5, MaxGasPrice: 0 };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,9 +40,7 @@ export async function putData(
 
 /** Download + (optionally) decrypt by root hash. */
 export async function getData(rootHash: string, opts?: { key?: Uint8Array }): Promise<Uint8Array> {
-  const dl = opts?.key
-    ? { proof: true, decryption: { symmetricKey: opts.key } }
-    : { proof: true };
+  const dl = opts?.key ? { proof: true, decryption: { symmetricKey: opts.key } } : { proof: true };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [blob, err] = await indexer().downloadToBlob(rootHash, dl as any);
   if (err !== null) throw new Error(`download: ${err}`);

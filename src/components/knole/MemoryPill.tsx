@@ -2,13 +2,7 @@ import { useState } from "react";
 
 type Receipt = { date: string; quote: string };
 
-export function MemoryPill({
-  label,
-  receipts,
-}: {
-  label: string;
-  receipts: Receipt[];
-}) {
+export function MemoryPill({ label, receipts }: { label: string; receipts: Receipt[] }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative inline-block">

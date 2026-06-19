@@ -58,8 +58,8 @@ function UpgradePage() {
             Go deeper with yourself.
           </h1>
           <p className="mx-auto mt-5 max-w-[44ch] text-[15px] leading-relaxed text-muted-foreground">
-            Free Knole already remembers your last season. Deeper Knole remembers your last
-            decade — and quietly notices what only years of you could reveal.
+            Free Knole already remembers your last season. Deeper Knole remembers your last decade —
+            and quietly notices what only years of you could reveal.
           </p>
 
           <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-rule p-1">
