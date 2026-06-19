@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { MemoryPill } from "@/components/knole/MemoryPill";
+import { reflectFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/today")({
@@ -24,10 +25,27 @@ const sampleEntry =
   "I'm thinking about the garden project again. It's been months since I actually sat out there and just enjoyed the silence. I feel like I've been running on a treadmill of minor tasks. Maybe the soil is ready now.";
 
 function TodayPage() {
+  const doReflect = useServerFn(reflectFn);
   const [prompt, setPrompt] = useState(prompts[1]);
   const [entry, setEntry] = useState(sampleEntry);
   const [reflected, setReflected] = useState(false);
-  const [deeper, setDeeper] = useState(false);
+  const [reflection, setReflection] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleReflect() {
+    if (!entry.trim()) return;
+    setLoading(true);
+    try {
+      const res = await doReflect({ data: { entry } });
+      setReflection(res.reflection);
+      setReflected(true);
+    } catch {
+      setReflection("Something interrupted the reflection — try again in a moment.");
+      setReflected(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
@@ -41,7 +59,7 @@ function TodayPage() {
         <div className="mx-auto max-w-[58ch]">
           <div className="mb-10 flex items-baseline justify-between">
             <h1 className="font-display text-[44px] italic leading-none">Today</h1>
-            <span className="text-[12px] tabular-nums text-muted-foreground">{today}</span>
+            <span suppressHydrationWarning className="text-[12px] tabular-nums text-muted-foreground">{today}</span>
           </div>
 
           <div className="mb-6 flex flex-wrap gap-2">
@@ -71,7 +89,7 @@ function TodayPage() {
               onChange={(e) => {
                 setEntry(e.target.value);
                 setReflected(false);
-                setDeeper(false);
+                setReflection(null);
               }}
               rows={6}
               className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
@@ -84,10 +102,11 @@ function TodayPage() {
                   {entry.trim().split(/\s+/).length} words
                 </span>
                 <button
-                  onClick={() => setReflected(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper"
+                  onClick={handleReflect}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper transition-opacity disabled:opacity-50"
                 >
-                  Reflect
+                  {loading ? "Reflecting…" : "Reflect"}
                   <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
@@ -95,54 +114,11 @@ function TodayPage() {
               </div>
             )}
 
-            {reflected && (
+            {reflected && reflection && (
               <div className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6">
-                <div className="mb-3">
-                  <MemoryPill
-                    label="Knole remembered"
-                    receipts={[
-                      {
-                        date: "Oct 14 · your entry",
-                        quote:
-                          "I've been running on empty. The garden is overgrown and I can't make myself care.",
-                      },
-                      {
-                        date: "Sep 02 · your entry",
-                        quote:
-                          "I told Sam I'd plant the bulbs before the first frost. I keep finding reasons not to.",
-                      },
-                    ]}
-                  />
-                </div>
-                <p className="text-[15px] leading-relaxed text-ink-soft">
-                  It's interesting you use the phrase{" "}
-                  <span className="italic underline decoration-tan/40 decoration-2 underline-offset-4">
-                    "the soil is ready."
-                  </span>{" "}
-                  Last autumn you wrote about the garden as a metaphor for your own burnout. Are
-                  you feeling like you've finally rested enough to start something — or is part of
-                  you still waiting for permission?
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
+                  {reflection}
                 </p>
-
-                {!deeper ? (
-                  <button
-                    onClick={() => setDeeper(true)}
-                    className="mt-5 text-[11px] uppercase tracking-[0.18em] text-tan hover:text-ink"
-                  >
-                    Go deeper →
-                  </button>
-                ) : (
-                  <div className="animate-fade-up mt-6 border-t border-rule pt-5">
-                    <p className="text-[15px] leading-relaxed text-ink-soft">
-                      If a friend showed up tomorrow with a trowel and said,{" "}
-                      <span className="italic">"let's just do an hour"</span> — would the relief be
-                      louder than the resistance?
-                    </p>
-                    <p className="mt-4 text-[12px] italic text-muted-foreground">
-                      One question is enough for tonight. Close the book — go live the answer.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>
