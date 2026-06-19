@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "evals": "tsx src/server/evals.run.ts",
     "dream": "tsx src/server/dreaming.run.ts",
-    "seed": "tsx src/server/seed.run.ts"
+    "seed": "tsx src/server/seed.run.ts",
+    "worker": "tsx src/server/worker.run.ts"
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.8",

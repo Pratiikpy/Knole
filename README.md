@@ -71,6 +71,7 @@ You'll need: a Neon Postgres URL (with the `vector` extension), an NVIDIA NIM AP
 | `npm run format` | Prettier                                        |
 | `npm run evals`  | Memory-engine release gate → `eval_runs`        |
 | `npm run dream`  | Dreaming consolidation → `reflection_artifacts` |
+| `npm run worker` | Scheduler — runs Dreaming per user (`-- --once` for one tick) |
 
 ## Project layout
 
@@ -98,13 +99,14 @@ src/
     proactivity.ts   consent-gated nudge
     resurface.ts     "a memory from before"
     dreaming.ts      overnight consolidation → reflection_artifacts
+    worker.ts        scheduler tick (Dreaming per user)
     evals.ts         eval suite        evals.run.ts   runnable gate
     fns.ts           TanStack Start server functions
 ```
 
 ## Status
 
-Phase 1 (testnet) — the full experience runs on the real engine and 0G, with consent-respecting proactivity, the overnight "Dreaming" consolidation (`npm run dream`), and a passing eval gate. Authentication (Privy embedded wallet), wiring Dreaming to an automatic nightly schedule, and mainnet hardening (key rotation, authenticated encryption) are the next milestones.
+Phase 1 (testnet) — the full experience runs on the real engine and 0G, with consent-respecting proactivity, the overnight "Dreaming" consolidation on a scheduler (`npm run worker`), authenticated at-rest encryption (AES-256-GCM + HKDF keys), and a four-suite eval gate. Authentication (Privy embedded wallet), a hosted cron for the worker, and mainnet hardening (KMS-held KDF secret, key rotation) are the next milestones.
 
 ---
 
