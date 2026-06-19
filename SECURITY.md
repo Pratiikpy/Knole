@@ -20,6 +20,13 @@ Knole's premise is that your inner life is yours alone. This document describes 
 - User-facing generations route through `chatPrivate`, which calls **0G Private Compute (TEE)** when `OG_SEALED_INFERENCE=on` and transparently falls back to NVIDIA NIM so the app never goes dark.
 - Embeddings are computed **locally** (`all-MiniLM-L6-v2` via transformers.js) — embedding never leaves the machine.
 
+## Authentication & sessions
+
+- Sign-in is **Privy** (email OTP / embedded wallet); the provider is scoped to the Settings route so its large SDK code-splits out of every other page's initial bundle.
+- On login the client exchanges the Privy access token for a server session: `resolveUserFromToken` **verifies the token** (ES256 JWT, issuer + audience checked, via `@privy-io/server-auth`), then opens a **sealed (encrypted + signed) session cookie** using TanStack Start's `useSession`.
+- Every server function resolves the acting user via `currentUserId()` = session → demo, **falling back to the demo user on any error** so a session bug can never break the unauthenticated experience. A forged or invalid token opens no session.
+- Until you sign in, the app runs as a shared **demo user** so it stays explorable without an account.
+
 ## Server-side hardening
 
 - **CSRF middleware** on all server functions (same-origin RPC only).
@@ -29,15 +36,20 @@ Knole's premise is that your inner life is yours alone. This document describes 
 - **Payload validation**: decrypted 0G blobs are shape-checked before use.
 - **Append-only audit**: memory edits/forgets are recorded in `memory_history` (never silently overwritten).
 - **Graceful degradation**: loaders that call the LLM fall back instead of crashing the page.
+- **Rate limiting**: the expensive LLM endpoints (journal, chat, ask, import) are throttled per client IP to bound abuse and runaway inference cost.
+- **Upstream timeouts + retries**: every NVIDIA call has a per-attempt timeout with bounded retry/backoff on transient failures; the 0G download/upload are bounded by a timeout race — a hung upstream fails fast instead of stalling a request.
+- **Security headers**: every response sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and a restrictive `Permissions-Policy`.
 
 ## Quality gate
 
-`npm run evals` runs a four-suite gate (retrieval precision/recall, extraction coverage, dedup correctness, and reflection groundedness — i.e. no invented facts) and records results in `eval_runs`.
+`npm run evals` runs a seven-suite gate — retrieval (precision/recall), extraction coverage, dedup correctness, reflection groundedness (no invented facts), memory reconciliation (supersede + NOOP), recall-driven importance, and RRF hybrid retrieval — and records results in `eval_runs`.
 
 ## Known limitations (pre-mainnet)
 
-- **Authentication is not yet wired.** Server functions currently resolve a single shared demo user; Privy embedded-wallet auth is the next milestone, after which every server function gates on a verified session and the demo-user singleton is removed.
-- `KNOLE_KDF_SECRET` should be held in a KMS in production, not a `.env` file.
+- **Authentication is wired; the demo user is still the default.** Privy login + sealed sessions gate every server function (above); the live email-OTP path is confirmed by signing in once, or by enabling Privy test credentials and running `npm run test:auth`. A production launch would drop the shared demo fallback so unauthenticated requests are rejected rather than served the demo.
+- No **Content-Security-Policy** yet — it needs per-deploy tuning around the Privy auth iframe and inline SSR scripts.
+- The rate limiter is **in-memory** (fine for a single instance; back it with Redis for multi-instance).
+- `KNOLE_KDF_SECRET` (and the session seal password) should be held in a KMS in production, not a `.env` file.
 - Key rotation and a hosted scheduler (for the Dreaming worker) are deployment concerns.
 
 ## Reporting
