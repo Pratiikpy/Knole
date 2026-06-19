@@ -24,7 +24,7 @@ export async function askMyLife(userId: string, question: string): Promise<AskRe
   const qVec = await embed(question);
   const [rawEntries, memories] = await Promise.all([
     retrieveEntries(userId, qVec, 8),
-    retrieveMemories(userId, qVec, 6),
+    retrieveMemories(userId, qVec, 6, question),
   ]);
 
   // dedupe near-identical entries (same text journaled more than once)

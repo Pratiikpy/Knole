@@ -16,7 +16,7 @@ export async function chatReply(
   message: string,
   qVec: number[],
 ): Promise<string> {
-  const memories = await retrieveMemories(userId, qVec, 6);
+  const memories = await retrieveMemories(userId, qVec, 6, message);
   const memBlock = memories.length
     ? `\n\nThings you remember about this person:\n${memories.map((m) => `- ${m.content}`).join("\n")}`
     : "";

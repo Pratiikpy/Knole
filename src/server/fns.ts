@@ -33,7 +33,7 @@ export const journalFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const userId = await getDemoUserId();
     const qVec = await embed(data.entry);
-    const recalled = await retrieveMemories(userId, qVec, 6);
+    const recalled = await retrieveMemories(userId, qVec, 6, data.entry);
     const reflection = await reflect(data.entry, recalled);
     const entryRow = await saveEntry(userId, data.entry, qVec);
     await saveReply(entryRow.id, reflection, true);

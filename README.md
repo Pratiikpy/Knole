@@ -23,8 +23,8 @@ Every entry flows through one pipeline:
 
 1. **Embed** locally with `all-MiniLM-L6-v2` (via `transformers.js`) — 384-dim, private, no API call.
 2. **Extract** durable, long-term facts with an LLM (people, goals, patterns, commitments, values) — deliberately ignoring ephemeral detail.
-3. **Reconcile** with a content-hash `UPSERT`: identical memories reinforce instead of duplicating.
-4. **Retrieve** with pgvector cosine search over both memories and raw entries.
+3. **Reconcile**: content-hash `UPSERT` reinforces duplicates, and an LLM-judged UPDATE path supersedes a contradicting memory (bi-temporal — kept with `invalid_at`/`invalidated_by`, never deleted), so memory stays current.
+4. **Retrieve** with **RRF hybrid** search — pgvector cosine fused with lexical full-text — and each surfaced memory earns importance by being recalled (`recall_count` / `importance`).
 
 Reflections, chat, Ask My Life, the Pattern Mirror, and the proactive nudge all draw on this engine. A `npm run evals` gate measures it across four suites — retrieval (precision@1 + recall@3), extraction-coverage, dedup-correctness, and reflection-groundedness (no invented facts) — on a seeded fixture user, scored into the `eval_runs` table.
 
@@ -54,6 +54,10 @@ cp .env.example .env          # fill in the values (see comments in the file)
 
 npx drizzle-kit generate      # generate the SQL migration from the schema
 npx drizzle-kit migrate       # apply it to your Neon database
+
+# full-text indexes for RRF hybrid retrieval (run once):
+#   CREATE INDEX IF NOT EXISTS memories_content_fts ON memories USING gin (to_tsvector('english', content));
+#   CREATE INDEX IF NOT EXISTS entries_text_fts    ON entries  USING gin (to_tsvector('english', text));
 
 npm run dev                   # http://localhost:3000
 npm run evals                 # run the memory-engine eval gate

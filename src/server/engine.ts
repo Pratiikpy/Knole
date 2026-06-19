@@ -68,18 +68,49 @@ export async function retrieveMemories(
   userId: string,
   queryVec: number[],
   k = 6,
+  queryText?: string,
 ): Promise<Recalled[]> {
   const lit = toVectorLiteral(queryVec);
-  const rows = await db.execute(sql`
-    SELECT id, content, source_quote, created_at,
-           1 - (embedding <=> ${lit}::vector) AS score
-    FROM memories
-    WHERE user_id = ${userId}
-      AND status IN ('active', 'pinned')
-      AND embedding IS NOT NULL
-    ORDER BY embedding <=> ${lit}::vector
-    LIMIT ${k}
-  `);
+  const useHybrid = !!queryText && queryText.trim().length > 0;
+  // RRF hybrid: fuse vector (semantic) + lexical (exact keyword) rankings so exact
+  // names/terms the embedding underweights still surface. Pure vector otherwise.
+  const rows = useHybrid
+    ? await db.execute(sql`
+        WITH vec AS (
+          SELECT id, content, source_quote, created_at,
+                 row_number() OVER (ORDER BY embedding <=> ${lit}::vector) AS rnk
+          FROM memories
+          WHERE user_id = ${userId} AND status IN ('active', 'pinned') AND embedding IS NOT NULL
+          ORDER BY embedding <=> ${lit}::vector LIMIT 40
+        ),
+        lex AS (
+          SELECT id, content, source_quote, created_at,
+                 row_number() OVER (
+                   ORDER BY ts_rank(to_tsvector('english', content), plainto_tsquery('english', ${queryText})) DESC
+                 ) AS rnk
+          FROM memories
+          WHERE user_id = ${userId} AND status IN ('active', 'pinned')
+            AND to_tsvector('english', content) @@ plainto_tsquery('english', ${queryText})
+          ORDER BY ts_rank(to_tsvector('english', content), plainto_tsquery('english', ${queryText})) DESC
+          LIMIT 40
+        )
+        SELECT COALESCE(vec.id, lex.id) AS id,
+               COALESCE(vec.content, lex.content) AS content,
+               COALESCE(vec.source_quote, lex.source_quote) AS source_quote,
+               COALESCE(vec.created_at, lex.created_at) AS created_at,
+               COALESCE(1.0 / (60 + vec.rnk), 0) + COALESCE(1.0 / (60 + lex.rnk), 0) AS score
+        FROM vec FULL OUTER JOIN lex ON vec.id = lex.id
+        ORDER BY score DESC
+        LIMIT ${k}
+      `)
+    : await db.execute(sql`
+        SELECT id, content, source_quote, created_at,
+               1 - (embedding <=> ${lit}::vector) AS score
+        FROM memories
+        WHERE user_id = ${userId} AND status IN ('active', 'pinned') AND embedding IS NOT NULL
+        ORDER BY embedding <=> ${lit}::vector
+        LIMIT ${k}
+      `);
   const result = (rows as unknown as Record<string, unknown>[]).map((r) => ({
     id: String(r.id),
     content: String(r.content),
