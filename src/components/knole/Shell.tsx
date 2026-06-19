@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 const nav = [
   { to: "/today", label: "Today" },
@@ -13,32 +13,91 @@ const nav = [
 
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [open, setOpen] = useState(false);
   return (
     <div className="grain min-h-screen bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-rule bg-paper/75 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[82ch] items-center justify-between px-6">
-          <Link to="/" className="font-display text-2xl italic leading-none">
+          <Link
+            to="/"
+            className="font-display text-2xl italic leading-none"
+            onClick={() => setOpen(false)}
+          >
             Knole
           </Link>
           {!hideNav && (
-            <nav className="flex items-center gap-6">
+            <>
+              <nav className="hidden items-center gap-6 md:flex">
+                {nav.map((n) => {
+                  const active = pathname === n.to;
+                  return (
+                    <Link
+                      key={n.to}
+                      to={n.to}
+                      className={`text-[12px] tracking-wide transition-colors ${
+                        active ? "text-ink" : "text-muted-foreground hover:text-ink"
+                      }`}
+                    >
+                      {n.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <button
+                type="button"
+                aria-label={open ? "Close menu" : "Open menu"}
+                aria-expanded={open}
+                onClick={() => setOpen((o) => !o)}
+                className="-mr-1 flex h-9 w-9 items-center justify-center rounded-md text-ink md:hidden"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                >
+                  {open ? (
+                    <>
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                    </>
+                  ) : (
+                    <>
+                      <line x1="3" y1="7" x2="21" y2="7" />
+                      <line x1="3" y1="12" x2="21" y2="12" />
+                      <line x1="3" y1="17" x2="21" y2="17" />
+                    </>
+                  )}
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
+        {!hideNav && open && (
+          <nav className="border-t border-rule bg-paper/95 px-6 py-3 md:hidden">
+            <ul className="flex flex-col gap-1">
               {nav.map((n) => {
                 const active = pathname === n.to;
                 return (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    className={`text-[12px] tracking-wide transition-colors ${
-                      active ? "text-ink" : "text-muted-foreground hover:text-ink"
-                    }`}
-                  >
-                    {n.label}
-                  </Link>
+                  <li key={n.to}>
+                    <Link
+                      to={n.to}
+                      onClick={() => setOpen(false)}
+                      className={`block rounded-md px-2 py-2.5 text-[14px] tracking-wide transition-colors ${
+                        active ? "bg-card text-ink" : "text-muted-foreground hover:text-ink"
+                      }`}
+                    >
+                      {n.label}
+                    </Link>
+                  </li>
                 );
               })}
-            </nav>
-          )}
-        </div>
+            </ul>
+          </nav>
+        )}
       </header>
       <main>{children}</main>
       <footer className="border-t border-rule py-12 text-center">
