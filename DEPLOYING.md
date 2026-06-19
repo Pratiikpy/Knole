@@ -17,15 +17,15 @@ last section before anything touches mainnet or real funds.
 
 Copy `.env.example` → `.env` and fill it in. Required at runtime:
 
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Neon Postgres connection string (pooled, `sslmode=require`). |
-| `NVIDIA_API_KEY` | NVIDIA NIM key. `NVIDIA_DEFAULT_MODEL` defaults to `meta/llama-3.3-70b-instruct`. |
-| `EVM_PRIVATE_KEY` | Funded 0G testnet wallet (storage + gas). |
-| `KNOLE_KDF_SECRET` | 32-byte hex; HKDF master for per-user AES keys **and** the session seal. Keep separate from `EVM_PRIVATE_KEY`. |
-| `VITE_PRIVY_APP_ID` | Privy app id (client + server). |
-| `PRIVY_APP_SECRET` | Privy server secret (token verification). |
-| `VITE_SITE_URL` | Your deployed origin (e.g. `https://knole.app`) — makes social-share tags absolute. |
+| Variable            | Purpose                                                                                                        |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`      | Neon Postgres connection string (pooled, `sslmode=require`).                                                   |
+| `NVIDIA_API_KEY`    | NVIDIA NIM key. `NVIDIA_DEFAULT_MODEL` defaults to `meta/llama-3.3-70b-instruct`.                              |
+| `EVM_PRIVATE_KEY`   | Funded 0G testnet wallet (storage + gas).                                                                      |
+| `KNOLE_KDF_SECRET`  | 32-byte hex; HKDF master for per-user AES keys **and** the session seal. Keep separate from `EVM_PRIVATE_KEY`. |
+| `VITE_PRIVY_APP_ID` | Privy app id (client + server).                                                                                |
+| `PRIVY_APP_SECRET`  | Privy server secret (token verification).                                                                      |
+| `VITE_SITE_URL`     | Your deployed origin (e.g. `https://knole.app`) — makes social-share tags absolute.                            |
 
 Optional: `SESSION_SECRET` (separate session seal; falls back to `KNOLE_KDF_SECRET`),
 `OG_SEALED_INFERENCE` (`on` to route reflections through the 0G TEE), and the resilience

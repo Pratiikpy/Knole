@@ -21,6 +21,13 @@ const prompts = [
   "Just open space",
 ];
 
+const reflectingMsgs = [
+  "Reading what you wrote…",
+  "Looking for the thread…",
+  "Remembering what you've shared…",
+  "Sitting with it…",
+];
+
 const sampleEntry =
   "I'm thinking about the garden project again. It's been months since I actually sat out there and just enjoyed the silence. I feel like I've been running on a treadmill of minor tasks. Maybe the soil is ready now.";
 
@@ -35,6 +42,17 @@ function TodayPage() {
   const [reflection, setReflection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [recalled, setRecalled] = useState<{ content: string; quote: string | null }[]>([]);
+  const [msgIdx, setMsgIdx] = useState(0);
+
+  // Cycle a calm "thinking" line while the reflection generates (~15-18s LLM call).
+  useEffect(() => {
+    if (!loading) {
+      setMsgIdx(0);
+      return;
+    }
+    const id = setInterval(() => setMsgIdx((i) => (i + 1) % reflectingMsgs.length), 2400);
+    return () => clearInterval(id);
+  }, [loading]);
 
   async function handleReflect() {
     if (!entry.trim()) return;
@@ -151,6 +169,15 @@ function TodayPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
                 </button>
+              </div>
+            )}
+
+            {loading && !reflected && (
+              <div className="animate-fade-up mt-8 flex items-center gap-3 border-l-2 border-tan/40 pl-6">
+                <span className="size-1.5 shrink-0 animate-breathe rounded-full bg-tan" />
+                <span className="font-display text-[18px] italic text-muted-foreground">
+                  {reflectingMsgs[msgIdx]}
+                </span>
               </div>
             )}
 
