@@ -16,6 +16,16 @@ function signer(): ethers.Wallet {
 }
 const indexer = () => new Indexer(INDEXER_RPC);
 
+// Bound a 0G SDK call so a hung indexer/RPC can't stall the request forever.
+// (The SDK exposes no AbortSignal, so we race it against a timeout.)
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
 // ── AES-256-GCM (authenticated encryption) ──────────────
 // Blob layout: iv(12) || authTag(16) || ciphertext.
 export function gcmEncrypt(key: Uint8Array, plaintext: Uint8Array): Uint8Array {
@@ -54,8 +64,13 @@ export async function putData(
   if (treeErr !== null) throw new Error(`merkleTree: ${treeErr}`);
 
   const retry = { Retries: 3, Interval: 5, MaxGasPrice: 0 };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [tx, err] = await indexer().upload(mem, RPC, signer() as any, undefined, retry);
+  const uploadTimeoutMs = Number(process.env.OG_UPLOAD_TIMEOUT_MS ?? 120000);
+  const [tx, err] = await withTimeout(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    indexer().upload(mem, RPC, signer() as any, undefined, retry),
+    uploadTimeoutMs,
+    "0G upload",
+  );
   if (err !== null) throw new Error(`upload: ${err}`);
   return "rootHash" in tx
     ? { rootHash: tx.rootHash, txHash: tx.txHash }
@@ -64,8 +79,13 @@ export async function putData(
 
 /** Download by root hash, then AES-256-GCM decrypt + verify (when a key is given). */
 export async function getData(rootHash: string, opts?: { key?: Uint8Array }): Promise<Uint8Array> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [blob, err] = await indexer().downloadToBlob(rootHash, { proof: true } as any);
+  const timeoutMs = Number(process.env.OG_TIMEOUT_MS ?? 45000);
+  const [blob, err] = await withTimeout(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    indexer().downloadToBlob(rootHash, { proof: true } as any),
+    timeoutMs,
+    "0G download",
+  );
   if (err !== null) throw new Error(`download: ${err}`);
   const raw = new Uint8Array(await blob.arrayBuffer());
   return opts?.key ? gcmDecrypt(opts.key, raw) : raw;
