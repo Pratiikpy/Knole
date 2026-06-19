@@ -23,6 +23,7 @@ import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { generateNudge } from "./proactivity";
 import { resurface } from "./resurface";
 import { importHistory } from "./import";
+import { exportMindfile } from "./mindfile";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -83,6 +84,11 @@ export const provenanceFn = createServerFn({ method: "POST" })
 export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
   await warmEmbed();
   return { ok: true };
+});
+
+export const exportFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return exportMindfile(userId);
 });
 
 export const askFn = createServerFn({ method: "POST" })

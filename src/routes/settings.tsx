@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { ownershipFn, verifyOnChainFn, settingsFn, updateSettingsFn, importFn } from "@/server/fns";
+import {
+  ownershipFn,
+  verifyOnChainFn,
+  settingsFn,
+  updateSettingsFn,
+  importFn,
+  exportFn,
+} from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/settings")({
@@ -40,6 +47,8 @@ function SettingsPage() {
   const [importText, setImportText] = useState("");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const doExport = useServerFn(exportFn);
+  const [exporting, setExporting] = useState(false);
 
   const onFreq = (v: number) => {
     setFreq(v);
@@ -86,6 +95,25 @@ function SettingsPage() {
       setImportResult("Something interrupted the import — try again.");
     } finally {
       setImporting(false);
+    }
+  };
+
+  const onExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const data = await doExport();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `knole-mindfile-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -275,18 +303,31 @@ function SettingsPage() {
             </div>
           </Group>
 
+          {/* Export — the whole mind in one file */}
+          <Group title="Export your Mindfile">
+            <div className="rounded-xl border border-rule bg-card/50 p-6">
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                Download every entry and memory as a single JSON file — your whole mind, yours to
+                keep, move, or walk away with.
+              </p>
+              <button
+                onClick={onExport}
+                disabled={exporting}
+                className="mt-4 rounded-full bg-ink px-4 py-2 text-[12px] text-paper transition-opacity disabled:opacity-40"
+              >
+                {exporting ? "Preparing…" : "Export Mindfile"}
+              </button>
+            </div>
+          </Group>
+
           {/* Account */}
           <Group title="Account">
             <div className="rounded-xl border border-rule bg-card/50 p-6">
-              <Row label="Signed in as" detail="you@quiet.house" />
-              <div className="mt-4 flex gap-2">
-                <button className="rounded-full border border-rule px-4 py-2 text-[12px]">
-                  Sign out
-                </button>
-                <button className="rounded-full border border-rule px-4 py-2 text-[12px]">
-                  Change email
-                </button>
-              </div>
+              <Row
+                label="Session"
+                detail="You're exploring Knole as a guest. Signing in — to claim this space under your own wallet — arrives with accounts."
+                value="Demo"
+              />
             </div>
           </Group>
         </div>
