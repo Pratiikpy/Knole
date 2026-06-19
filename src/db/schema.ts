@@ -49,6 +49,7 @@ export const users = pgTable("users", {
   quietHoursEnd: integer("quiet_hours_end").default(8),
   freqDial: integer("freq_dial").default(3), // nudges/week, downward-only
   proactivityPaused: boolean("proactivity_paused").default(false),
+  voice: text("voice").default("structural"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

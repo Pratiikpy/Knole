@@ -254,3 +254,31 @@ export async function updateMemoryContent(userId: string, id: string, content: s
     .where(and(eq(memories.id, id), eq(memories.userId, userId)));
   await logHistory(id, userId, "updated", null, { content });
 }
+
+// ── consent contract / settings (the Dot-killer) ─────────
+export async function getSettings(userId: string) {
+  const [u] = await db
+    .select({
+      freqDial: users.freqDial,
+      quietHoursStart: users.quietHoursStart,
+      quietHoursEnd: users.quietHoursEnd,
+      voice: users.voice,
+      proactivityPaused: users.proactivityPaused,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+  return u;
+}
+
+export async function updateSettings(
+  userId: string,
+  patch: Partial<{
+    freqDial: number;
+    quietHoursStart: number;
+    quietHoursEnd: number;
+    voice: string;
+    proactivityPaused: boolean;
+  }>,
+) {
+  await db.update(users).set(patch).where(eq(users.id, userId));
+}

@@ -11,6 +11,8 @@ import {
   listMemories,
   setMemoryStatus,
   updateMemoryContent,
+  getSettings,
+  updateSettings,
 } from "./engine";
 import { embed } from "./embed";
 import { askMyLife } from "./ask";
@@ -106,6 +108,26 @@ export const ownershipFn = createServerFn({ method: "GET" }).handler(async () =>
   const userId = await getDemoUserId();
   return ownershipSummary(userId);
 });
+
+export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return getSettings(userId);
+});
+
+export const updateSettingsFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      freqDial: z.number().int().min(0).max(4).optional(),
+      quietHoursStart: z.number().int().min(0).max(23).optional(),
+      quietHoursEnd: z.number().int().min(0).max(23).optional(),
+      voice: z.enum(["warm", "structural", "honest", "curious"]).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    await updateSettings(userId, data);
+    return { ok: true };
+  });
 
 export const verifyOnChainFn = createServerFn({ method: "POST" })
   .validator(z.object({ root: z.string().min(4) }))

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { ownershipFn, verifyOnChainFn } from "@/server/fns";
+import { ownershipFn, verifyOnChainFn, settingsFn, updateSettingsFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/settings")({
@@ -11,9 +11,12 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Privacy, voice, and how often Knole reaches out." },
     ],
   }),
-  loader: async () => await ownershipFn(),
+  loader: async () => ({ own: await ownershipFn(), settings: await settingsFn() }),
   component: SettingsPage,
 });
+
+const hourToStr = (h: number | null | undefined) => `${String(h ?? 0).padStart(2, "0")}:00`;
+const strToHour = (s: string) => parseInt(s.split(":")[0] ?? "0", 10) || 0;
 
 const frequencyLabels = [
   "Never",
@@ -24,14 +27,32 @@ const frequencyLabels = [
 ];
 
 function SettingsPage() {
-  const own = Route.useLoaderData();
+  const { own, settings } = Route.useLoaderData();
   const doVerify = useServerFn(verifyOnChainFn);
-  const [freq, setFreq] = useState(2);
-  const [quietStart, setQuietStart] = useState("21:00");
-  const [quietEnd, setQuietEnd] = useState("09:00");
-  const [voice, setVoice] = useState("structural");
+  const doUpdate = useServerFn(updateSettingsFn);
+  const [freq, setFreq] = useState(settings?.freqDial ?? 2);
+  const [quietStart, setQuietStart] = useState(hourToStr(settings?.quietHoursStart));
+  const [quietEnd, setQuietEnd] = useState(hourToStr(settings?.quietHoursEnd));
+  const [voice, setVoice] = useState(settings?.voice ?? "structural");
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState<string | null>(null);
+
+  const onFreq = (v: number) => {
+    setFreq(v);
+    void doUpdate({ data: { freqDial: v } });
+  };
+  const onQuietStart = (s: string) => {
+    setQuietStart(s);
+    void doUpdate({ data: { quietHoursStart: strToHour(s) } });
+  };
+  const onQuietEnd = (s: string) => {
+    setQuietEnd(s);
+    void doUpdate({ data: { quietHoursEnd: strToHour(s) } });
+  };
+  const onVoice = (v: string) => {
+    setVoice(v);
+    void doUpdate({ data: { voice: v as "warm" | "structural" | "honest" | "curious" } });
+  };
 
   const verify = async () => {
     if (!own.roots[0] || verifying) return;
@@ -64,7 +85,7 @@ function SettingsPage() {
                 min={0}
                 max={4}
                 value={freq}
-                onChange={(e) => setFreq(Number(e.target.value))}
+                onChange={(e) => onFreq(Number(e.target.value))}
                 className="w-full accent-[var(--tan)]"
               />
               <div className="mt-4 flex items-center justify-between">
@@ -85,8 +106,8 @@ function SettingsPage() {
           {/* Quiet hours */}
           <Group title="Quiet hours">
             <div className="grid grid-cols-2 gap-3">
-              <TimeField label="From" value={quietStart} onChange={setQuietStart} />
-              <TimeField label="Until" value={quietEnd} onChange={setQuietEnd} />
+              <TimeField label="From" value={quietStart} onChange={onQuietStart} />
+              <TimeField label="Until" value={quietEnd} onChange={onQuietEnd} />
             </div>
             <p className="mt-3 text-[12px] text-muted-foreground">
               Knole will stay silent between these hours, even if it has something to say.
@@ -104,7 +125,7 @@ function SettingsPage() {
               ].map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => setVoice(v.id)}
+                  onClick={() => onVoice(v.id)}
                   className={`flex items-center justify-between rounded-xl border p-4 text-left ${
                     voice === v.id
                       ? "border-tan/40 bg-tan/[0.06]"
