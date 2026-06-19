@@ -121,6 +121,22 @@ Return [] if nothing durable. Output ONLY the JSON array, no prose.`;
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
+const RECONCILE_SYS = `Two facts about the same person. Decide if the NEW fact UPDATES or REPLACES the OLD one — i.e. they cannot both be currently true (a change of location, job, status, relationship, or preference) — or if they are INDEPENDENT (both can be true at the same time). Answer with only one word: "update" or "independent".`;
+
+async function judgeReconcile(
+  oldContent: string,
+  newContent: string,
+): Promise<"update" | "independent"> {
+  const r = await chat(
+    [
+      { role: "system", content: RECONCILE_SYS },
+      { role: "user", content: `OLD: ${oldContent}\nNEW: ${newContent}` },
+    ],
+    { temperature: 0, maxTokens: 4 },
+  );
+  return r.trim().toLowerCase().startsWith("update") ? "update" : "independent";
+}
+
 export async function extractMemories(userId: string, entryId: string, entryText: string) {
   const raw = await chat(
     [
@@ -144,17 +160,45 @@ export async function extractMemories(userId: string, entryId: string, entryText
     const type = it.type && VALID_TYPES.has(it.type) ? it.type : "fact";
     const ch = hash(normalize(it.content));
     const v = await embed(it.content);
+    const vlit = toVectorLiteral(v);
+
+    // reconcile: does this update/replace a similar-but-different existing memory?
+    const sim = (await db.execute(sql`
+      SELECT id, content, 1 - (embedding <=> ${vlit}::vector) AS score
+      FROM memories
+      WHERE user_id = ${userId} AND status IN ('active', 'pinned')
+        AND content_hash <> ${ch} AND embedding IS NOT NULL
+      ORDER BY embedding <=> ${vlit}::vector
+      LIMIT 1
+    `)) as unknown as Record<string, unknown>[];
+    let supersededId: string | null = null;
+    if (sim[0] && Number(sim[0].score) >= 0.45) {
+      if ((await judgeReconcile(String(sim[0].content), it.content)) === "update") {
+        supersededId = String(sim[0].id);
+      }
+    }
+
     // content-hash UPSERT dedup (memori): reinforce on conflict instead of duplicating
     const res = await db.execute(sql`
       INSERT INTO memories
         (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance)
       VALUES
-        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${toVectorLiteral(v)}::vector, 0.7, 0.6)
+        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, 0.7, 0.6)
       ON CONFLICT (user_id, content_hash)
         DO UPDATE SET recall_count = memories.recall_count + 1, updated_at = now()
       RETURNING id, content
     `);
     const row = (res as unknown as Record<string, unknown>[])[0];
+    const newId = row ? String(row.id) : null;
+
+    // supersede-not-delete: keep the old memory, mark it invalid (bi-temporal)
+    if (supersededId && newId && supersededId !== newId) {
+      await db.execute(sql`
+        UPDATE memories SET status = 'superseded', invalid_at = now(), invalidated_by = ${newId}, updated_at = now()
+        WHERE id = ${supersededId} AND user_id = ${userId}
+      `);
+      await logHistory(supersededId, userId, "superseded", null, { by: newId });
+    }
     if (row) saved.push({ id: String(row.id), content: String(row.content) });
   }
   return saved;
