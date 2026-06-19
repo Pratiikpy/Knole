@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
-import { extractMemories, retrieveEntries } from "./engine";
+import { extractMemories, retrieveEntries, retrieveMemories } from "./engine";
 import { reflect } from "./reflect";
 import { chat } from "./llm";
 
@@ -43,6 +43,9 @@ export type EvalResult = {
   extraction: number;
   dedup: boolean;
   groundedness: number;
+  reconcile: boolean;
+  recall: boolean;
+  hybrid: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -156,6 +159,73 @@ export async function runEvals(): Promise<EvalResult> {
   }
   const groundedness = grounded / GROUND_ENTRIES.length;
 
+  // ── reconcile (isolated so each probe's nearest neighbour is its own seed) ──
+  // supersede: a move contradicts the prior city
+  await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
+  await db.delete(memories).where(eq(memories.userId, userId));
+  const supV = await embed("The user lives in Berlin.");
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+    VALUES (${userId}, 'The user lives in Berlin.', 'eval-reconcile-sup', 'fact', 'active', ${toVectorLiteral(supV)}::vector, 0.7, 0.6)
+  `);
+  const [supEntry] = await db
+    .insert(entries)
+    .values({
+      userId,
+      text: "I moved to Lisbon last month, after years of living in Berlin.",
+      type: "journal",
+    })
+    .returning();
+  await extractMemories(userId, supEntry.id, supEntry.text);
+  const supRows = (await db.execute(sql`
+    SELECT status FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-reconcile-sup'
+  `)) as unknown as Record<string, unknown>[];
+  const superseded = supRows[0]?.status === "superseded";
+
+  // noop: a reworded restatement reinforces the existing memory instead of duplicating it
+  await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
+  await db.delete(memories).where(eq(memories.userId, userId));
+  const noopV = await embed("The user has a younger brother named Tomas.");
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance, recall_count)
+    VALUES (${userId}, 'The user has a younger brother named Tomas.', 'eval-reconcile-noop', 'relationship', 'active', ${toVectorLiteral(noopV)}::vector, 0.7, 0.6, 0)
+  `);
+  const [noopEntry] = await db
+    .insert(entries)
+    .values({ userId, text: "I called my younger brother Tomas this evening.", type: "journal" })
+    .returning();
+  await extractMemories(userId, noopEntry.id, noopEntry.text);
+  const noopRows = (await db.execute(sql`
+    SELECT recall_count FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-reconcile-noop'
+  `)) as unknown as Record<string, unknown>[];
+  const noopReinforced = Number(noopRows[0]?.recall_count ?? 0) >= 1;
+  const reconcile = superseded && noopReinforced;
+
+  // ── recall-driven importance: retrieval bumps recall_count ──
+  const recallProbe = "EVAL-RECALL-PROBE: the user collects vintage fountain pens.";
+  const recallV = await embed(recallProbe);
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance, recall_count)
+    VALUES (${userId}, ${recallProbe}, ${hashOf(normalize(recallProbe))}, 'fact', 'active', ${toVectorLiteral(recallV)}::vector, 0.7, 0.6, 0)
+  `);
+  await retrieveMemories(userId, recallV, 3, "vintage fountain pens");
+  await new Promise((r) => setTimeout(r, 1200)); // let the fire-and-forget bump land
+  const recallRows = (await db.execute(sql`
+    SELECT recall_count FROM memories
+    WHERE user_id = ${userId} AND content_hash = ${hashOf(normalize(recallProbe))}
+  `)) as unknown as Record<string, unknown>[];
+  const recall = Number(recallRows[0]?.recall_count ?? 0) >= 1;
+
+  // ── RRF hybrid: an exact keyword surfaces via the lexical arm ──
+  const hybridProbe = "EVAL-HYBRID-PROBE: the user's cat is named Zlatan.";
+  const hybridV = await embed(hybridProbe);
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+    VALUES (${userId}, ${hybridProbe}, ${hashOf(normalize(hybridProbe))}, 'fact', 'active', ${toVectorLiteral(hybridV)}::vector, 0.7, 0.6)
+  `);
+  const hybridHits = await retrieveMemories(userId, await embed("Zlatan"), 5, "Zlatan");
+  const hybrid = hybridHits.some((m) => m.content.includes("Zlatan"));
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -163,6 +233,9 @@ export async function runEvals(): Promise<EvalResult> {
     extraction: extraction >= 0.8,
     dedup,
     groundedness: groundedness >= 0.5,
+    reconcile,
+    recall,
+    hybrid,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -192,6 +265,24 @@ export async function runEvals(): Promise<EvalResult> {
       score: groundedness,
       details: { groundDetails },
     },
+    {
+      suite: "reconcile",
+      passed: gates.reconcile,
+      score: reconcile ? 1 : 0,
+      details: { superseded, noopReinforced },
+    },
+    {
+      suite: "recall",
+      passed: gates.recall,
+      score: recall ? 1 : 0,
+      details: { recallCount: Number(recallRows[0]?.recall_count ?? 0) },
+    },
+    {
+      suite: "hybrid",
+      passed: gates.hybrid,
+      score: hybrid ? 1 : 0,
+      details: { hits: hybridHits.map((m) => m.content.slice(0, 40)) },
+    },
   ]);
 
   return {
@@ -200,6 +291,9 @@ export async function runEvals(): Promise<EvalResult> {
     extraction,
     dedup,
     groundedness,
+    reconcile,
+    recall,
+    hybrid,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
