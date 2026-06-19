@@ -70,6 +70,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// Absolute base URL for social-share tags. Set VITE_SITE_URL at deploy for fully
+// absolute og:image/og:url; locally it falls back to a same-origin relative path.
+const SITE_URL = import.meta.env.VITE_SITE_URL ?? "";
+const OG_IMAGE = `${SITE_URL}/og.png`;
+const OG_ALT = "Knole — a private AI that actually understands you";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -77,8 +83,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Knole" },
       { name: "description", content: "A notebook that listens back." },
+      { name: "theme-color", content: "#faf9f6" },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Knole" },
+      { property: "og:url", content: `${SITE_URL}/` },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: OG_ALT },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: OG_IMAGE },
+      { name: "twitter:title", content: OG_ALT },
+      {
+        name: "twitter:description",
+        content: "Not an assistant. A mirror. Remembers your whole life. Unreadable even by us.",
+      },
     ],
 
     links: [
