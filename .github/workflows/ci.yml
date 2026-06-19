@@ -20,8 +20,8 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run build
 
-  evals:
-    name: Memory-engine eval gate
+  tests:
+    name: Engine evals · new-user · auth
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,15 +30,19 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Run evals (skips when DB/LLM secrets are absent, e.g. on forks)
+      - name: Run test gate (skips when DB/LLM secrets are absent, e.g. on forks)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           NVIDIA_DEFAULT_MODEL: meta/llama-3.3-70b-instruct
           KNOLE_KDF_SECRET: ${{ secrets.KNOLE_KDF_SECRET }}
+          VITE_PRIVY_APP_ID: ${{ secrets.VITE_PRIVY_APP_ID }}
+          PRIVY_APP_SECRET: ${{ secrets.PRIVY_APP_SECRET }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "No DATABASE_URL secret configured — skipping the eval gate."
+            echo "No DATABASE_URL secret configured — skipping the test gate."
             exit 0
           fi
           npm run evals
+          npm run test:empty
+          npm run test:auth
