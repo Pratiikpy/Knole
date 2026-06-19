@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { ownershipFn, verifyOnChainFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/settings")({
@@ -9,6 +11,7 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Privacy, voice, and how often Knole reaches out." },
     ],
   }),
+  loader: async () => await ownershipFn(),
   component: SettingsPage,
 });
 
@@ -21,10 +24,28 @@ const frequencyLabels = [
 ];
 
 function SettingsPage() {
+  const own = Route.useLoaderData();
+  const doVerify = useServerFn(verifyOnChainFn);
   const [freq, setFreq] = useState(2);
   const [quietStart, setQuietStart] = useState("21:00");
   const [quietEnd, setQuietEnd] = useState("09:00");
   const [voice, setVoice] = useState("structural");
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState<string | null>(null);
+
+  const verify = async () => {
+    if (!own.roots[0] || verifying) return;
+    setVerifying(true);
+    setVerified(null);
+    try {
+      const res = await doVerify({ data: { root: own.roots[0].root } });
+      setVerified(res.recovered);
+    } catch {
+      setVerified("Couldn't reach 0G just now — try again in a moment.");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <Shell>
@@ -101,21 +122,51 @@ function SettingsPage() {
             </div>
           </Group>
 
-          {/* Mindfile */}
-          <Group title="Your Mindfile">
+          {/* Your data on 0G — real ownership proof */}
+          <Group title="Your data on 0G">
             <div className="rounded-xl border border-tan/30 bg-tan/[0.05] p-6">
               <p className="font-display text-[18px] italic leading-snug text-ink-soft">
-                Your whole mind, in one encrypted file. Export it, restore it on any device,
-                or walk away with it forever.
+                {own.onChain} of {own.totalEntries}{" "}
+                {own.totalEntries === 1 ? "entry is" : "entries are"} stored encrypted on 0G —
+                yours, recoverable even if Knole disappeared.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button className="rounded-full bg-ink px-4 py-2 text-[12px] text-paper">
-                  Export Mindfile
+
+              {own.roots.length > 0 && (
+                <ul className="mt-5 space-y-1.5">
+                  {own.roots.map((r) => (
+                    <li
+                      key={r.id}
+                      className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground"
+                    >
+                      <span className="text-tan">⬡</span>
+                      <span className="truncate">{r.root}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={verify}
+                  disabled={verifying || own.onChain === 0}
+                  className="rounded-full bg-ink px-4 py-2 text-[12px] text-paper transition-opacity disabled:opacity-40"
+                >
+                  {verifying ? "Pulling from 0G…" : "Verify recoverable"}
                 </button>
-                <button className="rounded-full border border-rule px-4 py-2 text-[12px] text-ink hover:border-ink/20">
-                  Restore from Mindfile
-                </button>
+                <span className="text-[11px] text-muted-foreground">
+                  Decrypts one entry live from 0G with your key.
+                </span>
               </div>
+
+              {verified && (
+                <div className="animate-fade-up mt-4 rounded-lg border border-tan/30 bg-paper/60 p-4">
+                  <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-tan">
+                    ✓ recovered live from 0G
+                  </div>
+                  <p className="text-[13px] italic leading-relaxed text-ink-soft">"{verified}"</p>
+                </div>
+              )}
+
               <p className="mt-3 text-[11px] text-muted-foreground">
                 Encrypted under your key. Nothing on our servers is readable without it.
               </p>

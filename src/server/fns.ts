@@ -16,6 +16,7 @@ import { embed } from "./embed";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
+import { ownershipSummary, restoreEntryFromChain } from "./restore";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -100,3 +101,16 @@ export const mirrorFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await getDemoUserId();
   return buildMirror(userId);
 });
+
+export const ownershipFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return ownershipSummary(userId);
+});
+
+export const verifyOnChainFn = createServerFn({ method: "POST" })
+  .validator(z.object({ root: z.string().min(4) }))
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    const payload = await restoreEntryFromChain(userId, data.root);
+    return { recovered: payload.text.slice(0, 180) };
+  });
