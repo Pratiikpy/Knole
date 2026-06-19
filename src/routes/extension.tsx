@@ -24,17 +24,19 @@ const SOURCE = "aeon.co · The quiet shape of attention";
 function ExtensionPage() {
   const doSave = useServerFn(saveFn);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [thought, setThought] = useState("");
 
   const onDone = async () => {
     if (saving) return;
     setSaving(true);
+    setSaveError(false);
     try {
       await doSave({ data: { highlight: HIGHLIGHT, source: SOURCE, thought } });
       setSaved(true);
     } catch {
-      setSaved(true);
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
@@ -151,6 +153,11 @@ function ExtensionPage() {
                       {saving ? "Saving…" : "Done"}
                     </button>
                   </div>
+                  {saveError && (
+                    <p aria-live="polite" className="mt-2 text-[11px] text-destructive">
+                      Couldn't save — your note is still here. Try again.
+                    </p>
+                  )}
                 </div>
 
                 {saved && (
