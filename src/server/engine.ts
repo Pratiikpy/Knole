@@ -84,6 +84,30 @@ export async function retrieveMemories(
   }));
 }
 
+// ── retrieve relevant raw entries (for Ask My Life receipts) ──
+export type EntryHit = { id: string; text: string; createdAt: string; score: number };
+
+export async function retrieveEntries(
+  userId: string,
+  queryVec: number[],
+  k = 5,
+): Promise<EntryHit[]> {
+  const lit = toVectorLiteral(queryVec);
+  const rows = await db.execute(sql`
+    SELECT id, text, created_at, 1 - (embedding <=> ${lit}::vector) AS score
+    FROM entries
+    WHERE user_id = ${userId} AND embedding IS NOT NULL
+    ORDER BY embedding <=> ${lit}::vector
+    LIMIT ${k}
+  `);
+  return (rows as unknown as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    text: String(r.text),
+    createdAt: String(r.created_at),
+    score: Number(r.score),
+  }));
+}
+
 // ── extract durable memories from an entry (+ dedup) ─────
 const EXTRACT_SYS = `Extract durable, useful long-term memories about the user from their journal entry. Only keep things worth remembering across future sessions: facts, people, goals, recurring feelings or patterns, commitments, preferences, values. Ignore fleeting detail.
 Return a JSON array; each item: {"content": "<concise third-person fact about the user>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>"}.

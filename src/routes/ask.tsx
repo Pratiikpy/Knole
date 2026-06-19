@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { askFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/ask")({
@@ -24,39 +26,32 @@ const suggestions = [
 ];
 
 type Receipt = { date: string; quote: string; tag: string };
-
-const answer: { summary: string; receipts: Receipt[] } = {
-  summary:
-    "You've called yourself \"stressed\" sixteen times this year. The pattern is sharpest in the week before a deadline — and it almost always softens after a long walk or a phone call with Rossi. The last spike was nine days ago.",
-  receipts: [
-    {
-      date: "Oct 16",
-      tag: "your entry",
-      quote:
-        "I haven't slept properly in four days. Every email feels like it's shouting.",
-    },
-    {
-      date: "Jul 04",
-      tag: "your entry",
-      quote:
-        "Same tight feeling in my chest as before the Brussels trip. I should call Rossi.",
-    },
-    {
-      date: "Mar 22",
-      tag: "your entry",
-      quote: "The deadline week always does this to me. I keep forgetting that.",
-    },
-  ],
-};
+type AskResult = { summary: string; receipts: Receipt[] };
 
 function AskPage() {
+  const doAsk = useServerFn(askFn);
   const [q, setQ] = useState("");
   const [asked, setAsked] = useState<string | null>(null);
+  const [result, setResult] = useState<AskResult | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const submit = (text: string) => {
-    if (!text.trim()) return;
+  const submit = async (text: string) => {
+    if (!text.trim() || loading) return;
     setAsked(text);
     setQ(text);
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await doAsk({ data: { question: text } });
+      setResult(res);
+    } catch {
+      setResult({
+        summary: "Something interrupted the search — try again in a moment.",
+        receipts: [],
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -94,9 +89,10 @@ function AskPage() {
             {q && (
               <button
                 type="submit"
-                className="rounded-full bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper"
+                disabled={loading}
+                className="rounded-full bg-ink px-3.5 py-1.5 text-[12px] font-medium text-paper disabled:opacity-50"
               >
-                Ask
+                {loading ? "…" : "Ask"}
               </button>
             )}
           </form>
@@ -115,41 +111,46 @@ function AskPage() {
             </div>
           )}
 
-          {asked && (
+          {asked && loading && (
+            <p className="animate-fade-up mt-12 font-display text-[20px] italic text-muted-foreground">
+              Reading back through your own words…
+            </p>
+          )}
+
+          {asked && result && !loading && (
             <div className="animate-fade-up mt-12">
               <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-tan">
                 The throughline
               </div>
-              <p className="font-display text-[22px] italic leading-snug text-ink-soft">
-                {answer.summary}
+              <p className="whitespace-pre-line font-display text-[22px] italic leading-snug text-ink-soft">
+                {result.summary}
               </p>
 
-              <div className="mt-10">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-rule" />
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    receipts · your own words
-                  </span>
-                  <div className="h-px flex-1 bg-rule" />
-                </div>
+              {result.receipts.length > 0 && (
+                <div className="mt-10">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-rule" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      receipts · your own words
+                    </span>
+                    <div className="h-px flex-1 bg-rule" />
+                  </div>
 
-                <ul className="space-y-4">
-                  {answer.receipts.map((r, i) => (
-                    <li
-                      key={i}
-                      className="rounded-xl border border-rule bg-card/50 p-5"
-                    >
-                      <div className="mb-2 flex items-baseline justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        <span>{r.date}</span>
-                        <span>{r.tag}</span>
-                      </div>
-                      <p className="font-display text-[17px] italic leading-snug text-ink-soft">
-                        "{r.quote}"
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  <ul className="space-y-4">
+                    {result.receipts.map((r, i) => (
+                      <li key={i} className="rounded-xl border border-rule bg-card/50 p-5">
+                        <div className="mb-2 flex items-baseline justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          <span>{r.date}</span>
+                          <span>{r.tag}</span>
+                        </div>
+                        <p className="font-display text-[17px] italic leading-snug text-ink-soft">
+                          "{r.quote}"
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

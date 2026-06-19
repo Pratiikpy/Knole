@@ -13,6 +13,7 @@ import {
   updateMemoryContent,
 } from "./engine";
 import { embed } from "./embed";
+import { askMyLife } from "./ask";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -59,4 +60,11 @@ export const editMemoryFn = createServerFn({ method: "POST" })
     const userId = await getDemoUserId();
     await updateMemoryContent(userId, data.id, data.content);
     return { ok: true };
+  });
+
+export const askFn = createServerFn({ method: "POST" })
+  .validator(z.object({ question: z.string().min(1).max(500) }))
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    return askMyLife(userId, data.question);
   });
