@@ -65,6 +65,15 @@ npm run evals                 # run the memory-engine eval gate
 
 You'll need: a Neon Postgres URL (with the `vector` extension), an NVIDIA NIM API key, and — for the on-chain features — a funded 0G Galileo testnet wallet. The `pgvector` extension is enabled with `CREATE EXTENSION IF NOT EXISTS vector;`.
 
+## Production
+
+```bash
+npm run build                 # → dist/ (client assets + dist/server/server.js SSR handler)
+npm run preview               # serve the production build locally to verify
+```
+
+`npm run build` emits a static client bundle (`dist/client`) and an SSR handler (`dist/server/server.js`); deploy both behind a Node host (or your platform's adapter). The same server-side env vars are required at runtime (`DATABASE_URL`, `NVIDIA_API_KEY`, `EVM_PRIVATE_KEY`, `KNOLE_KDF_SECRET`, …). Set `VITE_SITE_URL` to your deployed origin so social-share tags resolve to absolute URLs, and run the Dreaming worker (`npm run worker`) on a scheduler. Rotate every secret before any non-testnet use.
+
 ## Scripts
 
 | Command          | Purpose                                                       |
