@@ -21,6 +21,7 @@ import { buildMirror } from "./mirror";
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { generateNudge } from "./proactivity";
 import { resurface } from "./resurface";
+import { importHistory } from "./import";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -226,6 +227,15 @@ export const onboardFn = createServerFn({ method: "POST" })
       console.error("0G store failed:", e),
     );
     return { reflection };
+  });
+
+export const importFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({ text: z.string().min(1).max(200000), source: z.string().max(40).optional() }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    return importHistory(userId, data.text, data.source);
   });
 
 export const verifyOnChainFn = createServerFn({ method: "POST" })

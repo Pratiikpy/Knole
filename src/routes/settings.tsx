@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { ownershipFn, verifyOnChainFn, settingsFn, updateSettingsFn } from "@/server/fns";
+import { ownershipFn, verifyOnChainFn, settingsFn, updateSettingsFn, importFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/settings")({
@@ -36,6 +36,10 @@ function SettingsPage() {
   const [voice, setVoice] = useState(settings?.voice ?? "structural");
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState<string | null>(null);
+  const doImport = useServerFn(importFn);
+  const [importText, setImportText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   const onFreq = (v: number) => {
     setFreq(v);
@@ -65,6 +69,23 @@ function SettingsPage() {
       setVerified("Couldn't reach 0G just now — try again in a moment.");
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const runImport = async () => {
+    if (importText.trim().length < 40 || importing) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await doImport({ data: { text: importText, source: "text" } });
+      setImportResult(
+        `Imported ${res.imported} ${res.imported === 1 ? "passage" : "passages"} · ${res.memories} memories`,
+      );
+      setImportText("");
+    } catch {
+      setImportResult("Something interrupted the import — try again.");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -138,6 +159,36 @@ function SettingsPage() {
                   />
                 </button>
               ))}
+            </div>
+          </Group>
+
+          {/* Import your history — the refugee wedge */}
+          <Group title="Import your history">
+            <div className="rounded-xl border border-rule bg-card/50 p-6">
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                Paste a journal, or an export from ChatGPT, Claude, or Replika. Knole turns your own
+                words into memories — so it starts already knowing you. Encrypted under your key,
+                like everything else.
+              </p>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                rows={5}
+                placeholder="Paste your history here…"
+                className="mt-4 w-full resize-none rounded-lg border border-rule bg-paper p-3 text-[13px] leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-tan/30"
+              />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-[11px] text-muted-foreground">
+                  {importResult ?? "Explicit import only — never silent capture."}
+                </span>
+                <button
+                  onClick={runImport}
+                  disabled={importing || importText.trim().length < 40}
+                  className="shrink-0 rounded-full bg-ink px-4 py-2 text-[12px] text-paper transition-opacity disabled:opacity-40"
+                >
+                  {importing ? "Importing…" : "Import"}
+                </button>
+              </div>
             </div>
           </Group>
 
