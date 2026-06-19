@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "evals": "tsx src/server/evals.run.ts",
+    "test:auth": "tsx src/server/auth-e2e.run.ts",
     "dream": "tsx src/server/dreaming.run.ts",
     "seed": "tsx src/server/seed.run.ts",
     "worker": "tsx src/server/worker.run.ts"
