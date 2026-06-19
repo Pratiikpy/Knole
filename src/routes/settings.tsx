@@ -72,22 +72,32 @@ function SettingsPage() {
   const [importResult, setImportResult] = useState<string | null>(null);
   const doExport = useServerFn(exportFn);
   const [exporting, setExporting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
+  const persist = (data: Parameters<typeof doUpdate>[0]["data"]) => {
+    setSaveStatus("saving");
+    doUpdate({ data })
+      .then(() => {
+        setSaveStatus("saved");
+        window.setTimeout(() => setSaveStatus("idle"), 1800);
+      })
+      .catch(() => setSaveStatus("error"));
+  };
   const onFreq = (v: number) => {
     setFreq(v);
-    void doUpdate({ data: { freqDial: v } });
+    persist({ freqDial: v });
   };
   const onQuietStart = (s: string) => {
     setQuietStart(s);
-    void doUpdate({ data: { quietHoursStart: strToHour(s) } });
+    persist({ quietHoursStart: strToHour(s) });
   };
   const onQuietEnd = (s: string) => {
     setQuietEnd(s);
-    void doUpdate({ data: { quietHoursEnd: strToHour(s) } });
+    persist({ quietHoursEnd: strToHour(s) });
   };
   const onVoice = (v: string) => {
     setVoice(v);
-    void doUpdate({ data: { voice: v as "warm" | "structural" | "honest" | "curious" } });
+    persist({ voice: v as "warm" | "structural" | "honest" | "curious" });
   };
 
   const verify = async () => {
@@ -210,6 +220,16 @@ function SettingsPage() {
           <h1 className="font-display text-[44px] italic leading-none">Settings</h1>
           <p className="mt-3 text-[14px] text-muted-foreground">
             Knole works for you, not the other way around. Change anything, anytime.
+          </p>
+          <p
+            aria-live="polite"
+            className={`mt-2 h-4 text-[12px] transition-opacity ${
+              saveStatus === "error" ? "text-destructive" : "text-tan"
+            } ${saveStatus === "idle" ? "opacity-0" : "opacity-100"}`}
+          >
+            {saveStatus === "saving" && "Saving…"}
+            {saveStatus === "saved" && "Saved ✓"}
+            {saveStatus === "error" && "Couldn't save — check your connection and try again."}
           </p>
 
           {/* Proactivity */}
