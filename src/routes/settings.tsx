@@ -12,6 +12,7 @@ import {
   deleteAccountFn,
 } from "@/server/fns";
 import { useState } from "react";
+import { usePrivy } from "@privy-io/react-auth";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -121,6 +122,7 @@ function SettingsPage() {
 
   const doForget = useServerFn(forgetRangeFn);
   const doDelete = useServerFn(deleteAccountFn);
+  const { ready, authenticated, user, login, logout } = usePrivy();
   const [forgetOpen, setForgetOpen] = useState(false);
   const [forgetFrom, setForgetFrom] = useState("");
   const [forgetTo, setForgetTo] = useState("");
@@ -443,11 +445,40 @@ function SettingsPage() {
           {/* Account */}
           <Group title="Account">
             <div className="rounded-xl border border-rule bg-card/50 p-6">
-              <Row
-                label="Session"
-                detail="You're exploring Knole as a guest. Signing in — to claim this space under your own wallet — arrives with accounts."
-                value="Demo"
-              />
+              {!ready ? (
+                <Row label="Account" detail="Checking your session…" value="" />
+              ) : authenticated ? (
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[14px] text-ink">Signed in</div>
+                    <div className="mt-0.5 text-[12px] break-all text-muted-foreground">
+                      {user?.email?.address ?? user?.wallet?.address ?? "your account"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => logout()}
+                    className="shrink-0 rounded-full border border-rule px-4 py-2 text-[12px] text-muted-foreground hover:border-ink/20 hover:text-ink"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[14px] text-ink">You're exploring as a guest</div>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">
+                      Sign in to claim this space under your own wallet — your memories become yours
+                      alone.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => login()}
+                    className="shrink-0 rounded-full bg-ink px-4 py-2 text-[12px] text-paper"
+                  >
+                    Sign in
+                  </button>
+                </div>
+              )}
             </div>
           </Group>
         </div>
