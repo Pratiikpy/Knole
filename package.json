@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "evals": "tsx src/server/evals.run.ts"
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.8",
