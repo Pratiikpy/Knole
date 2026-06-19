@@ -15,6 +15,13 @@
       "when": 1781892133791,
       "tag": "0001_add_voice",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781909126084,
+      "tag": "0002_add_history_artifact_indexes",
+      "breakpoints": true
     }
   ]
 }

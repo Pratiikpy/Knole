@@ -160,29 +160,41 @@ export const memories = pgTable(
 );
 
 // ── append-only audit (never silently overwrite) ─────────
-export const memoryHistory = pgTable("memory_history", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  memoryId: uuid("memory_id").notNull(),
-  userId: uuid("user_id").notNull(),
-  operation: text("operation").notNull(), // created|updated|superseded|archived|forgotten|restored
-  oldValue: jsonb("old_value"),
-  newValue: jsonb("new_value"),
-  actor: actorType("actor").default("system").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const memoryHistory = pgTable(
+  "memory_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    memoryId: uuid("memory_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    operation: text("operation").notNull(), // created|updated|superseded|archived|forgotten|restored
+    oldValue: jsonb("old_value"),
+    newValue: jsonb("new_value"),
+    actor: actorType("actor").default("system").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx: index("memory_history_user_idx").on(t.userId),
+  }),
+);
 
 // ── reflection artifacts (Daily/Weekly Mirror, state consolidation) ──
-export const reflectionArtifacts = pgTable("reflection_artifacts", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  type: artifactType("type").notNull(),
-  threadKey: text("thread_key"),
-  content: jsonb("content").notNull(),
-  sources: jsonb("sources"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const reflectionArtifacts = pgTable(
+  "reflection_artifacts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: artifactType("type").notNull(),
+    threadKey: text("thread_key"),
+    content: jsonb("content").notNull(),
+    sources: jsonb("sources"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userThreadIdx: index("reflection_artifacts_user_thread_idx").on(t.userId, t.threadKey),
+  }),
+);
 
 // ── feedback (feeds the evals + proactivity tuning) ──────
 export const memoryFeedback = pgTable("memory_feedback", {

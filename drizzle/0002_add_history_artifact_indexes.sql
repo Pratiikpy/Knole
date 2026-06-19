@@ -1,0 +1,2 @@
+CREATE INDEX "memory_history_user_idx" ON "memory_history" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "reflection_artifacts_user_thread_idx" ON "reflection_artifacts" USING btree ("user_id","thread_key");
