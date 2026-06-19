@@ -1,6 +1,6 @@
 # Knole
 
-A private AI that actually understands you — a journal and thinking partner that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, and the reflections that read them are designed to run in a TEE so *even we can't read them*.
+A private AI that actually understands you — a journal and thinking partner that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, and the reflections that read them are designed to run in a TEE so _even we can't read them_.
 
 Knole is a mirror, not an assistant. You write; it reflects, remembers, and — only as much as you allow — reaches back.
 
@@ -36,15 +36,15 @@ Reflections, chat, Ask My Life, the Pattern Mirror, and the proactive nudge all 
 
 ## Stack
 
-| Layer | Choice |
-| --- | --- |
-| Framework | TanStack Start (Router + Query) · React 19 · Vite |
-| UI | Tailwind CSS v4 · shadcn/ui (Radix) · Instrument Serif + Inter |
-| Server | TanStack Start server functions |
-| Database | Neon Postgres + `pgvector` (HNSW) via Drizzle ORM |
-| Embeddings | `@xenova/transformers` — all-MiniLM-L6-v2 (local) |
-| LLM | NVIDIA NIM (`llama-3.3-70b`, dev) → 0G Sealed Inference (prod) |
-| Chain | 0G Galileo testnet — Storage + Private Compute · `ethers` |
+| Layer      | Choice                                                         |
+| ---------- | -------------------------------------------------------------- |
+| Framework  | TanStack Start (Router + Query) · React 19 · Vite              |
+| UI         | Tailwind CSS v4 · shadcn/ui (Radix) · Instrument Serif + Inter |
+| Server     | TanStack Start server functions                                |
+| Database   | Neon Postgres + `pgvector` (HNSW) via Drizzle ORM              |
+| Embeddings | `@xenova/transformers` — all-MiniLM-L6-v2 (local)              |
+| LLM        | NVIDIA NIM (`llama-3.3-70b`, dev) → 0G Sealed Inference (prod) |
+| Chain      | 0G Galileo testnet — Storage + Private Compute · `ethers`      |
 
 ## Quickstart
 
@@ -63,13 +63,13 @@ You'll need: a Neon Postgres URL (with the `vector` extension), an NVIDIA NIM AP
 
 ## Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Dev server |
-| `npm run build` | Production build (client + SSR) |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
-| `npm run evals` | Memory-engine release gate → `eval_runs` |
+| Command          | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| `npm run dev`    | Dev server                               |
+| `npm run build`  | Production build (client + SSR)          |
+| `npm run lint`   | ESLint                                   |
+| `npm run format` | Prettier                                 |
+| `npm run evals`  | Memory-engine release gate → `eval_runs` |
 
 ## Project layout
 
@@ -106,4 +106,4 @@ Phase 1 (testnet) — the full experience runs on the real engine and 0G, with c
 
 ---
 
-*Private by design. Encrypted under your key, stored on 0G. We can't read it, can't reset it, can't take it away.*
+_Private by design. Encrypted under your key, stored on 0G. We can't read it, can't reset it, can't take it away._

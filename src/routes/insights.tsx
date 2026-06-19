@@ -107,21 +107,32 @@ function InsightsPage() {
                 </div>
               )}
 
-              {/* Dreaming — honest, upcoming */}
-              <div className="mt-12 rounded-xl border border-rule bg-card/40 p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-display text-[16px] italic text-ink">Dreaming</div>
-                    <div className="mt-0.5 max-w-[44ch] text-[11px] text-muted-foreground">
-                      Soon, Knole will reflect on your week overnight and surface one new pattern
-                      here each morning.
-                    </div>
+              {/* Dreaming — last night's overnight noticing */}
+              {m.dream ? (
+                <div className="mt-12 rounded-2xl border border-tan/30 bg-tan/[0.04] p-7">
+                  <div className="mb-2 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-tan">
+                    <span className="size-1.5 animate-breathe rounded-full bg-tan" />
+                    Dreaming · last night Knole noticed
                   </div>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    soon
-                  </span>
+                  <p className="font-display text-[20px] italic leading-snug text-ink-soft">
+                    {m.dream.observation}
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-12 rounded-xl border border-rule bg-card/40 p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-display text-[16px] italic text-ink">Dreaming</div>
+                      <div className="mt-0.5 max-w-[44ch] text-[11px] text-muted-foreground">
+                        Knole reflects on your days overnight and surfaces one new pattern here.
+                      </div>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      soon
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <p className="mt-12 text-center text-[12px] italic text-muted-foreground">
                 That's enough looking back. Go live your week.

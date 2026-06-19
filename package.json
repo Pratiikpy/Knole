@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "evals": "tsx src/server/evals.run.ts"
+    "evals": "tsx src/server/evals.run.ts",
+    "dream": "tsx src/server/dreaming.run.ts"
   },
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "^1.2.8",

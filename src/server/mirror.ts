@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { chatPrivate } from "./sealed";
+import { latestDream, type Dream } from "./dreaming";
 
 const MIRROR_SYS = `You are Knole, writing a short, private "Pattern Mirror" for the user from their own recent journal entries and the things you remember about them. Honest, warm, specific — never flattering, never generic, never therapy-speak. Ground every line in what they actually wrote; if something isn't supported, leave it empty.
 Return ONLY a JSON object:
@@ -22,9 +23,10 @@ export type Mirror = {
   themes: { name: string; weight: number }[];
   dayCount: number;
   entryCount: number;
+  dream: Dream | null;
 };
 
-const empty = (dayCount: number, entryCount: number): Mirror => ({
+const empty = (dayCount: number, entryCount: number, dream: Dream | null): Mirror => ({
   ready: false,
   throughline: "",
   loop: "",
@@ -33,6 +35,7 @@ const empty = (dayCount: number, entryCount: number): Mirror => ({
   themes: [],
   dayCount,
   entryCount,
+  dream,
 });
 
 export async function buildMirror(userId: string): Promise<Mirror> {
@@ -51,6 +54,7 @@ export async function buildMirror(userId: string): Promise<Mirror> {
 
   const dayCount = Number(stat[0]?.d ?? 0);
   const entryCount = Number(stat[0]?.c ?? 0);
+  const dream = await latestDream(userId);
 
   // dedupe near-identical entries (same text journaled more than once)
   const seen = new Set<string>();
@@ -63,7 +67,7 @@ export async function buildMirror(userId: string): Promise<Mirror> {
       return true;
     });
 
-  if (entries.length < 2) return empty(dayCount, entryCount);
+  if (entries.length < 2) return empty(dayCount, entryCount, dream);
 
   const memories = memRows.map((r) => `(${String(r.type)}) ${String(r.content)}`);
   const context = `RECENT ENTRIES:\n${entries
@@ -105,5 +109,6 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     themes,
     dayCount,
     entryCount,
+    dream,
   };
 }
