@@ -1,0 +1,23 @@
+import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
+
+// Local, private, free sentence embeddings (all-MiniLM-L6-v2 → 384-dim).
+// Model downloads once (~25MB) then caches. No data leaves the machine.
+let extractorP: Promise<FeatureExtractionPipeline> | null = null;
+
+function getExtractor(): Promise<FeatureExtractionPipeline> {
+  if (!extractorP) {
+    extractorP = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+  }
+  return extractorP;
+}
+
+export async function embed(text: string): Promise<number[]> {
+  const extractor = await getExtractor();
+  const out = await extractor(text, { pooling: "mean", normalize: true });
+  return Array.from(out.data as Float32Array);
+}
+
+// pgvector literal: '[0.1,0.2,...]'
+export function toVectorLiteral(v: number[]): string {
+  return `[${v.join(",")}]`;
+}
