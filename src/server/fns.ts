@@ -188,6 +188,32 @@ export const respondFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const onboardFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      opener: z.string().min(1).max(8000),
+      voice: z.enum(["warm", "structural", "honest", "curious"]),
+      thing: z.string().max(100).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await getDemoUserId();
+    await updateSettings(userId, { voice: data.voice });
+    const text = data.thing
+      ? `${data.opener}\n(Quietly on my mind this week: ${data.thing})`
+      : data.opener;
+    const entryRow = await saveEntry(userId, text, undefined, "journal");
+    const reflection = await reflect(text);
+    await saveReply(entryRow.id, reflection, true);
+    void extractMemories(userId, entryRow.id, text).catch((e) =>
+      console.error("extractMemories failed:", e),
+    );
+    void storeEntryOn0G(userId, entryRow.id, text).catch((e) =>
+      console.error("0G store failed:", e),
+    );
+    return { reflection };
+  });
+
 export const verifyOnChainFn = createServerFn({ method: "POST" })
   .validator(z.object({ root: z.string().min(4) }))
   .handler(async ({ data }) => {

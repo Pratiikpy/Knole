@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { onboardFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/onboarding")({
@@ -26,10 +28,34 @@ const voices = [
 type Step = 0 | 1 | 2 | 3;
 
 function Onboarding() {
+  const doOnboard = useServerFn(onboardFn);
   const [step, setStep] = useState<Step>(0);
   const [opener, setOpener] = useState("");
   const [voice, setVoice] = useState<string>("warm");
   const [thing, setThing] = useState<string>("");
+  const [reflection, setReflection] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const begin = async () => {
+    setStep(3);
+    setGenerating(true);
+    try {
+      const res = await doOnboard({
+        data: {
+          opener,
+          voice: voice as "warm" | "structural" | "honest" | "curious",
+          thing: thing || undefined,
+        },
+      });
+      setReflection(res.reflection);
+    } catch {
+      setReflection(
+        "I'm here, and I've got this. Come back tomorrow and we'll pick up the thread.",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <Shell hideNav>
@@ -183,7 +209,7 @@ function Onboarding() {
                 </button>
                 <button
                   disabled={!thing}
-                  onClick={() => setStep(3)}
+                  onClick={begin}
                   className="rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper disabled:opacity-30"
                 >
                   Continue
@@ -202,16 +228,15 @@ function Onboarding() {
               </h1>
 
               <div className="mt-8 border-l-2 border-tan/40 pl-5">
-                <p className="text-[15px] leading-relaxed text-ink-soft">
-                  You told me{" "}
-                  <span className="italic">"{opener.trim() || "what was on your mind"}"</span>, and
-                  that the thing quietly with you is{" "}
-                  <span className="italic">{thing.toLowerCase()}</span>.
-                </p>
-                <p className="mt-4 text-[15px] leading-relaxed text-ink-soft">
-                  That's a lot for one Tuesday. We don't have to solve it — only notice it. I'll sit
-                  with this, and when you come back tomorrow, I'll still be here.
-                </p>
+                {generating ? (
+                  <p className="font-display text-[18px] italic text-muted-foreground">
+                    Knole is reading your first words…
+                  </p>
+                ) : (
+                  <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
+                    {reflection}
+                  </p>
+                )}
               </div>
 
               <div className="animate-fade-up mt-8 inline-flex items-center gap-2 rounded-full bg-tan/[0.08] px-4 py-2 text-[12px] text-tan ring-1 ring-tan/20">
