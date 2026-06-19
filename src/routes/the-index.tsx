@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { listMemoriesFn, setMemoryStatusFn, editMemoryFn, provenanceFn } from "@/server/fns";
+import {
+  listMemoriesFn,
+  setMemoryStatusFn,
+  editMemoryFn,
+  provenanceFn,
+  settingsFn,
+} from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/the-index")({
@@ -14,7 +20,10 @@ export const Route = createFileRoute("/the-index")({
       },
     ],
   }),
-  loader: async () => await listMemoriesFn(),
+  loader: async () => ({
+    memories: (await listMemoriesFn()).memories,
+    settings: await settingsFn(),
+  }),
   component: TheIndex,
 });
 
@@ -54,14 +63,47 @@ function fmtDate(iso: string): string {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
 
-const knoleFacts = [
-  { text: "You asked me to speak with structure and clarity.", meta: "set during onboarding" },
-  { text: "You don't want pings before 9am or after 9pm.", meta: "quiet hours · your choice" },
-  { text: "You'd rather I ask one question than offer three answers.", meta: "your rule" },
+const voicePhrase: Record<string, string> = {
+  warm: "with warmth and patience",
+  structural: "with structure and clarity",
+  honest: "directly and honestly",
+  curious: "by asking me one good question at a time",
+};
+const freqPhrase = [
+  "never to reach out unprompted",
+  "to reach out about once a week",
+  "to reach out a few times a week",
+  "to reach out daily",
+  "to reach out whenever there's something",
 ];
+const hh = (h: number | null | undefined) => `${String(h ?? 0).padStart(2, "0")}:00`;
+
+type KnoleSettings = {
+  voice?: string | null;
+  freqDial?: number | null;
+  quietHoursStart?: number | null;
+  quietHoursEnd?: number | null;
+};
+function knoleInstructions(s: KnoleSettings) {
+  return [
+    {
+      text: `Speak to me ${voicePhrase[s.voice ?? "structural"] ?? "with structure and clarity"}.`,
+      meta: "your voice",
+    },
+    {
+      text: `Stay quiet between ${hh(s.quietHoursStart)} and ${hh(s.quietHoursEnd)}.`,
+      meta: "quiet hours",
+    },
+    {
+      text: `I've asked you ${freqPhrase[s.freqDial ?? 2] ?? "to reach out a few times a week"}.`,
+      meta: "frequency",
+    },
+  ];
+}
 
 function TheIndex() {
-  const { memories: initial } = Route.useLoaderData();
+  const { memories: initial, settings } = Route.useLoaderData();
+  const knoleFacts = knoleInstructions(settings ?? {});
   const doStatus = useServerFn(setMemoryStatusFn);
   const doEdit = useServerFn(editMemoryFn);
 
