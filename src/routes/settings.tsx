@@ -12,7 +12,7 @@ import {
   deleteAccountFn,
 } from "@/server/fns";
 import { useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -22,8 +22,26 @@ export const Route = createFileRoute("/settings")({
     ],
   }),
   loader: async () => ({ own: await ownershipFn(), settings: await settingsFn() }),
-  component: SettingsPage,
+  component: SettingsRoute,
 });
+
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
+
+// Privy is scoped to this route — the only place auth is used — so react-auth (~2MB)
+// code-splits into the settings chunk instead of bloating every page's initial bundle.
+function SettingsRoute() {
+  return (
+    <PrivyProvider
+      appId={PRIVY_APP_ID}
+      config={{
+        appearance: { theme: "light", accentColor: "#7c6545" },
+        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
+      }}
+    >
+      <SettingsPage />
+    </PrivyProvider>
+  );
+}
 
 const hourToStr = (h: number | null | undefined) => `${String(h ?? 0).padStart(2, "0")}:00`;
 const strToHour = (s: string) => parseInt(s.split(":")[0] ?? "0", 10) || 0;

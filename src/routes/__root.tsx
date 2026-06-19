@@ -10,12 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PrivyProvider } from "@privy-io/react-auth";
-
 import appCss from "../styles.css?url";
 import { warmupFn } from "@/server/fns";
-
-const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 
 function NotFoundComponent() {
   return (
@@ -141,25 +137,10 @@ function RootComponent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const tree = (
+  return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
-  );
-
-  // Privy wraps the app only when an app id is configured; the demo path works without it.
-  return PRIVY_APP_ID ? (
-    <PrivyProvider
-      appId={PRIVY_APP_ID}
-      config={{
-        appearance: { theme: "light", accentColor: "#7c6545" },
-        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
-      }}
-    >
-      {tree}
-    </PrivyProvider>
-  ) : (
-    tree
   );
 }
