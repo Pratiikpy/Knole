@@ -180,20 +180,29 @@ Return [] if nothing durable. Output ONLY the JSON array, no prose.`;
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
-const RECONCILE_SYS = `Two facts about the same person. Decide if the NEW fact UPDATES or REPLACES the OLD one — i.e. they cannot both be currently true (a change of location, job, status, relationship, or preference) — or if they are INDEPENDENT (both can be true at the same time). Answer with only one word: "update" or "independent".`;
+const RECONCILE_SYS = `You compare an OLD and a NEW fact about the same person. Reply with exactly ONE word:
+"update" — the NEW replaces the OLD (they cannot both be currently true: a change of location, job, status, relationship, or preference);
+"duplicate" — they state the SAME fact with no new information (just reworded);
+"independent" — both can be true at once as distinct facts.`;
 
-async function judgeReconcile(
+async function judgeMemory(
   oldContent: string,
   newContent: string,
-): Promise<"update" | "independent"> {
-  const r = await chat(
-    [
-      { role: "system", content: RECONCILE_SYS },
-      { role: "user", content: `OLD: ${oldContent}\nNEW: ${newContent}` },
-    ],
-    { temperature: 0, maxTokens: 4 },
-  );
-  return r.trim().toLowerCase().startsWith("update") ? "update" : "independent";
+): Promise<"update" | "duplicate" | "independent"> {
+  const r = (
+    await chat(
+      [
+        { role: "system", content: RECONCILE_SYS },
+        { role: "user", content: `OLD: ${oldContent}\nNEW: ${newContent}` },
+      ],
+      { temperature: 0, maxTokens: 4 },
+    )
+  )
+    .trim()
+    .toLowerCase();
+  if (r.startsWith("update")) return "update";
+  if (r.startsWith("duplicate")) return "duplicate";
+  return "independent";
 }
 
 export async function extractMemories(userId: string, entryId: string, entryText: string) {
@@ -232,9 +241,17 @@ export async function extractMemories(userId: string, entryId: string, entryText
     `)) as unknown as Record<string, unknown>[];
     let supersededId: string | null = null;
     if (sim[0] && Number(sim[0].score) >= 0.45) {
-      if ((await judgeReconcile(String(sim[0].content), it.content)) === "update") {
-        supersededId = String(sim[0].id);
+      const verdict = await judgeMemory(String(sim[0].content), it.content);
+      if (verdict === "duplicate") {
+        // NOOP: reinforce the existing memory instead of storing a near-duplicate
+        await db.execute(sql`
+          UPDATE memories SET recall_count = recall_count + 1, updated_at = now()
+          WHERE id = ${String(sim[0].id)} AND user_id = ${userId}
+        `);
+        saved.push({ id: String(sim[0].id), content: String(sim[0].content) });
+        continue;
       }
+      if (verdict === "update") supersededId = String(sim[0].id);
     }
 
     // content-hash UPSERT dedup (memori): reinforce on conflict instead of duplicating

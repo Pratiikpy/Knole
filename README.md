@@ -23,7 +23,7 @@ Every entry flows through one pipeline:
 
 1. **Embed** locally with `all-MiniLM-L6-v2` (via `transformers.js`) — 384-dim, private, no API call.
 2. **Extract** durable, long-term facts with an LLM (people, goals, patterns, commitments, values) — deliberately ignoring ephemeral detail.
-3. **Reconcile**: content-hash `UPSERT` reinforces duplicates, and an LLM-judged UPDATE path supersedes a contradicting memory (bi-temporal — kept with `invalid_at`/`invalidated_by`, never deleted), so memory stays current.
+3. **Reconcile**: a content-hash `UPSERT` reinforces exact duplicates, then an LLM judge resolves each near-match three ways (mem0-style) — reinforce a reworded duplicate (no copy stored), supersede a contradicting memory (bi-temporal — kept with `invalid_at`/`invalidated_by`, never deleted), or keep a genuinely independent fact — so memory stays clean and current.
 4. **Retrieve** with **RRF hybrid** search — pgvector cosine fused with lexical full-text — and each surfaced memory earns importance by being recalled (`recall_count` / `importance`).
 
 Reflections, chat, Ask My Life, the Pattern Mirror, and the proactive nudge all draw on this engine. A `npm run evals` gate measures it across four suites — retrieval (precision@1 + recall@3), extraction-coverage, dedup-correctness, and reflection-groundedness (no invented facts) — on a seeded fixture user, scored into the `eval_runs` table.
