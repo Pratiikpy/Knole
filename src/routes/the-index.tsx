@@ -109,6 +109,11 @@ function TheIndex() {
 
   const [tab, setTab] = useState<"you" | "knole">("you");
   const [facts, setFacts] = useState<Memory[]>(initial);
+  const [mutError, setMutError] = useState(false);
+  const flagError = () => {
+    setMutError(true);
+    window.setTimeout(() => setMutError(false), 3500);
+  };
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const doProv = useServerFn(provenanceFn);
@@ -135,12 +140,31 @@ function TheIndex() {
 
   const togglePin = async (m: Memory) => {
     const status = m.status === "pinned" ? "active" : "pinned";
+    const prev = m.status;
     setFacts((f) => f.map((x) => (x.id === m.id ? { ...x, status } : x)));
-    await doStatus({ data: { id: m.id, status } });
+    try {
+      await doStatus({ data: { id: m.id, status } });
+    } catch {
+      setFacts((f) => f.map((x) => (x.id === m.id ? { ...x, status: prev } : x)));
+      flagError();
+    }
   };
   const forget = async (id: string) => {
+    const idx = facts.findIndex((x) => x.id === id);
+    const removed = facts[idx];
     setFacts((f) => f.filter((x) => x.id !== id));
-    await doStatus({ data: { id, status: "forgotten" } });
+    try {
+      await doStatus({ data: { id, status: "forgotten" } });
+    } catch {
+      if (removed) {
+        setFacts((f) => {
+          const copy = [...f];
+          copy.splice(idx, 0, removed);
+          return copy;
+        });
+      }
+      flagError();
+    }
   };
   const startEdit = (m: Memory) => {
     setEditing(m.id);
@@ -150,9 +174,19 @@ function TheIndex() {
     if (!editing) return;
     const id = editing;
     const content = draft.trim();
+    const prev = facts.find((x) => x.id === id)?.content;
     setFacts((arr) => arr.map((x) => (x.id === id ? { ...x, content } : x)));
     setEditing(null);
-    if (content) await doEdit({ data: { id, content } });
+    if (content) {
+      try {
+        await doEdit({ data: { id, content } });
+      } catch {
+        if (prev !== undefined) {
+          setFacts((arr) => arr.map((x) => (x.id === id ? { ...x, content: prev } : x)));
+        }
+        flagError();
+      }
+    }
   };
 
   const sorted = [...facts].sort(
@@ -173,6 +207,11 @@ function TheIndex() {
             Everything Knole remembers about you, in your own words. Edit anything. Pin what
             matters. Forget what doesn't.
           </p>
+          {mutError && (
+            <p aria-live="polite" className="mt-3 text-[12px] text-destructive">
+              Couldn't save that change — it's been undone. Check your connection and try again.
+            </p>
+          )}
 
           <div className="mt-8 flex w-fit items-center gap-1 rounded-full border border-rule p-1">
             {(["you", "knole"] as const).map((k) => (
