@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, hkdfSync } from "node:crypto";
 import { sql, eq, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
@@ -161,11 +161,16 @@ export async function extractMemories(userId: string, entryId: string, entryText
 }
 
 // ── 0G Storage: encrypt + store each entry under a per-user key ──
-// Per-user AES key derived deterministically (testnet demo; production = HKDF + KMS).
+// Per-user AES-256 key via HKDF from a dedicated master secret (production = hold the secret in a KMS).
 export function keyForUser(userId: string): Uint8Array {
-  const pk = process.env.EVM_PRIVATE_KEY;
-  if (!pk) throw new Error("EVM_PRIVATE_KEY is required to derive the per-user encryption key");
-  return new Uint8Array(createHash("sha256").update(`${pk}:${userId}`).digest());
+  const secret = process.env.KNOLE_KDF_SECRET;
+  if (!secret)
+    throw new Error("KNOLE_KDF_SECRET is required to derive the per-user encryption key");
+  // HKDF-SHA256 with a dedicated master secret (NOT the chain signing key);
+  // per-user domain separation via the info parameter.
+  return new Uint8Array(
+    hkdfSync("sha256", secret, "knole-hkdf-salt-v1", `entry-key:${userId}`, 32),
+  );
 }
 
 export async function storeEntryOn0G(
