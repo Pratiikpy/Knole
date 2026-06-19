@@ -15,6 +15,7 @@ import {
 import { embed } from "./embed";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
+import { buildMirror } from "./mirror";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -94,3 +95,8 @@ export const chatFn = createServerFn({ method: "POST" })
     );
     return { reply };
   });
+
+export const mirrorFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getDemoUserId();
+  return buildMirror(userId);
+});
