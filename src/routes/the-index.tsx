@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { isAuthRequired } from "@/lib/authError";
 import {
   listMemoriesFn,
   setMemoryStatusFn,
@@ -109,10 +110,14 @@ function TheIndex() {
 
   const [tab, setTab] = useState<"you" | "knole">("you");
   const [facts, setFacts] = useState<Memory[]>(initial);
-  const [mutError, setMutError] = useState(false);
-  const flagError = () => {
-    setMutError(true);
-    window.setTimeout(() => setMutError(false), 3500);
+  const [mutMsg, setMutMsg] = useState("");
+  const flagError = (e?: unknown) => {
+    setMutMsg(
+      isAuthRequired(e)
+        ? "Sign in to change your memories — you're viewing the demo."
+        : "Couldn't save that change — it's been undone. Check your connection and try again.",
+    );
+    window.setTimeout(() => setMutMsg(""), 4000);
   };
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -144,9 +149,9 @@ function TheIndex() {
     setFacts((f) => f.map((x) => (x.id === m.id ? { ...x, status } : x)));
     try {
       await doStatus({ data: { id: m.id, status } });
-    } catch {
+    } catch (e) {
       setFacts((f) => f.map((x) => (x.id === m.id ? { ...x, status: prev } : x)));
-      flagError();
+      flagError(e);
     }
   };
   const forget = async (id: string) => {
@@ -155,7 +160,7 @@ function TheIndex() {
     setFacts((f) => f.filter((x) => x.id !== id));
     try {
       await doStatus({ data: { id, status: "forgotten" } });
-    } catch {
+    } catch (e) {
       if (removed) {
         setFacts((f) => {
           const copy = [...f];
@@ -163,7 +168,7 @@ function TheIndex() {
           return copy;
         });
       }
-      flagError();
+      flagError(e);
     }
   };
   const startEdit = (m: Memory) => {
@@ -180,11 +185,11 @@ function TheIndex() {
     if (content) {
       try {
         await doEdit({ data: { id, content } });
-      } catch {
+      } catch (e) {
         if (prev !== undefined) {
           setFacts((arr) => arr.map((x) => (x.id === id ? { ...x, content: prev } : x)));
         }
-        flagError();
+        flagError(e);
       }
     }
   };
@@ -207,9 +212,9 @@ function TheIndex() {
             Everything Knole remembers about you, in your own words. Edit anything. Pin what
             matters. Forget what doesn't.
           </p>
-          {mutError && (
+          {mutMsg && (
             <p aria-live="polite" className="mt-3 text-[12px] text-destructive">
-              Couldn't save that change — it's been undone. Check your connection and try again.
+              {mutMsg}
             </p>
           )}
 

@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { isAuthRequired } from "@/lib/authError";
 import {
   ownershipFn,
   verifyOnChainFn,
@@ -72,7 +73,9 @@ function SettingsPage() {
   const [importResult, setImportResult] = useState<string | null>(null);
   const doExport = useServerFn(exportFn);
   const [exporting, setExporting] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "auth" | "error">(
+    "idle",
+  );
 
   const persist = (data: Parameters<typeof doUpdate>[0]["data"]) => {
     setSaveStatus("saving");
@@ -81,7 +84,7 @@ function SettingsPage() {
         setSaveStatus("saved");
         window.setTimeout(() => setSaveStatus("idle"), 1800);
       })
-      .catch(() => setSaveStatus("error"));
+      .catch((e) => setSaveStatus(isAuthRequired(e) ? "auth" : "error"));
   };
   const onFreq = (v: number) => {
     setFreq(v);
@@ -229,6 +232,7 @@ function SettingsPage() {
           >
             {saveStatus === "saving" && "Saving…"}
             {saveStatus === "saved" && "Saved ✓"}
+            {saveStatus === "auth" && "Sign in to change settings — you're viewing the demo."}
             {saveStatus === "error" && "Couldn't save — check your connection and try again."}
           </p>
 

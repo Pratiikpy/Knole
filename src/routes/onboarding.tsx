@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { onboardFn } from "@/server/fns";
+import { isAuthRequired } from "@/lib/authError";
 import { useState } from "react";
 
 export const Route = createFileRoute("/onboarding")({
@@ -48,9 +49,11 @@ function Onboarding() {
         },
       });
       setReflection(res.reflection);
-    } catch {
+    } catch (e) {
       setReflection(
-        "I'm here, and I've got this. Come back tomorrow and we'll pick up the thread.",
+        isAuthRequired(e)
+          ? "Sign in to start your own Knole — your words stay private to you."
+          : "I'm here, and I've got this. Come back tomorrow and we'll pick up the thread.",
       );
     } finally {
       setGenerating(false);
