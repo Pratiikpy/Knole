@@ -462,8 +462,13 @@ export async function runEvals(): Promise<EvalResult> {
     "Keep meaning to call my sister but the weeks slip past and the guilt quietly builds.",
     "Started reading poetry again at night; it slows my mind in a way work never does.",
   ];
+  // Seed across the past ~2 weeks so the 14-day arc has elapsed and the reveal unlocks.
+  let daysAgo = 16;
   for (const text of MIRROR_ENTRIES) {
-    await db.insert(entries).values({ userId: mUid, text, type: "journal" });
+    await db.execute(
+      sql`INSERT INTO entries (user_id, text, type, created_at) VALUES (${mUid}, ${text}, 'journal', now() - (${daysAgo} || ' days')::interval)`,
+    );
+    daysAgo -= 2;
   }
   const mirror = await buildMirror(mUid);
   // The mirror must be SPECIFIC to this user — grounded in their actual themes, not a generic
@@ -482,7 +487,18 @@ export async function runEvals(): Promise<EvalResult> {
         e.toLowerCase().includes(p.quote.replace(/…$/, "").toLowerCase().slice(0, 40)),
       ),
   );
-  const mirrorGrounded = mirror.ready && namesTopics && hasReceipt;
+  const revealedOk = mirror.phase === "revealed" && namesTopics && hasReceipt;
+  // Arc gating (the day-15 reveal): recent entries (before day-15) must stay in "building" — the
+  // reveal is withheld. Re-seed with fresh (now) entries and confirm the patterns are held back.
+  await db.delete(entries).where(eq(entries.userId, mUid));
+  await db.execute(sql`DELETE FROM reflection_artifacts WHERE user_id = ${mUid}`);
+  for (const text of MIRROR_ENTRIES) {
+    await db.insert(entries).values({ userId: mUid, text, type: "journal" });
+  }
+  const building = await buildMirror(mUid);
+  const arcGates =
+    building.phase === "building" && building.patterns.length === 0 && building.daysToReveal > 0;
+  const mirrorGrounded = revealedOk && arcGates;
   await db.execute(sql`DELETE FROM reflection_artifacts WHERE user_id = ${mUid}`);
   await db.delete(entries).where(eq(entries.userId, mUid));
   await db.delete(users).where(eq(users.id, mUid));

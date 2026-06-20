@@ -34,7 +34,7 @@ try {
   r.settings = !!(await getSettings(uid));
   const own = await ownershipSummary(uid);
   r.ownership = `${own.totalEntries}/${own.onChain}/${own.roots.length}`;
-  r.mirrorReady = (await buildMirror(uid)).ready; // false with <2 entries → screen shows empty state
+  r.mirrorReady = (await buildMirror(uid)).phase !== "empty"; // false with <2 entries → empty state
   r.resurfaceEntryNull = (await resurface(uid)).entry === null; // null → "nothing to bring back yet"
   r.nudgeReturned = (await generateNudge(uid, 12)) !== undefined;
 } catch (e) {

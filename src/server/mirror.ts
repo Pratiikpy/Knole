@@ -5,6 +5,11 @@ import { latestDream, type Dream } from "./dreaming";
 
 const { reflectionArtifacts } = schema;
 
+// The 14-Day Mirror arc (the flagship): write to Knole over ~14 days; on day 15 — i.e. once it's
+// been REVEAL_DAY days since the first entry — the reveal unlocks (3 proven patterns + a
+// contradiction + the avoided thing). Before that, the page shows the anticipation, no LLM call.
+const REVEAL_DAY = 14;
+
 const MIRROR_SYS = `You are Knole, writing a short, private "Pattern Mirror" for the user from their own recent journal entries and the things you remember about them. Honest, warm, specific — never flattering, never generic, never therapy-speak. Ground every line in what they actually wrote; if something isn't supported, leave it empty.
 
 The differentiator: you don't just name a pattern, you PROVE it from their own words. For each pattern, cite the ONE entry (by its [number]) that most clearly shows it.
@@ -22,30 +27,21 @@ Return ONLY a JSON object:
 Exactly 3 patterns, each citing a real entry number. Up to 5 themes, most prominent first. No prose outside the JSON.`;
 
 export type MirrorPattern = { text: string; quote: string; date: string };
+export type MirrorPhase = "empty" | "building" | "revealed";
 
 export type Mirror = {
-  ready: boolean;
+  phase: MirrorPhase;
+  daysSinceFirst: number;
+  daysToReveal: number; // 0 once revealed
+  dayCount: number;
+  entryCount: number;
   throughline: string;
   patterns: MirrorPattern[];
   contradiction: string;
   avoided: string;
   themes: { name: string; weight: number }[];
-  dayCount: number;
-  entryCount: number;
   dream: Dream | null;
 };
-
-const empty = (dayCount: number, entryCount: number, dream: Dream | null): Mirror => ({
-  ready: false,
-  throughline: "",
-  patterns: [],
-  contradiction: "",
-  avoided: "",
-  themes: [],
-  dayCount,
-  entryCount,
-  dream,
-});
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmtDate = (iso: string): string => {
@@ -70,8 +66,7 @@ async function cachedMirror(userId: string, entryCount: number): Promise<Composi
     `)) as unknown as Record<string, unknown>[];
     if (!rows[0]) return null;
     const src = rows[0].sources as { entryCount?: number; v?: number } | null;
-    // bump on schema change so old (loop-shaped) cache entries are ignored
-    if (Number(src?.v ?? 0) !== 2) return null;
+    if (Number(src?.v ?? 0) !== 2) return null; // bump on schema change → ignore old-shaped cache
     if (Number(src?.entryCount ?? -1) !== entryCount) return null; // entries changed → stale
     return rows[0].content as Composition;
   } catch {
@@ -89,12 +84,14 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     ORDER BY created_at DESC LIMIT 30
   `)) as unknown as Record<string, unknown>[];
   const stat = (await db.execute(sql`
-    SELECT count(DISTINCT date_trunc('day', created_at)) AS d, count(*) AS c
+    SELECT count(DISTINCT date_trunc('day', created_at)) AS d, count(*) AS c,
+           (now()::date - min(created_at)::date) AS since
     FROM entries WHERE user_id = ${userId}
   `)) as unknown as Record<string, unknown>[];
 
   const dayCount = Number(stat[0]?.d ?? 0);
   const entryCount = Number(stat[0]?.c ?? 0);
+  const daysSinceFirst = Math.max(0, Number(stat[0]?.since ?? 0));
   const dream = await latestDream(userId);
 
   // dedupe near-identical entries (same text journaled more than once), keeping the date for receipts
@@ -108,10 +105,35 @@ export async function buildMirror(userId: string): Promise<Mirror> {
       return true;
     });
 
-  if (entries.length < 2) return empty(dayCount, entryCount, dream);
+  const base = (phase: MirrorPhase): Mirror => ({
+    phase,
+    daysSinceFirst,
+    daysToReveal: Math.max(0, REVEAL_DAY - daysSinceFirst),
+    dayCount,
+    entryCount,
+    throughline: "",
+    patterns: [],
+    contradiction: "",
+    avoided: "",
+    themes: [],
+    dream,
+  });
+  const reveal = (c: Composition): Mirror => ({
+    phase: "revealed",
+    daysSinceFirst,
+    daysToReveal: 0,
+    dayCount,
+    entryCount,
+    ...c,
+    dream,
+  });
+
+  if (entries.length < 2) return base("empty");
+  // The arc: hold the reveal until the user has been writing for ~2 weeks (the day-15 payoff).
+  if (daysSinceFirst < REVEAL_DAY) return base("building");
 
   const cached = await cachedMirror(userId, entryCount);
-  if (cached) return { ready: true, ...cached, dayCount, entryCount, dream };
+  if (cached) return reveal(cached);
 
   const memories = memRows.map((r) => `(${String(r.type)}) ${String(r.content)}`);
   const context = `RECENT ENTRIES:\n${entries
@@ -127,17 +149,13 @@ export async function buildMirror(userId: string): Promise<Mirror> {
   ).catch(() => null);
   // LLM unavailable — still render the streak + dream with a gentle placeholder.
   if (!r) {
-    return {
-      ready: true,
+    return reveal({
       throughline: "Knole couldn't compose your mirror just now — try again in a moment.",
       patterns: [],
       contradiction: "",
       avoided: "",
       themes: [],
-      dayCount,
-      entryCount,
-      dream,
-    };
+    });
   }
 
   let parsed: Record<string, unknown> = {};
@@ -192,5 +210,5 @@ export async function buildMirror(userId: string): Promise<Mirror> {
   } catch {
     /* best-effort cache write */
   }
-  return { ready: true, ...composition, dayCount, entryCount, dream };
+  return reveal(composition);
 }

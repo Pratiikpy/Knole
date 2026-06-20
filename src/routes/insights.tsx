@@ -29,6 +29,23 @@ function Reveal({ label, text }: { label: string; text: string }) {
   );
 }
 
+function Streak({ dayCount, entryCount }: { dayCount: number; entryCount: number }) {
+  return (
+    <div className="mt-8 flex items-center gap-4 rounded-2xl border border-rule bg-card/50 p-5">
+      <div className="font-display text-[36px] italic leading-none text-tan">{dayCount}</div>
+      <div>
+        <div className="text-[13px] text-ink">
+          {dayCount === 1 ? "day" : "days"} of quiet writing
+        </div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          {entryCount} {entryCount === 1 ? "entry" : "entries"} · missed days don't count against
+          you
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InsightsPage() {
   const m = Route.useLoaderData();
   const maxWeight = Math.max(1, ...m.themes.map((t) => t.weight));
@@ -46,30 +63,42 @@ function InsightsPage() {
             see this.
           </p>
 
-          {!m.ready ? (
+          {m.phase === "empty" ? (
             <div className="mt-12 rounded-2xl border border-rule bg-card/50 p-8">
               <p className="font-display text-[20px] italic leading-snug text-muted-foreground">
                 Knole needs a few more entries before it can show you a pattern. Write on Today for
                 a few days, then come back — the mirror fills in from your own words.
               </p>
             </div>
+          ) : m.phase === "building" ? (
+            <>
+              <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
+
+              {/* The anticipation — the day-15 arc building toward the reveal */}
+              <div className="mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-7">
+                <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-tan">
+                  Your first Mirror
+                </div>
+                <p className="font-display text-[24px] italic leading-snug text-ink-soft">
+                  {m.daysToReveal === 1 ? "One more day." : `${m.daysToReveal} more days.`} On day
+                  15, Knole shows you a pattern about yourself that no ordinary journal could see —
+                  drawn from your own words, receipts and all.
+                </p>
+                <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-rule">
+                  <div
+                    className="h-full rounded-full bg-tan"
+                    style={{ width: `${Math.min(100, (m.daysSinceFirst / 14) * 100)}%` }}
+                  />
+                </div>
+                <div className="mt-2 text-[11px] text-muted-foreground">
+                  Day {m.daysSinceFirst} of 14 · keep writing on Today
+                </div>
+              </div>
+            </>
           ) : (
             <>
               {/* Streak — real */}
-              <div className="mt-8 flex items-center gap-4 rounded-2xl border border-rule bg-card/50 p-5">
-                <div className="font-display text-[36px] italic leading-none text-tan">
-                  {m.dayCount}
-                </div>
-                <div>
-                  <div className="text-[13px] text-ink">
-                    {m.dayCount === 1 ? "day" : "days"} of quiet writing
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {m.entryCount} {m.entryCount === 1 ? "entry" : "entries"} · missed days don't
-                    count against you
-                  </div>
-                </div>
-              </div>
+              <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
 
               {/* The throughline — the opening */}
               <div className="mt-8 rounded-2xl border border-rule bg-card/50 p-7">
