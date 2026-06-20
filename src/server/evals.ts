@@ -62,6 +62,7 @@ export type EvalResult = {
   userCorrectionWins: boolean;
   provenance: boolean;
   nudgeGrounded: boolean;
+  dataIsolation: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -337,6 +338,40 @@ export async function runEvals(): Promise<EvalResult> {
     return n.allowed && /marathon|running|\brun\b|race|train/i.test(n.nudge);
   });
 
+  // ── data-isolation (security): one user's query must never return another user's data,
+  // even on a perfect semantic match — the user_id boundary must hold or "your data is
+  // yours" is a lie. Seed a second user's secret, query it AS the eval user, expect nothing.
+  let [userB] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.privyId, "eval-isolation-b"))
+    .limit(1);
+  if (!userB)
+    [userB] = await db
+      .insert(users)
+      .values({ privyId: "eval-isolation-b", email: "iso@knole.local" })
+      .returning({ id: users.id });
+  await db.delete(memories).where(eq(memories.userId, userB.id));
+  await db.delete(entries).where(eq(entries.userId, userB.id));
+  const secret = "EVAL-ISOLATION: the user's private passphrase is XYLOPHONE-7742-EMBERLY.";
+  const secretV = await embed(secret);
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+    VALUES (${userB.id}, ${secret}, 'eval-iso-secret', 'fact', 'active', ${toVectorLiteral(secretV)}::vector, 0.7, 0.6)
+  `);
+  await db
+    .insert(entries)
+    .values({ userId: userB.id, text: secret, type: "journal", embedding: secretV });
+  // Query B's secret embedding AS the eval user — a perfect match, but the wrong owner.
+  const isoMems = await retrieveMemories(userId, secretV, 5, "private passphrase XYLOPHONE");
+  const isoEntries = await retrieveEntries(userId, secretV, 5);
+  const dataIsolation =
+    !isoMems.some((m) => m.content.includes("XYLOPHONE")) &&
+    !isoEntries.some((e) => e.text.includes("XYLOPHONE"));
+  await db.delete(memories).where(eq(memories.userId, userB.id));
+  await db.delete(entries).where(eq(entries.userId, userB.id));
+  await db.delete(users).where(eq(users.id, userB.id));
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -353,6 +388,7 @@ export async function runEvals(): Promise<EvalResult> {
     userCorrectionWins,
     provenance,
     nudgeGrounded,
+    dataIsolation,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -436,6 +472,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: nudgeGrounded ? 1 : 0,
       details: {},
     },
+    {
+      suite: "data-isolation",
+      passed: gates.dataIsolation,
+      score: dataIsolation ? 1 : 0,
+      details: {},
+    },
   ]);
 
   return {
@@ -453,6 +495,7 @@ export async function runEvals(): Promise<EvalResult> {
     userCorrectionWins,
     provenance,
     nudgeGrounded,
+    dataIsolation,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
