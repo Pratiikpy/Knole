@@ -166,6 +166,36 @@ Verified by driving both write flows on a local gated demo (sign-in line shows, 
 1×401 each) and the ungated write still streams (journal spec 1/1). The fix is comprehensive, not a
 spot patch.
 
+---
+
+## 2026-06-21 — Cross-page Lighthouse audit (a11y + best-practices)
+
+Previously only the landing was Lighthouse'd. Audited the interior pages too:
+
+| Page         | a11y  | best-practices | SEO |
+| ------------ | ----- | -------------- | --- |
+| / (landing)  | 100   | 100            | 100 |
+| `/the-index` | 100\* | 100            | 63  |
+| `/ask`       | 100   | 100            | 63  |
+| `/insights`  | 100   | 100            | 63  |
+| `/settings`  | 100   | 77†            | 63  |
+
+\* `/the-index` a11y was **95** — the "still forming" marker (`text-muted-foreground/70`, 2.82:1) failed
+WCAG AA; fixed to `italic text-muted-foreground` (5.10:1). Now 100.
+
+**SEO 63 on app routes** is the deliberate `robots.txt` noindex (app surfaces are private, not crawled) —
+correct, not a finding.
+
+† **`/settings` best-practices 77** is upstream + isolated: `third-party-cookies` + `inspector-issues`
+both come from `auth.privy.io` (Cloudflare's `__cf_bm` / `_cfuvid` bot-management cookies set by the
+Privy auth SDK). Privy is already code-split to `/settings` only, so no other page is affected — it's the
+cost of a managed auth provider, not Knole's code (CLS there is 0.045, excellent). A lazy-init-Privy
+refactor could suppress it but risks the login flow, which can't be verified without Privy creds —
+deferred, documented.
+
+Low-opacity **placeholders** (`text-muted-foreground/60`) across the inputs are **not** flagged (live
+`/ask` a11y 100) — axe treats placeholder text as incidental; only informational text must meet AA.
+
 ### Not yet covered — queued for the next passes
 
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
