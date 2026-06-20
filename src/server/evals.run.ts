@@ -16,5 +16,6 @@ console.log(`forgetting   : ${r.forgetting ? "ok" : "FAIL"}`);
 console.log(`pinned-surv. : ${r.pinnedSurvival ? "ok" : "FAIL"}`);
 console.log(`user-corr.win: ${r.userCorrectionWins ? "ok" : "FAIL"}`);
 console.log(`provenance   : ${r.provenance ? "ok" : "FAIL"}`);
+console.log(`nudge-ground : ${r.nudgeGrounded ? "ok" : "FAIL"}`);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);

@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
-import { extractMemories, retrieveEntries, retrieveMemories } from "./engine";
+import { extractMemories, retrieveEntries, retrieveMemories, updateSettings } from "./engine";
 import { reflect } from "./reflect";
+import { generateNudge } from "./proactivity";
 import { chat } from "./llm";
 
 const { users, entries, memories, memoryHistory, evalRuns } = schema;
@@ -60,6 +61,7 @@ export type EvalResult = {
   pinnedSurvival: boolean;
   userCorrectionWins: boolean;
   provenance: boolean;
+  nudgeGrounded: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -314,6 +316,27 @@ export async function runEvals(): Promise<EvalResult> {
   );
   const forgetting = forgetBefore && !forgetAfter;
 
+  // ── nudge-grounding (M5): a proactive nudge references a real remembered fact, never an
+  // invented one. Seed a distinctive commitment, make proactivity allowed, then check the
+  // generated nudge actually talks about it. LLM-generated, so retry (clearing the per-day
+  // nudge cache each attempt so a fresh one is produced).
+  await db.execute(sql`DELETE FROM reflection_artifacts WHERE user_id = ${userId}`);
+  await db.delete(memories).where(eq(memories.userId, userId));
+  await updateSettings(userId, { freqDial: 3 });
+  const nudgeFact = "EVAL-NUDGE: the user committed to running their first marathon this fall.";
+  const nudgeV = await embed(nudgeFact);
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+    VALUES (${userId}, ${nudgeFact}, 'eval-nudge-fact', 'commitment', 'active', ${toVectorLiteral(nudgeV)}::vector, 0.7, 0.6)
+  `);
+  const nudgeGrounded = await retryUntil(async () => {
+    await db.execute(
+      sql`DELETE FROM reflection_artifacts WHERE user_id = ${userId} AND thread_key = 'nudge'`,
+    );
+    const n = await generateNudge(userId, 12);
+    return n.allowed && /marathon|running|\brun\b|race|train/i.test(n.nudge);
+  });
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -329,6 +352,7 @@ export async function runEvals(): Promise<EvalResult> {
     pinnedSurvival,
     userCorrectionWins,
     provenance,
+    nudgeGrounded,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -406,6 +430,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: provenance ? 1 : 0,
       details: { count: extracted.length, withQuote },
     },
+    {
+      suite: "nudge-grounding",
+      passed: gates.nudgeGrounded,
+      score: nudgeGrounded ? 1 : 0,
+      details: {},
+    },
   ]);
 
   return {
@@ -422,6 +452,7 @@ export async function runEvals(): Promise<EvalResult> {
     pinnedSurvival,
     userCorrectionWins,
     provenance,
+    nudgeGrounded,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
