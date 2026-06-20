@@ -2,7 +2,7 @@ import { userIdFromExtensionToken } from "./extensionAuth";
 import { saveEntry, extractMemories } from "./engine";
 import { embed } from "./embed";
 import { background } from "./background";
-import { allow } from "./rateLimit";
+import { allow, allowByIp } from "./rateLimit";
 
 export type ExtSaveResult =
   | { ok: true; entryId: string }
@@ -17,6 +17,11 @@ export async function handleExtensionSave(
   token: string | null | undefined,
   body: { highlight?: string; source?: string; thought?: string },
 ): Promise<ExtSaveResult> {
+  // Bound unauthenticated probing first: this endpoint has open CORS and an invalid token returns
+  // before the per-user limit, so without an IP-scoped pre-check an attacker could hammer it freely.
+  if (!allowByIp("ext-save-ip", 60, 60_000)) {
+    return { ok: false, status: 429, error: "too many requests — slow down" };
+  }
   const userId = await userIdFromExtensionToken(token);
   if (!userId) return { ok: false, status: 401, error: "invalid or missing token" };
 

@@ -24,6 +24,7 @@
     "test:billing": "tsx src/server/billing.run.ts",
     "test:e2e": "playwright test",
     "test:e2e:clean": "tsx src/server/cleanup-e2e.run.ts",
+    "test:ext-rate": "tsx src/server/ext-save-rate.run.ts",
     "backfill:0g": "tsx src/server/backfill.run.ts",
     "anchor:run": "tsx src/server/anchor.run.ts",
     "dream": "tsx src/server/dreaming.run.ts",

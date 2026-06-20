@@ -98,6 +98,18 @@ throwaway user, write an entry → Reflect → a real reflection streams into th
 Driving it also validated the secure-by-default guard — without `KNOLE_REQUIRE_AUTH=off` the anonymous
 write is rejected with an honest "Sign in to start your own Knole" message, not a crash.
 
+---
+
+## 2026-06-21 — Lighthouse + ext/save hardening
+
+**Lighthouse (live landing, desktop):** Accessibility **100** · Best Practices **100** · SEO **100**
+(Agentic 99). 41/42 audits pass; the one sub-1.0 is CLS at **0.98** — well inside the <0.1 budget. The
+landing meets the production-grade launch bars (≥90 across the board), measured not asserted.
+
+**Security:** the open-CORS `/ext/save` endpoint is now IP-rate-limited **before** the token lookup, so
+unauthenticated probing is bounded — proven by `npm run test:ext-rate` (60 invalid-token probes → 401,
+then the IP limit → 429).
+
 ### Not yet covered — queued for the next passes
 
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.

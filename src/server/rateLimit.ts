@@ -35,3 +35,8 @@ export function enforceRate(scope: string, limit: number, windowMs: number): voi
     throw new Error("You're moving fast — give Knole a moment and try again.");
   }
 }
+
+/** Non-throwing IP-scoped allow check — for handlers that return a 429 rather than throw. */
+export function allowByIp(scope: string, limit: number, windowMs: number): boolean {
+  return allow(clientKey(scope), limit, windowMs);
+}
