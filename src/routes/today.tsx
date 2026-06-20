@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { nudgeFn } from "@/server/fns";
+import { nudgeFn, whoamiFn } from "@/server/fns";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/today")({
@@ -30,6 +30,19 @@ const reflectingMsgs = [
 
 function TodayPage() {
   const getNudge = useServerFn(nudgeFn);
+  // A demo guest can't journal (writes are auth-gated). Learn that up front so Reflect shows the
+  // sign-in line directly instead of firing a doomed request that 401s into the console.
+  const whoami = useServerFn(whoamiFn);
+  const [demoGated, setDemoGated] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    whoami()
+      .then((r) => alive && setDemoGated(!!r.isDemo && !!r.gated))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [whoami]);
   const [nudge, setNudge] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [prompt, setPrompt] = useState(prompts[1]);
@@ -58,6 +71,15 @@ function TodayPage() {
     setReflection("");
     setRecalled([]);
     setReflected(false);
+    // Known demo guest: show the sign-in line directly — no doomed fetch, no 401 in the console.
+    if (demoGated) {
+      setReflection(
+        "Sign in to start your own Knole — your words stay private to you. Use “Sign in” above.",
+      );
+      setReflected(true);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/journal/stream", {
         method: "POST",
