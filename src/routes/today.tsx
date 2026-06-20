@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { journalFn, nudgeFn } from "@/server/fns";
-import { isAuthRequired } from "@/lib/authError";
+import { nudgeFn } from "@/server/fns";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/today")({
@@ -33,7 +32,6 @@ const sampleEntry =
   "I'm thinking about the garden project again. It's been months since I actually sat out there and just enjoyed the silence. I feel like I've been running on a treadmill of minor tasks. Maybe the soil is ready now.";
 
 function TodayPage() {
-  const doReflect = useServerFn(journalFn);
   const getNudge = useServerFn(nudgeFn);
   const [nudge, setNudge] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
@@ -58,17 +56,51 @@ function TodayPage() {
   async function handleReflect() {
     if (!entry.trim()) return;
     setLoading(true);
+    setReflection("");
+    setRecalled([]);
+    setReflected(false);
     try {
-      const res = await doReflect({ data: { entry } });
-      setReflection(res.reflection);
-      setRecalled(res.recalled ?? []);
+      const res = await fetch("/api/journal/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ entry }),
+      });
+      if (!res.ok || !res.body) {
+        setReflection(
+          res.status === 401
+            ? "Sign in to start your own Knole — your words stay private to you. Use “Sign in” above."
+            : "Something interrupted the reflection — try again in a moment.",
+        );
+        setReflected(true);
+        return;
+      }
+      // Recalled memories ride in a header so the body stays pure reflection text.
+      const rh = res.headers.get("x-knole-recalled");
+      if (rh) {
+        try {
+          setRecalled(JSON.parse(decodeURIComponent(rh)));
+        } catch {
+          /* ignore a malformed header */
+        }
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      let first = true;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        // Swap from the "thinking" line to the reflection view on the first real token.
+        if (first && acc.trim()) {
+          setReflected(true);
+          first = false;
+        }
+        setReflection(acc);
+      }
       setReflected(true);
-    } catch (e) {
-      setReflection(
-        isAuthRequired(e)
-          ? "Sign in to start your own Knole — your words stay private to you. Use “Sign in” above."
-          : "Something interrupted the reflection — try again in a moment.",
-      );
+    } catch {
+      setReflection("Something interrupted the reflection — try again in a moment.");
       setReflected(true);
     } finally {
       setLoading(false);
@@ -199,6 +231,9 @@ function TodayPage() {
                 )}
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
                   {reflection}
+                  {loading && (
+                    <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-breathe bg-tan align-middle" />
+                  )}
                 </p>
               </div>
             )}
