@@ -21,16 +21,19 @@ const VALID_TYPES = new Set([
 let demoUserIdP: Promise<string> | null = null;
 export function getDemoUserId(): Promise<string> {
   if (!demoUserIdP) {
+    // The read-only showcase user. Configurable (defaults to "demo") so local write-flow
+    // testing can point at a throwaway user instead of mutating the real demo.
+    const privyId = process.env.DEMO_PRIVY_ID ?? "demo";
     demoUserIdP = (async () => {
       const found = await db
         .select({ id: users.id })
         .from(users)
-        .where(eq(users.privyId, "demo"))
+        .where(eq(users.privyId, privyId))
         .limit(1);
       if (found[0]) return found[0].id;
       const ins = await db
         .insert(users)
-        .values({ privyId: "demo", email: "demo@knole.local" })
+        .values({ privyId, email: `${privyId}@knole.local` })
         .returning({ id: users.id });
       return ins[0].id;
     })();
