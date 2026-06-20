@@ -5,6 +5,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleExtensionSave } from "./server/extensionSave";
 import { handleJournalStream } from "./server/journalStream";
 import { handleChatStream } from "./server/chatStream";
+import { handleAskStream } from "./server/askStream";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
 // (framing), and full-URL referrer leakage; deny unused device permissions. The CSP is
@@ -93,7 +94,9 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
       ? handleJournalStream
       : path === "/chat/stream"
         ? handleChatStream
-        : null;
+        : path === "/ask/stream"
+          ? handleAskStream
+          : null;
   if (!handler) return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
   return handler(request);

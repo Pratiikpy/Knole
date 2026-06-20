@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { askFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/ask")({
@@ -33,7 +31,6 @@ type AskResult = {
 };
 
 function AskPage() {
-  const doAsk = useServerFn(askFn);
   const [q, setQ] = useState("");
   const [asked, setAsked] = useState<string | null>(null);
   const [result, setResult] = useState<AskResult | null>(null);
@@ -45,15 +42,52 @@ function AskPage() {
     setQ(text);
     setLoading(true);
     setResult(null);
-    try {
-      const res = await doAsk({ data: { question: text } });
-      setResult(res);
-    } catch {
+    const fail = () =>
       setResult({
         summary: "Something interrupted the search — try again in a moment.",
         receipts: [],
         privacy: { sealed: false, anonymised: false },
       });
+    try {
+      const res = await fetch("/ask/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: text }),
+      });
+      if (!res.ok || !res.body) {
+        fail();
+        return;
+      }
+      const parse = <T,>(h: string | null, fallback: T): T => {
+        if (!h) return fallback;
+        try {
+          return JSON.parse(decodeURIComponent(h)) as T;
+        } catch {
+          return fallback;
+        }
+      };
+      // Receipts (the user's own quoted words) + the privacy flag ride in headers.
+      const receipts = parse<Receipt[]>(res.headers.get("x-knole-receipts"), []);
+      const privacy = parse(res.headers.get("x-knole-privacy"), {
+        sealed: false,
+        anonymised: false,
+      });
+      setResult({ summary: "", receipts, privacy });
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        setResult((r) => ({
+          summary: acc,
+          receipts: r?.receipts ?? receipts,
+          privacy: r?.privacy ?? privacy,
+        }));
+      }
+    } catch {
+      fail();
     } finally {
       setLoading(false);
     }
@@ -122,22 +156,25 @@ function AskPage() {
             </div>
           )}
 
-          {asked && loading && (
+          {asked && loading && !result?.summary && (
             <p className="animate-fade-up mt-12 font-display text-[20px] italic text-muted-foreground">
               Reading back through your own words…
             </p>
           )}
 
-          {asked && result && !loading && (
+          {asked && result && result.summary && (
             <div className="animate-fade-up mt-12">
               <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-tan">
                 The throughline
               </div>
               <p className="whitespace-pre-line font-display text-[22px] italic leading-snug text-ink-soft">
                 {result.summary}
+                {loading && (
+                  <span className="ml-0.5 inline-block h-5 w-px translate-y-1 animate-breathe bg-tan align-middle" />
+                )}
               </p>
 
-              {result.receipts.length > 0 && (
+              {!loading && result.receipts.length > 0 && (
                 <div className="mt-10">
                   <div className="mb-4 flex items-center gap-3">
                     <div className="h-px flex-1 bg-rule" />
@@ -163,7 +200,7 @@ function AskPage() {
                 </div>
               )}
 
-              {(result.privacy.sealed || result.privacy.anonymised) && (
+              {!loading && (result.privacy.sealed || result.privacy.anonymised) && (
                 <div className="mt-10 flex items-start gap-2 border-t border-rule pt-5 text-[11px] leading-relaxed text-muted-foreground">
                   <svg
                     viewBox="0 0 24 24"
