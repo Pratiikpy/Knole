@@ -1,10 +1,18 @@
-# Knole
+<div align="center">
 
-A private AI that actually understands you — a journal and thinking partner that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, and the reflections that read them are designed to run in a TEE so _even we can't read them_.
+<img src="public/og.png" alt="Knole — a private AI that actually understands you" width="680" />
 
-Knole is a mirror, not an assistant. You write; it reflects, remembers, and — only as much as you allow — reaches back.
+<p><em>A mirror, not an assistant. You write; it reflects, remembers, and — only as much as you allow — reaches back.</em></p>
 
-> **Live demo:** [knole-app.vercel.app](https://knole-app.vercel.app) — explore the seeded demo (read-only); sign in to start your own.
+[![Live demo](https://img.shields.io/badge/Live_demo-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole-app.vercel.app)
+
+<sub>explore the seeded demo · or sign in to start your own</sub>
+
+![Evals](https://img.shields.io/badge/evals-21%2F21%20passing-2ea043?style=flat-square) ![0G](https://img.shields.io/badge/0G-Galileo%20testnet-7c6f5b?style=flat-square) ![Encryption](https://img.shields.io/badge/at%20rest-AES--256--GCM-7c6f5b?style=flat-square) ![React](https://img.shields.io/badge/React-19-7c6f5b?style=flat-square) ![TanStack Start](https://img.shields.io/badge/TanStack-Start-7c6f5b?style=flat-square) ![Postgres](https://img.shields.io/badge/Postgres-pgvector-7c6f5b?style=flat-square)
+
+</div>
+
+A private AI that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, and the reflections that read them are designed to run in a TEE so _even we can't read them_.
 
 ---
 
@@ -13,7 +21,7 @@ Knole is a mirror, not an assistant. You write; it reflects, remembers, and — 
 - **Today** — a daily journaling loop. Write an entry, get a real reflection that quietly weaves in something you said before, then it tells you to go live the answer.
 - **Chat** — think out loud with Knole; it holds the conversation and your history.
 - **Ask My Life** — ask a question about your own past; it answers grounded in your entries and quotes you back to yourself (RAG, with receipts).
-- **Pattern Mirror** — a private letter from yourself: the throughline, the loop you're in, the contradiction, the thing you're circling, and your recurring themes — synthesized from your own words.
+- **The Mirror** _(the flagship)_ — a private letter from yourself. For your first two weeks it quietly builds — you see only a streak and a countdown; then on **day 14 it reveals**: patterns that each quote a real entry of yours by date, the contradiction you live in, the thing you keep avoiding, and an "only you can read this" card. Pure synthesis of your own words — no advice, no judgement.
 - **The Index** — every memory Knole holds, with its source quote and a `⬡ 0G` badge when it's anchored on-chain. Pin, edit, or forget any of it; every change is logged append-only.
 - **Remembered** — Knole resurfaces an earlier entry "at the moment it matters," and you can answer your past self.
 - **Save** — capture a highlight or thought from anywhere; it becomes "just another memory," same engine, same encryption.
@@ -28,7 +36,7 @@ Every entry flows through one pipeline:
 3. **Reconcile**: a content-hash `UPSERT` reinforces exact duplicates, then an LLM judge resolves each near-match three ways (mem0-style) — reinforce a reworded duplicate (no copy stored), supersede a contradicting memory (bi-temporal — kept with `invalid_at`/`invalidated_by`, never deleted), or keep a genuinely independent fact — so memory stays clean and current.
 4. **Retrieve** with **RRF hybrid** search — pgvector cosine fused with lexical full-text — and each surfaced memory earns importance by being recalled (`recall_count` / `importance`).
 
-Reflections, chat, Ask My Life, the Pattern Mirror, and the proactive nudge all draw on this engine. A `npm run evals` gate measures it across four suites — retrieval (precision@1 + recall@3), extraction-coverage, dedup-correctness, and reflection-groundedness (no invented facts) — on a seeded fixture user, scored into the `eval_runs` table.
+Reflections, chat, Ask My Life, the Mirror, and the proactive nudge all draw on this engine. A `npm run evals` gate measures it across **21 suites** — retrieval (precision@1 + recall@3), extraction coverage, dedup correctness, reflection groundedness (no invented facts), contradiction/supersede, pinned-survival, user-correction-wins, provenance, forgetting, confidence-calibration (a stated fact must outrank a tentative inference), privacy-leak (0 PII to the model), creepiness, AES-256-GCM crypto, and first-aha (<90s), among others — on seeded fixture users, scored into the `eval_runs` table. Every suite must be green for the gate to pass.
 
 ## You own it — on 0G
 
@@ -121,7 +129,7 @@ src/
 
 ## Status
 
-Phase 1 (testnet) — the full experience runs on the real engine and 0G, with consent-respecting proactivity, the overnight "Dreaming" consolidation on a scheduler (`npm run worker`), authenticated at-rest encryption (AES-256-GCM + HKDF keys), and a four-suite eval gate. Authentication (Privy embedded wallet), a hosted cron for the worker, and mainnet hardening (KMS-held KDF secret, key rotation) are the next milestones.
+Phase 1 (testnet) — the full experience runs on the real engine and 0G: Privy auth with per-user encryption and multi-user isolation, streaming reflections, the memory engine, Ask My Life, the 14-Day Mirror, consent-respecting proactivity, the overnight "Dreaming" consolidation (`npm run worker`), refugee import, the Chrome extension, authenticated at-rest encryption (AES-256-GCM + HKDF keys), and a 21-suite eval gate. What's left: subscription billing (Stripe + 0G Pay), a hosted cron for the Dreaming worker, and the Phase-2 hardening pass — KDF secret → KMS/enclave, key rotation, and a security audit — before the 0G Aristotle mainnet flip, where Sealed Inference moves into the TEE.
 
 ---
 
