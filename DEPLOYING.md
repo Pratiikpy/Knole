@@ -27,6 +27,12 @@ Copy `.env.example` → `.env` and fill it in. Required at runtime:
 | `PRIVY_APP_SECRET`  | Privy server secret (token verification).                                                                      |
 | `VITE_SITE_URL`     | Your deployed origin (e.g. `https://knole.app`) — makes social-share tags absolute.                            |
 
+> **Build-time, not just runtime:** the `VITE_`-prefixed vars (`VITE_PRIVY_APP_ID`, `VITE_SITE_URL`)
+> are compiled into the client bundle at **build** time. Set them in the project **before** the build
+> — `vercel --prod` rebuilds, so add them to the Vercel env first. If `VITE_SITE_URL` is missing at
+> build, social-share tags fall back to relative URLs (`/og.png`, `/`) that crawlers can't resolve,
+> which breaks link previews on Twitter / Facebook / LinkedIn / Slack.
+
 Optional: `SESSION_SECRET` (separate session seal; falls back to `KNOLE_KDF_SECRET`),
 `KNOLE_REQUIRE_AUTH` (`on` for a **public** deploy — writes then require a real session, so
 anonymous visitors get the seeded demo read-only instead of being able to modify it),
