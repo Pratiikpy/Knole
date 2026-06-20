@@ -1,12 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "vite build",
+  "buildCommand": "vite build && npm run build:worker",
   "outputDirectory": "dist/client",
   "functions": {
     "api/server.mjs": {
       "includeFiles": "dist/server/**",
       "maxDuration": 60
+    },
+    "api/cron/dream.ts": {
+      "includeFiles": "dist/worker/**",
+      "maxDuration": 60
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/server" }]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/api/server" }],
+  "crons": [{ "path": "/api/cron/dream", "schedule": "0 7 * * *" }]
 }

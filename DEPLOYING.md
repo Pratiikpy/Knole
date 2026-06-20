@@ -30,8 +30,9 @@ Copy `.env.example` → `.env` and fill it in. Required at runtime:
 Optional: `SESSION_SECRET` (separate session seal; falls back to `KNOLE_KDF_SECRET`),
 `KNOLE_REQUIRE_AUTH` (`on` for a **public** deploy — writes then require a real session, so
 anonymous visitors get the seeded demo read-only instead of being able to modify it),
-`OG_SEALED_INFERENCE` (`on` to route reflections through the 0G TEE), and the resilience
-tunables `LLM_TIMEOUT_MS` / `LLM_MAX_RETRIES` / `OG_TIMEOUT_MS` / `OG_UPLOAD_TIMEOUT_MS`.
+`OG_SEALED_INFERENCE` (`on` to route reflections through the 0G TEE), `CRON_SECRET` (the
+Bearer token the Vercel Cron sends to `/api/cron/dream` to run nightly Dreaming), and the
+resilience tunables `LLM_TIMEOUT_MS` / `LLM_MAX_RETRIES` / `OG_TIMEOUT_MS` / `OG_UPLOAD_TIMEOUT_MS`.
 
 ## 2. Database
 
@@ -75,9 +76,11 @@ npm run worker -- --once    # single tick — wire this to a scheduled job inste
 
 It is re-entrant (a slow tick can't overlap the next) and isolates per-user errors.
 
-> On a serverless host (Vercel), this long-lived process can't run — give it an always-on
-> host (Railway/Render/Fly), or wire a scheduled job (e.g. a Vercel Cron) to a protected
-> endpoint that runs one tick. Until then, that deploy generates no nightly dreams.
+> On a serverless host this long-lived process can't run. The live Vercel deploy instead
+> wires a **Vercel Cron** (`vercel.json`) to `/api/cron/dream` nightly, guarded by
+> `CRON_SECRET`; that endpoint runs one `tick()` from the worker — pre-bundled to
+> `dist/worker/index.mjs` by `npm run build:worker`, since serverless functions ship
+> unbundled. For an always-on host, run `npm run worker` directly instead.
 
 ## 5. Verify auth
 
