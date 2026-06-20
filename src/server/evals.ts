@@ -2,7 +2,15 @@ import { createHash } from "node:crypto";
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
-import { extractMemories, retrieveEntries, retrieveMemories, updateSettings } from "./engine";
+import {
+  extractMemories,
+  retrieveEntries,
+  retrieveMemories,
+  updateSettings,
+  setMemoryStatus,
+  updateMemoryContent,
+  getMemoryProvenance,
+} from "./engine";
 import { reflect } from "./reflect";
 import { generateNudge } from "./proactivity";
 import { chat } from "./llm";
@@ -355,19 +363,33 @@ export async function runEvals(): Promise<EvalResult> {
   await db.delete(entries).where(eq(entries.userId, userB.id));
   const secret = "EVAL-ISOLATION: the user's private passphrase is XYLOPHONE-7742-EMBERLY.";
   const secretV = await embed(secret);
-  await db.execute(sql`
+  const bMemRows = (await db.execute(sql`
     INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
     VALUES (${userB.id}, ${secret}, 'eval-iso-secret', 'fact', 'active', ${toVectorLiteral(secretV)}::vector, 0.7, 0.6)
-  `);
+    RETURNING id
+  `)) as unknown as Record<string, unknown>[];
+  const bMemId = String(bMemRows[0].id);
   await db
     .insert(entries)
     .values({ userId: userB.id, text: secret, type: "journal", embedding: secretV });
-  // Query B's secret embedding AS the eval user — a perfect match, but the wrong owner.
+  // (a) retrieval can't surface B's data for A, even on a perfect semantic match
   const isoMems = await retrieveMemories(userId, secretV, 5, "private passphrase XYLOPHONE");
   const isoEntries = await retrieveEntries(userId, secretV, 5);
-  const dataIsolation =
+  const noRetrievalLeak =
     !isoMems.some((m) => m.content.includes("XYLOPHONE")) &&
     !isoEntries.some((e) => e.text.includes("XYLOPHONE"));
+  // (b) IDOR: A can't read or mutate B's memory by id — every op scopes by user_id
+  await setMemoryStatus(userId, bMemId, "forgotten");
+  await updateMemoryContent(userId, bMemId, "HACKED");
+  const stolen = await getMemoryProvenance(userId, bMemId).catch(() => null);
+  const bAfter = (await db.execute(
+    sql`SELECT status, content FROM memories WHERE id = ${bMemId}`,
+  )) as unknown as Record<string, unknown>[];
+  const idorBlocked =
+    bAfter[0]?.status === "active" &&
+    String(bAfter[0]?.content).includes("XYLOPHONE") &&
+    !JSON.stringify(stolen ?? {}).includes("XYLOPHONE");
+  const dataIsolation = noRetrievalLeak && idorBlocked;
   await db.delete(memories).where(eq(memories.userId, userB.id));
   await db.delete(entries).where(eq(entries.userId, userB.id));
   await db.delete(users).where(eq(users.id, userB.id));
