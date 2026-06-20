@@ -2,6 +2,7 @@ import { userIdFromExtensionToken } from "./extensionAuth";
 import { saveEntry, extractMemories } from "./engine";
 import { embed } from "./embed";
 import { background } from "./background";
+import { allow } from "./rateLimit";
 
 export type ExtSaveResult =
   | { ok: true; entryId: string }
@@ -18,6 +19,11 @@ export async function handleExtensionSave(
 ): Promise<ExtSaveResult> {
   const userId = await userIdFromExtensionToken(token);
   if (!userId) return { ok: false, status: 401, error: "invalid or missing token" };
+
+  // Bound the cost/abuse of this LLM-extracting endpoint, per user (in-memory window).
+  if (!allow(`ext-save:${userId}`, 30, 60_000)) {
+    return { ok: false, status: 429, error: "too many saves just now — give it a minute" };
+  }
 
   const highlight = (body.highlight ?? "").trim();
   if (!highlight) return { ok: false, status: 400, error: "highlight is required" };
