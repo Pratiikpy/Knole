@@ -28,15 +28,14 @@ const reflectingMsgs = [
   "Sitting with it…",
 ];
 
-const sampleEntry =
-  "I'm thinking about the garden project again. It's been months since I actually sat out there and just enjoyed the silence. I feel like I've been running on a treadmill of minor tasks. Maybe the soil is ready now.";
-
 function TodayPage() {
   const getNudge = useServerFn(nudgeFn);
   const [nudge, setNudge] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [prompt, setPrompt] = useState(prompts[1]);
-  const [entry, setEntry] = useState(sampleEntry);
+  // Start empty — the textarea shows its placeholder prompt, never pre-filled with someone else's
+  // words. A new user's journal must be theirs from the first keystroke.
+  const [entry, setEntry] = useState("");
   const [reflected, setReflected] = useState(false);
   const [reflection, setReflection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

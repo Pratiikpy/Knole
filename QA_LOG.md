@@ -110,6 +110,25 @@ landing meets the production-grade launch bars (≥90 across the board), measure
 unauthenticated probing is bounded — proven by `npm run test:ext-rate` (60 invalid-token probes → 401,
 then the IP limit → 429).
 
+---
+
+## 2026-06-21 — Empty-user states + two on-brand fixes
+
+Drove the key screens as a brand-new user (a throwaway `DEMO_PRIVY_ID`, zero entries). All honest,
+on-brand, console-clean:
+
+- `/the-index` → **"0 MEMORIES"** + _"Knole hasn't learned anything about you yet. Write a few entries on Today…"_
+- `/insights` → _"Knole needs a few more entries before it can show you a pattern…"_
+- `/remembered` → _"Nothing to bring back yet."_
+
+**Finding (fixed):** `/today` pre-filled the textarea with a hardcoded sample entry ("the garden
+project…") for _every_ user, shown as "39 WORDS" — a brand-new user saw not-their-words in their own
+private journal, undermining the "your own words" thesis. Now starts **empty** (placeholder only); the
+write-flow spec still passes.
+
+**Earlier finding (fixed):** the **404 / error surfaces** were a generic sans-serif default; rewrote
+them in Knole's serif/warm system (`e2e/notfound.spec.ts` gates it).
+
 ### Not yet covered — queued for the next passes
 
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
