@@ -13,6 +13,7 @@ import {
 } from "./engine";
 import { reflect } from "./reflect";
 import { generateNudge } from "./proactivity";
+import { buildMirror } from "./mirror";
 import { chat } from "./llm";
 
 const { users, entries, memories, memoryHistory, evalRuns } = schema;
@@ -71,6 +72,7 @@ export type EvalResult = {
   provenance: boolean;
   nudgeGrounded: boolean;
   dataIsolation: boolean;
+  mirrorGrounded: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -394,6 +396,43 @@ export async function runEvals(): Promise<EvalResult> {
   await db.delete(entries).where(eq(entries.userId, userB.id));
   await db.delete(users).where(eq(users.id, userB.id));
 
+  // ── mirror-grounding (M6 flagship): the Pattern Mirror must be specific to the user —
+  // grounded in their actual entries, not a generic letter. Compose one for a clean user
+  // with known entries and verify it names several of the things they actually wrote about.
+  let [mirrorU] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.privyId, "eval-mirror"))
+    .limit(1);
+  if (!mirrorU)
+    [mirrorU] = await db
+      .insert(users)
+      .values({ privyId: "eval-mirror", email: "m@knole.local" })
+      .returning({ id: users.id });
+  const mUid = mirrorU.id;
+  await db.execute(sql`DELETE FROM reflection_artifacts WHERE user_id = ${mUid}`);
+  await db.delete(entries).where(eq(entries.userId, mUid));
+  const MIRROR_ENTRIES = [
+    "I run along the river most mornings before anyone else is up.",
+    "Keep meaning to call my sister but the weeks slip past and the guilt quietly builds.",
+    "Started reading poetry again at night; it slows my mind in a way work never does.",
+  ];
+  for (const text of MIRROR_ENTRIES) {
+    await db.insert(entries).values({ userId: mUid, text, type: "journal" });
+  }
+  const mirror = await buildMirror(mUid);
+  // The mirror must be SPECIFIC to this user — grounded in their actual themes, not a generic
+  // letter. (A strict no-invented-facts LLM judge mis-flags an interpretive mirror's valid
+  // inferences, so check deterministically that it names several of the distinctive things
+  // they actually wrote about.)
+  const composed =
+    `${mirror.throughline} ${mirror.loop} ${mirror.contradiction} ${mirror.avoided}`.toLowerCase();
+  const topics = ["river", "run", "morning", "sister", "guilt", "poetry", "read", "night"];
+  const mirrorGrounded = mirror.ready && topics.filter((t) => composed.includes(t)).length >= 3;
+  await db.execute(sql`DELETE FROM reflection_artifacts WHERE user_id = ${mUid}`);
+  await db.delete(entries).where(eq(entries.userId, mUid));
+  await db.delete(users).where(eq(users.id, mUid));
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -411,6 +450,7 @@ export async function runEvals(): Promise<EvalResult> {
     provenance,
     nudgeGrounded,
     dataIsolation,
+    mirrorGrounded,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -500,6 +540,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: dataIsolation ? 1 : 0,
       details: {},
     },
+    {
+      suite: "mirror-groundedness",
+      passed: gates.mirrorGrounded,
+      score: mirrorGrounded ? 1 : 0,
+      details: {},
+    },
   ]);
 
   return {
@@ -518,6 +564,7 @@ export async function runEvals(): Promise<EvalResult> {
     provenance,
     nudgeGrounded,
     dataIsolation,
+    mirrorGrounded,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
