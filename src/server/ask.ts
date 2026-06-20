@@ -4,7 +4,7 @@ import { retrieveEntries, retrieveMemories } from "./engine";
 
 const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the journal excerpts and remembered facts provided below.
 - Ground every claim in what they actually wrote. Never invent events, dates, numbers, or feelings.
-- Write a short, honest "throughline" (2–4 sentences) — the real pattern across their words, in second person ("You…").
+- Answer in 2–4 complete, grammatical sentences — the real throughline across their words, in second person ("You…"). Be concise: finish every sentence, never ramble, pad, or trail off.
 - Be warm and clear, never flattering, never clinical.
 - If the provided material does not actually answer the question, say so plainly instead of guessing.
 Output plain prose only — no markdown, no lists, no headers.`;
@@ -58,7 +58,7 @@ export async function askMyLife(userId: string, question: string): Promise<AskRe
       { role: "system", content: ASK_SYS },
       { role: "user", content: `Question: ${question}\n\n${context}` },
     ],
-    { temperature: 0.6, maxTokens: 350 },
+    { temperature: 0.5, maxTokens: 220 },
   );
   const summary = r.content;
 
