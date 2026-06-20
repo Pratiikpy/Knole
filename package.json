@@ -22,6 +22,7 @@
     "test:multiuser": "tsx src/server/multiuser.run.ts",
     "test:stream": "tsx src/server/stream.run.ts",
     "test:billing": "tsx src/server/billing.run.ts",
+    "test:export": "tsx src/server/mindfile.run.ts",
     "test:e2e": "playwright test",
     "test:e2e:clean": "tsx src/server/cleanup-e2e.run.ts",
     "test:ext-rate": "tsx src/server/ext-save-rate.run.ts",
