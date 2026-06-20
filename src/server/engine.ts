@@ -177,7 +177,8 @@ export async function retrieveEntries(
 
 // ── extract durable memories from an entry (+ dedup) ─────
 const EXTRACT_SYS = `Extract durable, useful long-term memories about the user from their journal entry. Only keep things worth remembering across future sessions: facts, people, goals, recurring feelings or patterns, commitments, preferences, values. Ignore fleeting detail.
-Return a JSON array; each item: {"content": "<concise third-person fact about the user>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>"}.
+Write each memory in the second person, addressed to them — "You…" / "Your…" (e.g. "You're training for the Chicago marathon", "Your sister Mara is a steady support"). Never write "the user" or "they".
+Return a JSON array; each item: {"content": "<concise fact about them, in second person>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>"}.
 Return [] if nothing durable. Output ONLY the JSON array, no prose.`;
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
