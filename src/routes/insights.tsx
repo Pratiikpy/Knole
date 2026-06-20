@@ -71,7 +71,7 @@ function InsightsPage() {
                 </div>
               </div>
 
-              {/* The throughline */}
+              {/* The throughline — the opening */}
               <div className="mt-8 rounded-2xl border border-rule bg-card/50 p-7">
                 <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-tan">
                   The throughline
@@ -81,8 +81,35 @@ function InsightsPage() {
                 </p>
               </div>
 
+              {/* The recurring patterns — each PROVEN with the user's own words (the receipt) */}
+              {m.patterns.length > 0 && (
+                <div className="mt-8">
+                  <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-tan">
+                    What keeps coming up
+                  </div>
+                  <div className="space-y-5">
+                    {m.patterns.map((p, i) => (
+                      <div key={i} className="rounded-2xl border border-rule bg-card/50 p-7">
+                        <p className="font-display text-[20px] italic leading-snug text-ink-soft">
+                          {p.text}
+                        </p>
+                        {p.quote && (
+                          <div className="mt-4 border-l-2 border-tan/30 pl-4">
+                            <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                              {p.date} · your own words
+                            </div>
+                            <p className="text-[14px] italic leading-relaxed text-muted-foreground">
+                              "{p.quote}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Signature reveal — only what the words actually support */}
-              <Reveal label="The loop you're in" text={m.loop} />
               <Reveal label="The contradiction" text={m.contradiction} />
               <Reveal label="The thing you're circling" text={m.avoided} />
 
@@ -135,6 +162,28 @@ function InsightsPage() {
                   </div>
                 </div>
               )}
+
+              {/* The proof — only you can read this */}
+              <div className="mt-12 flex items-start gap-3 rounded-2xl border border-tan/30 bg-tan/[0.05] p-6">
+                <svg
+                  className="mt-px size-4 shrink-0 text-tan"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                >
+                  <rect x="5" y="11" width="14" height="9" rx="2" />
+                  <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+                </svg>
+                <div>
+                  <div className="text-[13px] text-ink">Only you can read this</div>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                    Built from your own words and nothing else — names and places anonymised before
+                    any AI saw them. Your entries live encrypted under your key; no one but you can
+                    read them, not even us.
+                  </p>
+                </div>
+              </div>
 
               <p className="mt-12 text-center text-[12px] italic text-muted-foreground">
                 That's enough looking back. Go live your week.

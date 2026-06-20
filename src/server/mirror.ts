@@ -6,20 +6,27 @@ import { latestDream, type Dream } from "./dreaming";
 const { reflectionArtifacts } = schema;
 
 const MIRROR_SYS = `You are Knole, writing a short, private "Pattern Mirror" for the user from their own recent journal entries and the things you remember about them. Honest, warm, specific — never flattering, never generic, never therapy-speak. Ground every line in what they actually wrote; if something isn't supported, leave it empty.
+
+The differentiator: you don't just name a pattern, you PROVE it from their own words. For each pattern, cite the ONE entry (by its [number]) that most clearly shows it.
+
 Return ONLY a JSON object:
 {
   "throughline": "<2-3 sentences, second person: the single most honest pattern across these entries>",
-  "loop": "<1-2 sentences: a repeating cycle they seem caught in — or "" if none is clear>",
-  "contradiction": "<1-2 sentences: two things they want that pull against each other — or "">",
-  "avoided": "<1-2 sentences: the thing they keep circling but not facing — or "">",
+  "patterns": [
+    {"text": "<a specific recurring pattern, second person, 1-2 sentences>", "entry": <the [number] of the entry that best shows it>}
+  ],
+  "contradiction": "<1-2 sentences: two things they want that pull against each other — or empty if none is clear>",
+  "avoided": "<1-2 sentences: the thing they keep circling but not facing — or empty>",
   "themes": [{"name":"<short lowercase theme>","weight":<1-5>}]
 }
-Up to 5 themes, most prominent first. No prose outside the JSON.`;
+Exactly 3 patterns, each citing a real entry number. Up to 5 themes, most prominent first. No prose outside the JSON.`;
+
+export type MirrorPattern = { text: string; quote: string; date: string };
 
 export type Mirror = {
   ready: boolean;
   throughline: string;
-  loop: string;
+  patterns: MirrorPattern[];
   contradiction: string;
   avoided: string;
   themes: { name: string; weight: number }[];
@@ -31,7 +38,7 @@ export type Mirror = {
 const empty = (dayCount: number, entryCount: number, dream: Dream | null): Mirror => ({
   ready: false,
   throughline: "",
-  loop: "",
+  patterns: [],
   contradiction: "",
   avoided: "",
   themes: [],
@@ -40,7 +47,16 @@ const empty = (dayCount: number, entryCount: number, dream: Dream | null): Mirro
   dream,
 });
 
-type Composition = Pick<Mirror, "throughline" | "loop" | "contradiction" | "avoided" | "themes">;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtDate = (iso: string): string => {
+  const d = new Date(iso);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+};
+
+type Composition = Pick<
+  Mirror,
+  "throughline" | "patterns" | "contradiction" | "avoided" | "themes"
+>;
 
 // Reuse a recent composition when the entry set is unchanged — composing the mirror is
 // a ~15s LLM call. Defensive: any miss/error returns null and we just recompute.
@@ -53,7 +69,9 @@ async function cachedMirror(userId: string, entryCount: number): Promise<Composi
       ORDER BY created_at DESC LIMIT 1
     `)) as unknown as Record<string, unknown>[];
     if (!rows[0]) return null;
-    const src = rows[0].sources as { entryCount?: number } | null;
+    const src = rows[0].sources as { entryCount?: number; v?: number } | null;
+    // bump on schema change so old (loop-shaped) cache entries are ignored
+    if (Number(src?.v ?? 0) !== 2) return null;
     if (Number(src?.entryCount ?? -1) !== entryCount) return null; // entries changed → stale
     return rows[0].content as Composition;
   } catch {
@@ -63,7 +81,7 @@ async function cachedMirror(userId: string, entryCount: number): Promise<Composi
 
 export async function buildMirror(userId: string): Promise<Mirror> {
   const entryRows = (await db.execute(sql`
-    SELECT text FROM entries WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 30
+    SELECT text, created_at FROM entries WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 30
   `)) as unknown as Record<string, unknown>[];
   const memRows = (await db.execute(sql`
     SELECT content, type FROM memories
@@ -79,12 +97,12 @@ export async function buildMirror(userId: string): Promise<Mirror> {
   const entryCount = Number(stat[0]?.c ?? 0);
   const dream = await latestDream(userId);
 
-  // dedupe near-identical entries (same text journaled more than once)
+  // dedupe near-identical entries (same text journaled more than once), keeping the date for receipts
   const seen = new Set<string>();
   const entries = entryRows
-    .map((r) => String(r.text))
-    .filter((t) => {
-      const k = t.trim().toLowerCase();
+    .map((r) => ({ text: String(r.text), date: fmtDate(String(r.created_at)) }))
+    .filter((e) => {
+      const k = e.text.trim().toLowerCase();
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -97,7 +115,7 @@ export async function buildMirror(userId: string): Promise<Mirror> {
 
   const memories = memRows.map((r) => `(${String(r.type)}) ${String(r.content)}`);
   const context = `RECENT ENTRIES:\n${entries
-    .map((t, i) => `[${i + 1}] ${t}`)
+    .map((e, i) => `[${i + 1}] (${e.date}) ${e.text}`)
     .join("\n")}\n\nREMEMBERED ABOUT THEM:\n${memories.map((m) => `- ${m}`).join("\n")}`;
 
   const r = await chatPrivate(
@@ -105,14 +123,14 @@ export async function buildMirror(userId: string): Promise<Mirror> {
       { role: "system", content: MIRROR_SYS },
       { role: "user", content: context },
     ],
-    { temperature: 0.6, maxTokens: 600 },
+    { temperature: 0.6, maxTokens: 700 },
   ).catch(() => null);
   // LLM unavailable — still render the streak + dream with a gentle placeholder.
   if (!r) {
     return {
       ready: true,
       throughline: "Knole couldn't compose your mirror just now — try again in a moment.",
-      loop: "",
+      patterns: [],
       contradiction: "",
       avoided: "",
       themes: [],
@@ -130,6 +148,21 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     parsed = {};
   }
 
+  // Map each pattern's cited entry number → the user's own quote (truncated) + date. This is the
+  // "Knole proves them" receipt; a missing/out-of-range citation just yields an empty receipt.
+  const rawPatterns = Array.isArray(parsed.patterns)
+    ? (parsed.patterns as { text?: unknown; entry?: unknown }[])
+    : [];
+  const patterns: MirrorPattern[] = rawPatterns
+    .filter((p) => p?.text)
+    .slice(0, 3)
+    .map((p) => {
+      const idx = Number(p.entry) - 1;
+      const src = idx >= 0 && idx < entries.length ? entries[idx] : null;
+      const quote = src ? (src.text.length > 200 ? src.text.slice(0, 197) + "…" : src.text) : "";
+      return { text: String(p.text), quote, date: src ? src.date : "" };
+    });
+
   const themes = Array.isArray(parsed.themes)
     ? (parsed.themes as { name?: unknown; weight?: unknown }[])
         .filter((t) => t?.name)
@@ -142,7 +175,7 @@ export async function buildMirror(userId: string): Promise<Mirror> {
 
   const composition: Composition = {
     throughline: String(parsed.throughline ?? ""),
-    loop: String(parsed.loop ?? ""),
+    patterns,
     contradiction: String(parsed.contradiction ?? ""),
     avoided: String(parsed.avoided ?? ""),
     themes,
@@ -154,7 +187,7 @@ export async function buildMirror(userId: string): Promise<Mirror> {
       type: "pattern",
       threadKey: "mirror",
       content: composition,
-      sources: { entryCount },
+      sources: { entryCount, v: 2 },
     });
   } catch {
     /* best-effort cache write */

@@ -471,9 +471,18 @@ export async function runEvals(): Promise<EvalResult> {
   // inferences, so check deterministically that it names several of the distinctive things
   // they actually wrote about.)
   const composed =
-    `${mirror.throughline} ${mirror.loop} ${mirror.contradiction} ${mirror.avoided}`.toLowerCase();
+    `${mirror.throughline} ${mirror.patterns.map((p) => p.text).join(" ")} ${mirror.contradiction} ${mirror.avoided}`.toLowerCase();
   const topics = ["river", "run", "morning", "sister", "guilt", "poetry", "read", "night"];
-  const mirrorGrounded = mirror.ready && topics.filter((t) => composed.includes(t)).length >= 3;
+  const namesTopics = topics.filter((t) => composed.includes(t)).length >= 3;
+  // The "receipt" — at least one pattern must cite a real entry (its quote is the user's own words).
+  const hasReceipt = mirror.patterns.some(
+    (p) =>
+      p.quote.length > 10 &&
+      MIRROR_ENTRIES.some((e) =>
+        e.toLowerCase().includes(p.quote.replace(/…$/, "").toLowerCase().slice(0, 40)),
+      ),
+  );
+  const mirrorGrounded = mirror.ready && namesTopics && hasReceipt;
   await db.execute(sql`DELETE FROM reflection_artifacts WHERE user_id = ${mUid}`);
   await db.delete(entries).where(eq(entries.userId, mUid));
   await db.delete(users).where(eq(users.id, mUid));
