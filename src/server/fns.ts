@@ -24,6 +24,7 @@ import {
   endSession,
 } from "./session";
 import { enforceRate } from "./rateLimit";
+import { background } from "./background";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
@@ -46,15 +47,10 @@ export const journalFn = createServerFn({ method: "POST" })
     const reflection = await reflect(data.entry, recalled);
     const entryRow = await saveEntry(userId, data.entry, qVec);
     await saveReply(entryRow.id, reflection, true);
-    // Extract new memories in the background — don't block the reflection.
-    // (Production: this becomes a queued worker job; fire-and-forget is fine in the long-lived dev server.)
-    void extractMemories(userId, entryRow.id, data.entry).catch((e) =>
-      console.error("extractMemories failed:", e),
-    );
-    // Encrypt + store the entry on 0G Storage in the background (owned; ~20s tx).
-    void storeEntryOn0G(userId, entryRow.id, data.entry).catch((e) =>
-      console.error("0G store failed:", e),
-    );
+    // Extract memories + store the entry on 0G in the background — don't block the
+    // reflection. background() uses waitUntil on serverless so the work isn't dropped.
+    background(extractMemories(userId, entryRow.id, data.entry), "extractMemories");
+    background(storeEntryOn0G(userId, entryRow.id, data.entry), "0G store");
     return {
       reflection,
       recalled: recalled.map((r) => ({ content: r.content, quote: r.sourceQuote })),
@@ -156,12 +152,8 @@ export const chatFn = createServerFn({ method: "POST" })
     const reply = await chatReply(userId, data.history, data.message, qVec);
     const entryRow = await saveEntry(userId, data.message, qVec, "chat");
     await saveReply(entryRow.id, reply, true);
-    void extractMemories(userId, entryRow.id, data.message).catch((e) =>
-      console.error("extractMemories failed:", e),
-    );
-    void storeEntryOn0G(userId, entryRow.id, data.message).catch((e) =>
-      console.error("0G store failed:", e),
-    );
+    background(extractMemories(userId, entryRow.id, data.message), "extractMemories");
+    background(storeEntryOn0G(userId, entryRow.id, data.message), "0G store");
     return { reply };
   });
 
@@ -210,12 +202,8 @@ export const saveFn = createServerFn({ method: "POST" })
     if (data.thought?.trim()) parts.push(`\nMy note: ${data.thought.trim()}`);
     const text = parts.join(" ");
     const entryRow = await saveEntry(userId, text, undefined, "saved");
-    void extractMemories(userId, entryRow.id, text).catch((e) =>
-      console.error("extractMemories failed:", e),
-    );
-    void storeEntryOn0G(userId, entryRow.id, text).catch((e) =>
-      console.error("0G store failed:", e),
-    );
+    background(extractMemories(userId, entryRow.id, text), "extractMemories");
+    background(storeEntryOn0G(userId, entryRow.id, text), "0G store");
     return { ok: true, entryId: entryRow.id };
   });
 
@@ -257,12 +245,8 @@ export const respondFn = createServerFn({ method: "POST" })
       ? `Answering my past self ("${data.pastQuote.slice(0, 140)}…"): ${data.response}`
       : data.response;
     const entryRow = await saveEntry(userId, text, undefined, "journal");
-    void extractMemories(userId, entryRow.id, text).catch((e) =>
-      console.error("extractMemories failed:", e),
-    );
-    void storeEntryOn0G(userId, entryRow.id, text).catch((e) =>
-      console.error("0G store failed:", e),
-    );
+    background(extractMemories(userId, entryRow.id, text), "extractMemories");
+    background(storeEntryOn0G(userId, entryRow.id, text), "0G store");
     return { ok: true };
   });
 
@@ -283,12 +267,8 @@ export const onboardFn = createServerFn({ method: "POST" })
     const entryRow = await saveEntry(userId, text, undefined, "journal");
     const reflection = await reflect(text);
     await saveReply(entryRow.id, reflection, true);
-    void extractMemories(userId, entryRow.id, text).catch((e) =>
-      console.error("extractMemories failed:", e),
-    );
-    void storeEntryOn0G(userId, entryRow.id, text).catch((e) =>
-      console.error("0G store failed:", e),
-    );
+    background(extractMemories(userId, entryRow.id, text), "extractMemories");
+    background(storeEntryOn0G(userId, entryRow.id, text), "0G store");
     return { reflection };
   });
 
