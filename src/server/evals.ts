@@ -52,6 +52,7 @@ export type EvalResult = {
   extraction: number;
   dedup: boolean;
   groundedness: number;
+  reflectionForm: boolean;
   reconcile: boolean;
   recall: boolean;
   hybrid: boolean;
@@ -190,6 +191,17 @@ export async function runEvals(): Promise<EvalResult> {
   }
   const groundedness = grounded / GROUND_ENTRIES.length;
 
+  // ── reflection form (M3): a reflection asks at most one question and never opens one with
+  // "why" (interrogating, not mirroring). The prompt enforces it; this guards against drift.
+  // Retry a few times so a rare LLM slip doesn't fail the gate, while a broken prompt does.
+  const reflectionForm = await retryUntil(async () => {
+    const r = await reflect(
+      "I keep meaning to call my mother but the week slips away, and I feel a low guilt about it.",
+    );
+    const qs = r.split(/(?<=[.!?])\s+/).filter((s) => s.trim().endsWith("?"));
+    return qs.length <= 1 && !qs.some((q) => /^["']?why\b/i.test(q.trim()));
+  });
+
   // ── reconcile (isolated so each probe's nearest neighbour is its own seed) ──
   // The supersede/noop verdicts come from the LLM judge, which can transiently miss; we
   // re-seed and retry a few times so the gate measures the engine, not one stochastic
@@ -309,6 +321,7 @@ export async function runEvals(): Promise<EvalResult> {
     extraction: extraction >= 0.8,
     dedup,
     groundedness: groundedness >= 0.5,
+    reflectionForm,
     reconcile,
     recall,
     hybrid,
@@ -344,6 +357,12 @@ export async function runEvals(): Promise<EvalResult> {
       passed: gates.groundedness,
       score: groundedness,
       details: { groundDetails },
+    },
+    {
+      suite: "reflection-form",
+      passed: gates.reflectionForm,
+      score: reflectionForm ? 1 : 0,
+      details: {},
     },
     {
       suite: "reconcile",
@@ -395,6 +414,7 @@ export async function runEvals(): Promise<EvalResult> {
     extraction,
     dedup,
     groundedness,
+    reflectionForm,
     reconcile,
     recall,
     hybrid,
