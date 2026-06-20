@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "check:voice": "node scripts/check-voice.mjs",
     "evals": "tsx src/server/evals.run.ts",
     "test:auth": "tsx src/server/auth-e2e.run.ts",
     "test:empty": "tsx src/server/empty-user.run.ts",

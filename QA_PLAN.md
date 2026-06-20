@@ -32,12 +32,12 @@ Every test step:
 
 ### Depth levels — declare which you're testing at
 
-| Level  | Meaning                                                        | Where it lives                                  |
-| ------ | ------------------------------------------------------------- | ----------------------------------------------- |
-| **L0** | Page renders, **zero console errors**, honest empty states    | New Playwright screen-matrix sweep              |
-| **L1** | A function/route/engine path behaves on real data             | **Already covered**: 22 evals + 7 `test:*` scripts |
-| **L2** | A flow works across components/services                       | New Playwright flow specs                       |
-| **L3** | Maximal: real data, adversarial inputs, every state combo, ground-truth verified | New Playwright negative/combo specs |
+| Level  | Meaning                                                                          | Where it lives                                     |
+| ------ | -------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **L0** | Page renders, **zero console errors**, honest empty states                       | New Playwright screen-matrix sweep                 |
+| **L1** | A function/route/engine path behaves on real data                                | **Already covered**: 22 evals + 7 `test:*` scripts |
+| **L2** | A flow works across components/services                                          | New Playwright flow specs                          |
+| **L3** | Maximal: real data, adversarial inputs, every state combo, ground-truth verified | New Playwright negative/combo specs                |
 
 ### What counts as PASS
 
@@ -70,19 +70,19 @@ Desktop = 1280×800, mobile = iPhone 13 (≈390px — where z-stacking, text-wra
 break). Required states per screen: **empty · loading · error · (auth-gated where relevant) · success
 · populated**. Honest empty states only — no fake placeholder numbers presented as real.
 
-| Route          | Purpose                       | States that must be proven                                                        |
-| -------------- | ----------------------------- | --------------------------------------------------------------------------------- |
-| `/` (index)    | Landing / first impression    | renders, hero legible, CTA works, social tags resolve, mobile layout intact        |
-| `/onboarding`  | No-signup first chat → aha     | empty, typing, first reflection (<90s), memory-saved confirmation, mobile          |
-| `/today`       | Daily journal loop            | empty, writing, streaming reflection, saved, populated (history), error fallback   |
-| `/chat`        | Think out loud                | empty, streaming reply, history, long-history scroll, error                        |
-| `/ask`         | Ask My Life (RAG)             | empty, loading, grounded answer w/ citations, no-results honesty, error            |
-| `/insights`    | The 14-Day Mirror             | empty (no entries), **building** (streak+countdown), **revealed** (day-14), error  |
-| `/the-index`   | Memory dashboard              | empty, populated, pin, edit, forget, "still forming"/"confirmed" hedges, ⬡0G badge |
-| `/remembered`  | A memory resurfaced           | empty, a surfaced memory, answer-your-past-self, mobile                            |
-| `/settings`    | Consent + "data on 0G"        | proactivity dial (downward-only), quiet hours, voice, live decrypt-from-chain, sign-in |
-| `/extension`   | Save-to-Knole install         | renders, install CTA correct, no dead buttons                                      |
-| `/upgrade`     | Pricing / go deeper           | renders, monthly/yearly toggle, CTA behaviour honest (see Billing)                 |
+| Route         | Purpose                    | States that must be proven                                                             |
+| ------------- | -------------------------- | -------------------------------------------------------------------------------------- |
+| `/` (index)   | Landing / first impression | renders, hero legible, CTA works, social tags resolve, mobile layout intact            |
+| `/onboarding` | No-signup first chat → aha | empty, typing, first reflection (<90s), memory-saved confirmation, mobile              |
+| `/today`      | Daily journal loop         | empty, writing, streaming reflection, saved, populated (history), error fallback       |
+| `/chat`       | Think out loud             | empty, streaming reply, history, long-history scroll, error                            |
+| `/ask`        | Ask My Life (RAG)          | empty, loading, grounded answer w/ citations, no-results honesty, error                |
+| `/insights`   | The 14-Day Mirror          | empty (no entries), **building** (streak+countdown), **revealed** (day-14), error      |
+| `/the-index`  | Memory dashboard           | empty, populated, pin, edit, forget, "still forming"/"confirmed" hedges, ⬡0G badge     |
+| `/remembered` | A memory resurfaced        | empty, a surfaced memory, answer-your-past-self, mobile                                |
+| `/settings`   | Consent + "data on 0G"     | proactivity dial (downward-only), quiet hours, voice, live decrypt-from-chain, sign-in |
+| `/extension`  | Save-to-Knole install      | renders, install CTA correct, no dead buttons                                          |
+| `/upgrade`    | Pricing / go deeper        | renders, monthly/yearly toggle, CTA behaviour honest (see Billing)                     |
 
 L0 sweep is fast and broad and runs **first**: every route, both viewports, assert render + zero
 console errors + screenshot. Anything red here blocks the deeper passes.
@@ -147,7 +147,7 @@ never a silent swallow, never invented data.
 
 ## 7. §BLIND-SPOTS — hunt these deliberately
 
-- **Mock-data-as-live**: the public site runs a *seeded demo*. Confirm every number/quote shown is real
+- **Mock-data-as-live**: the public site runs a _seeded demo_. Confirm every number/quote shown is real
   for the demo user, not a hardcoded placeholder. (Honesty violations = HIGH severity.)
 - **Cold-start**: first page view downloads the local models (~MiniLM + NER). The reflection path must
   degrade gracefully and the warmup must fire — no infinite spinner on a cold function.
