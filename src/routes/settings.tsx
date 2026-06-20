@@ -30,6 +30,8 @@ export const Route = createFileRoute("/settings")({
 });
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
+// Chain explorer for anchor tx links — configurable so the testnet→mainnet switch is one env var.
+const OG_EXPLORER_TX = import.meta.env.VITE_OG_EXPLORER_TX ?? "https://chainscan-galileo.0g.ai/tx";
 
 // Privy is scoped to this route — the only place auth is used — so react-auth (~2MB)
 // code-splits into the settings chunk instead of bloating every page's initial bundle.
@@ -436,7 +438,7 @@ function SettingsPage() {
                     all {own.anchor.count} entries. Change one and the root no longer matches the
                     chain.{" "}
                     <a
-                      href={`https://chainscan-galileo.0g.ai/tx/${own.anchor.txHash}`}
+                      href={`${OG_EXPLORER_TX}/${own.anchor.txHash}`}
                       target="_blank"
                       rel="noreferrer"
                       className="font-mono text-tan underline"
