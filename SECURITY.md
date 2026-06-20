@@ -38,16 +38,16 @@ Knole's premise is that your inner life is yours alone. This document describes 
 - **Graceful degradation**: loaders that call the LLM fall back instead of crashing the page.
 - **Rate limiting**: the expensive LLM endpoints (journal, chat, ask, import) are throttled per client IP to bound abuse and runaway inference cost.
 - **Upstream timeouts + retries**: every NVIDIA call has a per-attempt timeout with bounded retry/backoff on transient failures; the 0G download/upload are bounded by a timeout race — a hung upstream fails fast instead of stalling a request.
-- **Security headers**: every response sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and a restrictive `Permissions-Policy`.
+- **Security headers**: every response sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive `Permissions-Policy`, and a minimal `Content-Security-Policy` (`frame-ancestors 'none'; object-src 'none'; base-uri 'self'`).
 
 ## Quality gate
 
-`npm run evals` runs a seven-suite gate — retrieval (precision/recall), extraction coverage, dedup correctness, reflection groundedness (no invented facts), memory reconciliation (supersede + NOOP), recall-driven importance, and RRF hybrid retrieval — and records results in `eval_runs`.
+`npm run evals` runs a 16-suite gate spanning correctness (retrieval precision/recall, extraction coverage, dedup, reflection groundedness, memory reconciliation, recall-driven importance, RRF hybrid retrieval, provenance), trust (forgetting-respected, pinned-survival, user-correction-wins), quality (reflection form, nudge-grounding, mirror-grounding), and security (data-isolation + IDOR) — recorded in `eval_runs`.
 
 ## Known limitations (pre-mainnet)
 
 - **Authentication is wired; the demo user is still the default.** Privy login + sealed sessions gate every server function (above); the live email-OTP path is confirmed by signing in once, or by enabling Privy test credentials and running `npm run test:auth`. A production launch would drop the shared demo fallback so unauthenticated requests are rejected rather than served the demo.
-- No **Content-Security-Policy** yet — it needs per-deploy tuning around the Privy auth iframe and inline SSR scripts.
+- The **Content-Security-Policy** is minimal (`frame-ancestors`/`object-src`/`base-uri`, which can't break the app); `script-src`/`style-src` are deferred — they need nonces + the full Privy allowlist and per-deploy tuning around the auth iframe and inline SSR scripts.
 - The rate limiter is **in-memory** (fine for a single instance; back it with Redis for multi-instance).
 - `KNOLE_KDF_SECRET` (and the session seal password) should be held in a KMS in production, not a `.env` file.
 - Key rotation and a hosted scheduler (for the Dreaming worker) are deployment concerns.

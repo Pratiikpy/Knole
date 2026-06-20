@@ -4,9 +4,11 @@ import { setResponseHeaders } from "@tanstack/react-start/server";
 import { renderErrorPage } from "./lib/error-page";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
-// (framing), and full-URL referrer leakage; deny unused device permissions. No CSP
-// here on purpose — a strict policy would break the Privy auth iframe + SSR inline
-// scripts and is best tuned per deploy.
+// (framing), and full-URL referrer leakage; deny unused device permissions. The CSP is
+// intentionally minimal — only directives that cannot break the app: frame-ancestors
+// (clickjacking, the modern X-Frame-Options), object-src (no plugins/embeds), and base-uri
+// (no injected <base> hijacking relative URLs). We deliberately omit script-src/style-src,
+// which would need nonces + the full Privy allowlist and are best tuned per deploy.
 const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => {
   // The SDK's header-map type only lists "known" headers; these are all valid HTTP
   // security headers (accepted at runtime), so we assert past the over-strict type.
@@ -15,6 +17,7 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
     "x-frame-options": "DENY",
     "referrer-policy": "strict-origin-when-cross-origin",
     "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    "content-security-policy": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
   } as unknown as Parameters<typeof setResponseHeaders>[0]);
   return next();
 });

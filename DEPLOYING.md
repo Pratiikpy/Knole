@@ -122,7 +122,10 @@ NVIDIA as the automatic fallback.
 - Hold secrets in a **KMS**, not a `.env` file.
 - **Remove the demo-user fallback** so unauthenticated requests are rejected rather than
   served the demo (`currentUserId()` → require a session).
-- Add a **Content-Security-Policy** (tuned for the Privy iframe) and back the in-memory
-  rate limiter with **Redis** if running more than one instance.
+- **Tighten the Content-Security-Policy.** A minimal CSP (`frame-ancestors 'none'`,
+  `object-src 'none'`, `base-uri 'self'`) already ships on every response (`src/start.ts`);
+  add `script-src` / `style-src` (nonces + the Privy allowlist) once you can test the full
+  sign-in flow against it. Back the in-memory rate limiter with **Redis** if running more
+  than one instance.
 
 See [`SECURITY.md`](./SECURITY.md) for the full security posture.
