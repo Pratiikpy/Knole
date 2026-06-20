@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { MemoryPill } from "@/components/knole/MemoryPill";
+import { whoamiFn } from "@/server/fns";
 import { useState, useRef, useEffect } from "react";
 
 export const Route = createFileRoute("/chat")({
@@ -32,6 +34,20 @@ function ChatPage() {
   const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
+  // A demo guest can't chat (writes are auth-gated). Learn that up front so send() shows the honest
+  // sign-in line directly instead of firing a doomed request that 401s into the console.
+  const whoami = useServerFn(whoamiFn);
+  const [demoGated, setDemoGated] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    whoami()
+      .then((r) => alive && setDemoGated(!!r.isDemo && !!r.gated))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [whoami]);
+
   useEffect(() => {
     // Respect reduced-motion: jump instead of smooth-scroll for motion-sensitive users.
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -60,6 +76,12 @@ function ChatPage() {
         }
         return copy;
       });
+    // Known demo guest: answer with the sign-in line directly — no doomed fetch, no 401 in the console.
+    if (demoGated) {
+      setLastKnole("Sign in to chat with your own Knole — you're viewing the demo.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/chat/stream", {
         method: "POST",
