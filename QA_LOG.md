@@ -93,10 +93,12 @@ desktop + mobile → render + non-error status + content + **zero console errors
 Life RAG read-flow** (grounded answer + cited receipts). **24/24 green** against the live deploy — so
 every screen and the receipts flow is now a regression gate, not a one-time manual pass.
 
+**L2 write flow** is now covered too (`e2e/journal.spec.ts`, local-only): on a dev server pointed at a
+throwaway user, write an entry → Reflect → a real reflection streams into the page. **1 passed.**
+Driving it also validated the secure-by-default guard — without `KNOLE_REQUIRE_AUTH=off` the anonymous
+write is rejected with an honest "Sign in to start your own Knole" message, not a crash.
+
 ### Not yet covered — queued for the next passes
 
-- **L2 write flows** (journal → streaming reflection → memory saved → recalled) — the harness is wired
-  for them (`E2E_BASE_URL=http://localhost:3000`), but they need a local dev run since the deployed
-  demo is read-only. Next: write-flow specs behind that base URL.
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
 - `/upgrade` honest-state — verify after the next deploy (the live deploy predates the billing fix).
