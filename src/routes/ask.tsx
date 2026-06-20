@@ -26,7 +26,11 @@ const suggestions = [
 ];
 
 type Receipt = { date: string; quote: string; tag: string };
-type AskResult = { summary: string; receipts: Receipt[] };
+type AskResult = {
+  summary: string;
+  receipts: Receipt[];
+  privacy: { sealed: boolean; anonymised: boolean };
+};
 
 function AskPage() {
   const doAsk = useServerFn(askFn);
@@ -48,6 +52,7 @@ function AskPage() {
       setResult({
         summary: "Something interrupted the search — try again in a moment.",
         receipts: [],
+        privacy: { sealed: false, anonymised: false },
       });
     } finally {
       setLoading(false);
@@ -155,6 +160,26 @@ function AskPage() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {(result.privacy.sealed || result.privacy.anonymised) && (
+                <div className="mt-10 flex items-start gap-2 border-t border-rule pt-5 text-[11px] leading-relaxed text-muted-foreground">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="mt-px size-3.5 shrink-0 text-tan"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                  >
+                    <rect x="5" y="11" width="14" height="9" rx="2" />
+                    <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+                  </svg>
+                  <span>
+                    {result.privacy.sealed
+                      ? "Composed inside a sealed enclave (TEE) — only your key can read this."
+                      : "Anonymised before the AI saw it — names and places were masked, and the answer is grounded only in your own words."}
+                  </span>
                 </div>
               )}
             </div>

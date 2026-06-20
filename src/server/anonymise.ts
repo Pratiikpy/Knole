@@ -97,7 +97,7 @@ export function deAnonymise(text: string, map: Record<string, string>): string {
  */
 export async function anonymiseMessages<T extends { content: string }>(
   messages: T[],
-): Promise<{ messages: T[]; map: Record<string, string> }> {
+): Promise<{ messages: T[]; map: Record<string, string>; ok: boolean }> {
   try {
     // Build one map from all content at once (consistent tokens), then apply it to each message.
     const { map } = await anonymise(messages.map((m) => m.content).join("\n\n"));
@@ -108,11 +108,13 @@ export async function anonymiseMessages<T extends { content: string }>(
       }
       return r;
     };
-    return { messages: messages.map((m) => ({ ...m, content: apply(m.content) })), map };
+    // ok=true means the scrub ran (the privacy guarantee held), whether or not any PII was found.
+    return { messages: messages.map((m) => ({ ...m, content: apply(m.content) })), map, ok: true };
   } catch (e) {
     // If the NER model is unavailable (e.g. a cold-start load failure), degrade to un-anonymised
-    // rather than break inference. Logged, not silent, so the lapse is observable.
+    // rather than break inference. Logged, not silent, so the lapse is observable; ok=false so
+    // callers never claim "anonymised" when it didn't run.
     console.error("anonymiseMessages failed; proceeding un-anonymised:", (e as Error).message);
-    return { messages, map: {} };
+    return { messages, map: {}, ok: false };
   }
 }

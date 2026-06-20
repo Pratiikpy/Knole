@@ -19,6 +19,7 @@ function fmtDate(iso: string): string {
 export type AskResult = {
   summary: string;
   receipts: { date: string; tag: string; quote: string }[];
+  privacy: { sealed: boolean; anonymised: boolean };
 };
 
 export async function askMyLife(userId: string, question: string): Promise<AskResult> {
@@ -43,13 +44,18 @@ export async function askMyLife(userId: string, question: string): Promise<AskRe
     return {
       summary: "There's nothing in your journal about that yet. Write a little, then ask me again.",
       receipts: [],
+      privacy: { sealed: false, anonymised: false },
     };
   }
 
   // Anonymise the model-facing payload — the question, the excerpts, the facts — under one shared
   // map so no raw PII reaches the model. The receipts below keep the user's real words (they're
   // shown only to the user), and the summary is de-anonymised before return.
-  const { messages: anon, map } = await anonymiseMessages([
+  const {
+    messages: anon,
+    map,
+    ok: anonymised,
+  } = await anonymiseMessages([
     { content: question },
     ...entries.map((e) => ({ content: e.text })),
     ...memories.map((m) => ({ content: m.content })),
@@ -81,5 +87,5 @@ export async function askMyLife(userId: string, question: string): Promise<AskRe
     quote: e.text.length > 240 ? e.text.slice(0, 237) + "…" : e.text,
   }));
 
-  return { summary, receipts };
+  return { summary, receipts, privacy: { sealed: r.sealed, anonymised } };
 }
