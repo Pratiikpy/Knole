@@ -21,7 +21,7 @@ A private AI that **remembers your life**, helps you **see your own patterns**, 
 - **Today** — a daily journaling loop. Write an entry, get a real reflection that quietly weaves in something you said before, then it tells you to go live the answer.
 - **Chat** — think out loud with Knole; it holds the conversation and your history.
 - **Ask My Life** — ask a question about your own past; it answers grounded in your entries and quotes you back to yourself (RAG, with receipts).
-- **The Mirror** _(the flagship)_ — a private letter from yourself. For your first two weeks it quietly builds — you see only a streak and a countdown; then on **day 14 it reveals**: patterns that each quote a real entry of yours by date, the contradiction you live in, the thing you keep avoiding, and an "only you can read this" card. Pure synthesis of your own words — no advice, no judgement.
+- **The Mirror** _(the flagship)_ — a private letter from yourself. For your first two weeks it quietly builds — you see only a streak and a countdown; then on **day 15 it reveals**: patterns that each quote a real entry of yours by date, the contradiction you live in, the thing you keep avoiding, and an "only you can read this" card. Pure synthesis of your own words — no advice, no judgement.
 - **The Index** — every memory Knole holds, with its source quote and a `⬡ 0G` badge when it's anchored on-chain. Pin, edit, or forget any of it; every change is logged append-only.
 - **Remembered** — Knole resurfaces an earlier entry "at the moment it matters," and you can answer your past self.
 - **Save** — capture a highlight or thought from anywhere; it becomes "just another memory," same engine, same encryption.
