@@ -28,6 +28,7 @@ function ExtensionPage() {
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [thought, setThought] = useState("");
+  const [showHow, setShowHow] = useState(false);
 
   const onDone = async () => {
     if (saving) return;
@@ -200,8 +201,11 @@ function ExtensionPage() {
           </div>
 
           <div className="mt-14 flex flex-wrap items-center gap-3">
-            <button className="rounded-full bg-ink px-5 py-3 text-[13px] text-paper">
-              Add to Chrome
+            <button
+              onClick={() => setShowHow((s) => !s)}
+              className="rounded-full bg-ink px-5 py-3 text-[13px] text-paper"
+            >
+              Get the extension
             </button>
             <Link
               to="/the-index"
@@ -210,6 +214,32 @@ function ExtensionPage() {
               See what Knole knows →
             </Link>
           </div>
+
+          {showHow && (
+            <div className="mt-6 rounded-xl border border-rule bg-card/50 p-6 text-[13px] leading-relaxed text-muted-foreground">
+              <p className="mb-3 font-display text-[16px] not-italic text-ink">
+                It's in early access — load it in a minute:
+              </p>
+              <ol className="ml-4 list-decimal space-y-1.5">
+                <li>
+                  Open <code className="text-ink">chrome://extensions</code> and turn on{" "}
+                  <span className="text-ink">Developer mode</span>.
+                </li>
+                <li>
+                  Click <span className="text-ink">Load unpacked</span> and pick the{" "}
+                  <code className="text-ink">extension/</code> folder from the Knole repo.
+                </li>
+                <li>
+                  Generate a token in{" "}
+                  <Link to="/settings" className="text-tan underline">
+                    Settings → Browser extension
+                  </Link>{" "}
+                  and paste it into the extension.
+                </li>
+              </ol>
+              <p className="mt-3">Then highlight anything, right-click → “Save to Knole”.</p>
+            </div>
+          )}
         </div>
       </section>
     </Shell>
