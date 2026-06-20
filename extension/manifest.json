@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Save to Knole",
+  "version": "0.1.0",
+  "description": "Highlight anything on the web and save it to your Knole memory in one click.",
+  "permissions": ["contextMenus", "storage", "notifications"],
+  "host_permissions": ["https://knole-app.vercel.app/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Save to Knole" },
+  "icons": { "128": "icon128.png" }
+}

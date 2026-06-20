@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        width: 280px;
+        margin: 0;
+        padding: 18px;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        color: #2b2622;
+        background: #faf9f6;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 12px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #6b6359;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        border: 1px solid #e3ddd3;
+        border-radius: 8px;
+        background: #fff;
+        color: #2b2622;
+      }
+      input:focus {
+        outline: 2px solid rgba(124, 101, 69, 0.3);
+        outline-offset: 0;
+        border-color: #c9bda8;
+      }
+      button {
+        margin-top: 10px;
+        width: 100%;
+        padding: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #faf9f6;
+        background: #2b2622;
+        border: none;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+      #status {
+        margin: 10px 0 0;
+        min-height: 14px;
+        color: #7c6545;
+      }
+      .hint {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #eee7da;
+        color: #8a8175;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Save to Knole</h1>
+    <p>Paste the token from Knole → Settings → “Browser extension”.</p>
+    <input id="token" type="password" placeholder="knole_ext_…" autocomplete="off" />
+    <button id="save">Save token</button>
+    <p id="status"></p>
+    <p class="hint">Then highlight text on any page and right-click → “Save to Knole”.</p>
+    <script src="popup.js"></script>
+  </body>
+</html>
