@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "extension_token_hash" text;

@@ -78,6 +78,9 @@ export const users = pgTable("users", {
   freqDial: integer("freq_dial").default(3), // nudges/week, downward-only
   proactivityPaused: boolean("proactivity_paused").default(false),
   voice: text("voice").default("structural"),
+  // "Save to Knole" extension: sha256 of the user's high-entropy token (the raw token is
+  // shown once and never stored). null until they generate one.
+  extensionTokenHash: text("extension_token_hash"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
