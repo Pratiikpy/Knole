@@ -84,6 +84,10 @@ Then prove the two halves of the thesis (both need seeded on-chain entries + liv
   raw 0G blob is ciphertext (plaintext absent), a wrong key fails the AES-256-GCM auth tag,
   and only the user's key recovers the original.
 
+And the **north-star magic** — that Knole actually remembers: `npm run test:remembers`
+journals one entry, then a related one, and confirms the first's memory is recalled for the
+second and a reflection comes back (needs the LLM; throwaway user, demo untouched).
+
 ## 6. Optional — live Sealed Inference (0G TEE)
 
 Fund the 0G compute ledger, set `OG_SEALED_INFERENCE=on`, and point `ZG_SERVICE_URL` /
