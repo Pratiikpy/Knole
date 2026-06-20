@@ -30,6 +30,16 @@ export async function runDreaming(userId: string): Promise<{ observation: string
     });
   if (entries.length < 2) return null;
 
+  // Idempotent: one dream per user per (UTC) day. A re-run — a cron retry, or a manual
+  // trigger overlapping the nightly job — skips instead of writing a duplicate.
+  const dreamedToday = (await db.execute(sql`
+    SELECT 1 FROM reflection_artifacts
+    WHERE user_id = ${userId} AND thread_key = 'dreaming'
+      AND created_at >= date_trunc('day', now())
+    LIMIT 1
+  `)) as unknown as unknown[];
+  if (dreamedToday[0]) return null;
+
   const memories = memRows.map((r) => String(r.content));
   const context = `RECENT ENTRIES:\n${entries
     .map((t, i) => `[${i + 1}] ${t}`)
