@@ -129,6 +129,25 @@ write-flow spec still passes.
 **Earlier finding (fixed):** the **404 / error surfaces** were a generic sans-serif default; rewrote
 them in Knole's serif/warm system (`e2e/notfound.spec.ts` gates it).
 
+---
+
+## 2026-06-21 — Settings: every ownership control driven + proven
+
+Drove `/settings` end-to-end on the live deploy. Comprehensive, console-clean, on-brand. Every control
+works or is properly guarded — no dead buttons, no unguarded destruction, no fake data:
+
+- **Export Mindfile** → proven by `npm run test:export` (entries=12, memories=35, valid round-trippable
+  JSON, forgotten/superseded excluded). The "walk away with all of it" promise.
+- **Verify recoverable** → clicked it; it fetched an encrypted blob from 0G and decrypted it live with
+  the user's key → **✓ RECOVERED LIVE FROM 0G** plus the real entry text. "Recoverable even if Knole
+  disappeared" is real, not asserted.
+- **Delete everything** → two-step confirm (Delete → _cancel_ / _Yes, erase all_); clicked Delete, saw
+  the confirm, clicked cancel — DB unchanged (12 entries / 35 memories). No instant destruction.
+- **Forget a date range** → opens a date picker first (requires a from/to range).
+- **Import** → button disabled on empty input.
+- Privacy rows (Encrypted on your key, Anonymised before the AI) are honest static **ON · ALWAYS**
+  labels — not fake toggles.
+
 ### Not yet covered — queued for the next passes
 
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
