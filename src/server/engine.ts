@@ -232,7 +232,7 @@ export async function extractMemories(userId: string, entryId: string, entryText
 
     // reconcile: does this update/replace a similar-but-different existing memory?
     const sim = (await db.execute(sql`
-      SELECT id, content, status, 1 - (embedding <=> ${vlit}::vector) AS score
+      SELECT id, content, status, user_verified_at, 1 - (embedding <=> ${vlit}::vector) AS score
       FROM memories
       WHERE user_id = ${userId} AND status IN ('active', 'pinned')
         AND content_hash <> ${ch} AND embedding IS NOT NULL
@@ -251,10 +251,11 @@ export async function extractMemories(userId: string, entryId: string, entryText
         saved.push({ id: String(sim[0].id), content: String(sim[0].content) });
         continue;
       }
-      // update: supersede the prior memory — but never a user-pinned one (pinned-survival:
-      // the explicit pin outranks the engine's inference; the new memory is added alongside
-      // it instead, leaving the user to reconcile a pin they set on purpose).
-      if (verdict === "update" && String(sim[0].status) !== "pinned") {
+      // update: supersede the prior memory — but never one the user controls. A pin
+      // (pinned-survival) or a hand-edit (user_verified_at, the user-edit-wins lock) outranks
+      // the engine's inference; the new memory is added alongside it, for the user to reconcile.
+      const userControlled = String(sim[0].status) === "pinned" || sim[0].user_verified_at != null;
+      if (verdict === "update" && !userControlled) {
         supersededId = String(sim[0].id);
       }
     }

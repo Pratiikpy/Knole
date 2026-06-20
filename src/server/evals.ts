@@ -57,6 +57,7 @@ export type EvalResult = {
   hybrid: boolean;
   forgetting: boolean;
   pinnedSurvival: boolean;
+  userCorrectionWins: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -178,13 +179,16 @@ export async function runEvals(): Promise<EvalResult> {
 
   // Re-seed "lives in Berlin" with a status, apply the Lisbon contradiction, return the
   // seed's resulting status.
-  const applyMoveContradiction = async (status: "active" | "pinned"): Promise<string> => {
+  const applyMoveContradiction = async (
+    status: "active" | "pinned",
+    userVerified = false,
+  ): Promise<string> => {
     await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
     await db.delete(memories).where(eq(memories.userId, userId));
     const v = await embed("The user lives in Berlin.");
     await db.execute(sql`
-      INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
-      VALUES (${userId}, 'The user lives in Berlin.', 'eval-reconcile-city', 'fact', ${status}, ${toVectorLiteral(v)}::vector, 0.7, 0.6)
+      INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance, user_verified_at)
+      VALUES (${userId}, 'The user lives in Berlin.', 'eval-reconcile-city', 'fact', ${status}, ${toVectorLiteral(v)}::vector, 0.7, 0.6, ${userVerified ? sql`now()` : sql`NULL`})
     `);
     const [e] = await db
       .insert(entries)
@@ -205,6 +209,11 @@ export async function runEvals(): Promise<EvalResult> {
   // case above proves the judge fires for it, so survival here is the protection at work.
   const pinnedFinalStatus = await applyMoveContradiction("pinned");
   const pinnedSurvival = pinnedFinalStatus === "pinned";
+
+  // user-correction-wins: a hand-edited (user-verified) memory must also survive the same
+  // contradiction — the user-edit-wins lock, now enforced.
+  const editedFinalStatus = await applyMoveContradiction("active", true);
+  const userCorrectionWins = editedFinalStatus === "active";
 
   // noop: a reworded restatement reinforces the existing memory instead of duplicating it
   const tomasReinforced = async (): Promise<boolean> => {
@@ -286,6 +295,7 @@ export async function runEvals(): Promise<EvalResult> {
     hybrid,
     forgetting,
     pinnedSurvival,
+    userCorrectionWins,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -345,6 +355,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: pinnedSurvival ? 1 : 0,
       details: { finalStatus: pinnedFinalStatus },
     },
+    {
+      suite: "user-correction-wins",
+      passed: gates.userCorrectionWins,
+      score: userCorrectionWins ? 1 : 0,
+      details: { finalStatus: editedFinalStatus },
+    },
   ]);
 
   return {
@@ -358,6 +374,7 @@ export async function runEvals(): Promise<EvalResult> {
     hybrid,
     forgetting,
     pinnedSurvival,
+    userCorrectionWins,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
