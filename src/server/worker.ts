@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { runDreaming } from "./dreaming";
+import { storeEntryOn0G } from "./engine";
 
 let ticking = false;
 
@@ -12,6 +13,7 @@ export async function tick(): Promise<{
   users: number;
   dreamed: number;
   pruned?: number;
+  backfilled?: number;
   skipped?: boolean;
 }> {
   if (ticking) return { users: 0, dreamed: 0, skipped: true };
@@ -53,10 +55,51 @@ export async function tick(): Promise<{
     } catch (e) {
       console.error("cache prune failed:", (e as Error).message);
     }
-    return { users: rows.length, dreamed, pruned };
+
+    // Re-drive entries stranded off-chain by a transient 0G failure, within whatever time the
+    // dream loop left (0G uploads are slow), so the "you own it on 0G" guarantee self-heals over
+    // ticks instead of silently losing entries. A backlog catches up over nights or via backfill:0g.
+    let backfilled = 0;
+    try {
+      backfilled = await backfill0G({ start, budgetMs });
+    } catch (e) {
+      console.error("0G backfill failed:", (e as Error).message);
+    }
+    return { users: rows.length, dreamed, pruned, backfilled };
   } finally {
     ticking = false;
   }
+}
+
+/**
+ * Re-drive entries that never reached 0G (kv_ref IS NULL — a transient 0G outage during journaling).
+ * Bounded by a row limit and an optional time budget (0G uploads are ~20s each, so a tick can only
+ * fit a few); the rest catch up on later runs. Per-entry errors are isolated. Returns how many were
+ * stored. Run on-demand for a full catch-up: `npm run backfill:0g`.
+ */
+export async function backfill0G(
+  opts: { start?: number; budgetMs?: number; limit?: number; userId?: string } = {},
+): Promise<number> {
+  const { start = Date.now(), budgetMs = Infinity, limit = 25, userId } = opts;
+  const rows = (await db.execute(sql`
+    SELECT id, user_id, text FROM entries
+    WHERE kv_ref IS NULL ${userId ? sql`AND user_id = ${userId}` : sql``}
+    ORDER BY created_at ASC
+    LIMIT ${limit}
+  `)) as unknown as Record<string, unknown>[];
+  let stored = 0;
+  for (const r of rows) {
+    if (Date.now() - start > budgetMs) break;
+    try {
+      await storeEntryOn0G(String(r.user_id), String(r.id), String(r.text));
+      stored++;
+    } catch (e) {
+      console.error(`backfill0G: entry=${r.id} failed:`, (e as Error).message);
+    }
+  }
+  if (stored)
+    console.log(`backfill0G: re-drove ${stored} stranded entr${stored === 1 ? "y" : "ies"} to 0G`);
+  return stored;
 }
 
 /**

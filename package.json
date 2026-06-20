@@ -18,6 +18,7 @@
     "test:privacy": "tsx src/server/privacy.run.ts",
     "test:remembers": "tsx src/server/remembers.run.ts",
     "test:multiuser": "tsx src/server/multiuser.run.ts",
+    "backfill:0g": "tsx src/server/backfill.run.ts",
     "dream": "tsx src/server/dreaming.run.ts",
     "seed": "tsx src/server/seed.run.ts",
     "worker": "tsx src/server/worker.run.ts"
