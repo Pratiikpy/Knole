@@ -465,6 +465,11 @@ function SettingsPage() {
                 value="On · always"
               />
               <Row
+                label="Anonymised before the AI"
+                detail="Names and places are masked before any model reads your words."
+                value="On · always"
+              />
+              <Row
                 label="Dreaming (overnight reflection)"
                 detail="Knole consolidates your week privately, off-device."
                 value="On"
