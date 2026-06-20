@@ -32,5 +32,8 @@ console.log(
 console.log(
   `confidence-cal: stated-fact > inference, user-edit→1.0 ${r.confidenceCalibrated ? "✓" : "✗"}`,
 );
+console.log(
+  `key-provider  : v1 byte-identical + rotation read-through ${r.keyProviderOk ? "✓" : "✗"}`,
+);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);

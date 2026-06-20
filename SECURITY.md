@@ -13,6 +13,7 @@ Knole's premise is that your inner life is yours alone. This document describes 
 
 - Each entry is encrypted with **AES-256-GCM** (authenticated encryption) in our own code before upload — a tampered blob fails to decrypt loudly, rather than silently returning garbage. The 0G SDK is used purely as transport.
 - The per-user key is derived with **HKDF-SHA256** from `KNOLE_KDF_SECRET`, with the user id as the `info` parameter for per-user domain separation.
+- **Custody + rotation** live behind a single seam (`keyProvider.ts`). The master secret can come from the environment (dev) or be **injected at boot from a KMS / enclave** (production), so it need never sit in a plaintext file. Each secret carries a **version**: new data encrypts under the current version, and decryption tries every version newest-first — AES-256-GCM's auth tag identifies the right key — so the master secret can be **rotated without re-encrypting existing data** (add `KNOLE_KDF_SECRET_V2`, …). v1's derivation is byte-identical to before this seam, so every existing blob still decrypts.
 - The Postgres copy is a cache; the source of truth is on 0G. `restoreEntryFromChain` rebuilds any entry purely from chain, and the Settings panel does this live (decrypt-from-chain) so ownership is provable, not asserted.
 
 ## Private inference
@@ -42,15 +43,15 @@ Knole's premise is that your inner life is yours alone. This document describes 
 
 ## Quality gate
 
-`npm run evals` runs a 16-suite gate spanning correctness (retrieval precision/recall, extraction coverage, dedup, reflection groundedness, memory reconciliation, recall-driven importance, RRF hybrid retrieval, provenance), trust (forgetting-respected, pinned-survival, user-correction-wins), quality (reflection form, nudge-grounding, mirror-grounding), and security (data-isolation + IDOR) — recorded in `eval_runs`.
+`npm run evals` runs a **22-suite gate** spanning correctness (retrieval precision/recall, extraction coverage, dedup, reflection groundedness, memory reconciliation, recall-driven importance, RRF hybrid retrieval, provenance), trust (forgetting-respected, pinned-survival, user-correction-wins, confidence-calibration), quality (reflection form, nudge-grounding, mirror-grounding, no-creepiness, first-aha <90s), and security/crypto (data-isolation + IDOR, privacy-leak / 0 PII to the model, AES-256-GCM round-trip + tamper + wrong-key, key-provider rotation read-through) — recorded in `eval_runs`.
 
 ## Known limitations (pre-mainnet)
 
 - **Authentication is wired; the demo user is still the default.** Privy login + sealed sessions gate every server function (above); the live email-OTP path is confirmed by signing in once, or by enabling Privy test credentials and running `npm run test:auth`. A production launch would drop the shared demo fallback so unauthenticated requests are rejected rather than served the demo.
 - The **Content-Security-Policy** is minimal (`frame-ancestors`/`object-src`/`base-uri`, which can't break the app); `script-src`/`style-src` are deferred — they need nonces + the full Privy allowlist and per-deploy tuning around the auth iframe and inline SSR scripts.
 - The rate limiter is **in-memory** (fine for a single instance; back it with Redis for multi-instance).
-- `KNOLE_KDF_SECRET` (and the session seal password) should be held in a KMS in production, not a `.env` file.
-- Key rotation and a hosted scheduler (for the Dreaming worker) are deployment concerns.
+- **Key custody + rotation are supported in code** (`keyProvider.ts`): the master secret can be injected from a KMS/enclave at boot, and rotated via versioned secrets without re-encrypting data. What remains is the operator step of **provisioning the KMS** and moving the secret off `.env` — see `HUMAN.md` (item 15). The session seal password (`SESSION_SECRET`/`KNOLE_KDF_SECRET`) should move with it.
+- A **hosted scheduler** for the Dreaming worker is wired as a Vercel Cron (`/api/cron/dream`, guarded by `CRON_SECRET`); an always-on host can run `npm run worker` instead.
 
 ## Reporting
 

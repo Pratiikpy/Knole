@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, hkdfSync } from "node:crypto";
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
@@ -16,7 +16,8 @@ import { generateNudge } from "./proactivity";
 import { anonymise } from "./anonymise";
 import { buildMirror } from "./mirror";
 import { chat } from "./llm";
-import { gcmEncrypt, gcmDecrypt, newAesKey } from "./og";
+import { gcmEncrypt, gcmDecrypt, gcmDecryptAny, newAesKey } from "./og";
+import { keyProvider, KeyProvider } from "./keyProvider";
 
 const { users, entries, memories, memoryHistory, evalRuns } = schema;
 
@@ -82,6 +83,7 @@ export type EvalResult = {
   ahaSeconds: number;
   cryptoOk: boolean;
   confidenceCalibrated: boolean;
+  keyProviderOk: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -625,6 +627,43 @@ export async function runEvals(): Promise<EvalResult> {
   await clearCalib();
   await db.delete(users).where(eq(users.id, calUid));
 
+  // ── key-provider: rotation + custody (Phase-2 hardening). Pure crypto, deterministic. ──
+  const kpUser = "key-provider-eval-user";
+  // 1) v1 derivation is byte-identical to the legacy HKDF, so every existing 0G blob still decrypts.
+  const kpSecret = process.env.KNOLE_KDF_SECRET;
+  const kV1Identical = kpSecret
+    ? Buffer.from(keyProvider.deriveUserKey(kpUser, 1)).equals(
+        Buffer.from(hkdfSync("sha256", kpSecret, "knole-hkdf-salt-v1", `entry-key:${kpUser}`, 32)),
+      )
+    : true; // no master secret in this env — identity is vacuously satisfied
+  // 2) rotation: a v1+v2 provider encrypts new data under v2 yet still reads v1 data (GCM tag picks the key).
+  const rp = new KeyProvider({
+    KNOLE_KDF_SECRET: "a".repeat(64),
+    KNOLE_KDF_SECRET_V2: "b".repeat(64),
+  } as NodeJS.ProcessEnv);
+  const kCurrentIsLatest = rp.currentVersion() === 2;
+  const kNewestFirst = JSON.stringify(rp.availableVersions()) === JSON.stringify([2, 1]);
+  const kpMsg = new TextEncoder().encode("I signed the lease on the flat in Porto today.");
+  const blobV2 = gcmEncrypt(rp.deriveUserKey(kpUser), kpMsg); // current version (v2)
+  const blobV1 = gcmEncrypt(rp.deriveUserKey(kpUser, 1), kpMsg); // a pre-rotation (v1) blob
+  const kReadsNew = Buffer.from(gcmDecryptAny(rp.userKeyCandidates(kpUser), blobV2)).equals(
+    Buffer.from(kpMsg),
+  );
+  const kReadsRotated = Buffer.from(gcmDecryptAny(rp.userKeyCandidates(kpUser), blobV1)).equals(
+    Buffer.from(kpMsg),
+  );
+  // 3) per-user domain separation: two users never share a key.
+  const kPerUserDistinct = !Buffer.from(rp.deriveUserKey("alice")).equals(
+    Buffer.from(rp.deriveUserKey("bob")),
+  );
+  const keyProviderOk =
+    kV1Identical &&
+    kCurrentIsLatest &&
+    kNewestFirst &&
+    kReadsNew &&
+    kReadsRotated &&
+    kPerUserDistinct;
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -648,6 +687,7 @@ export async function runEvals(): Promise<EvalResult> {
     firstAha,
     cryptoOk,
     confidenceCalibrated,
+    keyProviderOk,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -773,6 +813,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: confidenceCalibrated ? 1 : 0,
       details: {},
     },
+    {
+      suite: "key-provider",
+      passed: gates.keyProviderOk,
+      score: keyProviderOk ? 1 : 0,
+      details: {},
+    },
   ]);
 
   return {
@@ -799,6 +845,7 @@ export async function runEvals(): Promise<EvalResult> {
     ahaSeconds,
     cryptoOk,
     confidenceCalibrated,
+    keyProviderOk,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };

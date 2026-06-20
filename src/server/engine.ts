@@ -1,9 +1,10 @@
-import { createHash, hkdfSync } from "node:crypto";
+import { createHash } from "node:crypto";
 import { sql, eq, and } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
 import { chat } from "./llm";
 import { putData } from "./og";
+import { keyProvider } from "./keyProvider";
 
 const { users, entries, replies, memories, memoryHistory } = schema;
 
@@ -303,16 +304,18 @@ export async function extractMemories(userId: string, entryId: string, entryText
 }
 
 // ── 0G Storage: encrypt + store each entry under a per-user key ──
-// Per-user AES-256 key via HKDF from a dedicated master secret (production = hold the secret in a KMS).
+// The per-user AES-256 key, at the current key version. Custody (env vs KMS) and rotation live in
+// keyProvider.ts; v1's derivation is unchanged, so every existing 0G blob still decrypts.
 export function keyForUser(userId: string): Uint8Array {
-  const secret = process.env.KNOLE_KDF_SECRET;
-  if (!secret)
-    throw new Error("KNOLE_KDF_SECRET is required to derive the per-user encryption key");
-  // HKDF-SHA256 with a dedicated master secret (NOT the chain signing key);
-  // per-user domain separation via the info parameter.
-  return new Uint8Array(
-    hkdfSync("sha256", secret, "knole-hkdf-salt-v1", `entry-key:${userId}`, 32),
-  );
+  return keyProvider.deriveUserKey(userId);
+}
+
+/**
+ * Every candidate decryption key for a user, newest key version first. Decryption walks these and
+ * the GCM auth tag picks the right one — so data written under a since-rotated key still reads.
+ */
+export function userKeyCandidates(userId: string): Uint8Array[] {
+  return keyProvider.userKeyCandidates(userId);
 }
 
 export async function storeEntryOn0G(

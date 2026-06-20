@@ -50,6 +50,24 @@ export function gcmDecrypt(key: Uint8Array, blob: Uint8Array): Uint8Array {
   return new Uint8Array(Buffer.concat([decipher.update(ct), decipher.final()]));
 }
 
+/**
+ * Try each candidate key in turn and return the first that authenticates. Because GCM's auth tag
+ * means only the right key yields valid plaintext, this is how a blob written under a since-rotated
+ * key version still decrypts (pass the user's keys newest-version-first). Throws if none verify.
+ */
+export function gcmDecryptAny(keys: Uint8Array[], blob: Uint8Array): Uint8Array {
+  if (keys.length === 0) throw new Error("no candidate keys to decrypt with");
+  let lastErr: unknown;
+  for (const key of keys) {
+    try {
+      return gcmDecrypt(key, blob);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("decryption failed for all candidate keys");
+}
+
 export type PutResult = { rootHash: string; txHash: string };
 
 /** AES-256-GCM encrypt (when a key is given), then upload to 0G Storage. */
@@ -77,8 +95,14 @@ export async function putData(
     : { rootHash: tx.rootHashes[0], txHash: tx.txHashes[0] };
 }
 
-/** Download by root hash, then AES-256-GCM decrypt + verify (when a key is given). */
-export async function getData(rootHash: string, opts?: { key?: Uint8Array }): Promise<Uint8Array> {
+/**
+ * Download by root hash, then AES-256-GCM decrypt + verify. Pass `key` for a single key, or `keys`
+ * for version-aware decryption that tolerates key rotation (tried newest-first); raw bytes if neither.
+ */
+export async function getData(
+  rootHash: string,
+  opts?: { key?: Uint8Array; keys?: Uint8Array[] },
+): Promise<Uint8Array> {
   const timeoutMs = Number(process.env.OG_TIMEOUT_MS ?? 45000);
   const [blob, err] = await withTimeout(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,6 +112,7 @@ export async function getData(rootHash: string, opts?: { key?: Uint8Array }): Pr
   );
   if (err !== null) throw new Error(`download: ${err}`);
   const raw = new Uint8Array(await blob.arrayBuffer());
+  if (opts?.keys) return gcmDecryptAny(opts.keys, raw);
   return opts?.key ? gcmDecrypt(opts.key, raw) : raw;
 }
 

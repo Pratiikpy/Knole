@@ -1,7 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getData } from "./og";
-import { keyForUser } from "./engine";
+import { userKeyCandidates } from "./engine";
 
 const { entries } = schema;
 
@@ -9,7 +9,7 @@ export type RestoredEntry = { entryId: string; text: string; savedAt?: string };
 
 /** Pull one entry's canonical copy back from 0G Storage and decrypt it with the user's key. */
 export async function restoreEntryFromChain(userId: string, kvRef: string): Promise<RestoredEntry> {
-  const bytes = await getData(kvRef, { key: keyForUser(userId) });
+  const bytes = await getData(kvRef, { keys: userKeyCandidates(userId) });
   const obj = JSON.parse(new TextDecoder().decode(bytes)) as Partial<RestoredEntry>;
   // The blob is decrypted with the user's key; validate shape before trusting it.
   if (typeof obj?.text !== "string") throw new Error("restored 0G payload has an invalid shape");
