@@ -29,5 +29,8 @@ console.log(
 console.log(
   `crypto        : AES-256-GCM round-trip + tamper + wrong-key ${r.cryptoOk ? "✓" : "✗"}`,
 );
+console.log(
+  `confidence-cal: stated-fact > inference, user-edit→1.0 ${r.confidenceCalibrated ? "✓" : "✗"}`,
+);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);

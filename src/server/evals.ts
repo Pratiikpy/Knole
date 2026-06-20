@@ -81,6 +81,7 @@ export type EvalResult = {
   firstAha: boolean;
   ahaSeconds: number;
   cryptoOk: boolean;
+  confidenceCalibrated: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -575,6 +576,55 @@ export async function runEvals(): Promise<EvalResult> {
   const cCipherOnly = !Buffer.from(cBlob).toString("latin1").includes("private entry");
   const cryptoOk = cRoundTrip && cTamper && cWrongKey && cIvUnique && cCipherOnly;
 
+  // ── confidence-calibration (M4): a plainly-stated fact must earn HIGHER confidence than a
+  // tentative inference (monotonic), and a user edit makes the memory certain (1.0). LLM-rated → retry. ──
+  let [calibU] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.privyId, "eval-calib"))
+    .limit(1);
+  if (!calibU)
+    [calibU] = await db
+      .insert(users)
+      .values({ privyId: "eval-calib", email: "cal@knole.local" })
+      .returning({ id: users.id });
+  const calUid = calibU.id;
+  const CALIB_ENTRY =
+    "I signed the lease on the flat in Porto today — it's official, I move in March. Maybe I've always been a bit of a drifter, never quite settling anywhere for long.";
+  const clearCalib = async () => {
+    await db.delete(memoryHistory).where(eq(memoryHistory.userId, calUid));
+    await db.delete(memories).where(eq(memories.userId, calUid));
+    await db.delete(entries).where(eq(entries.userId, calUid));
+  };
+  const confidenceCalibrated = await retryUntil(async () => {
+    await clearCalib();
+    const [ce] = await db
+      .insert(entries)
+      .values({
+        userId: calUid,
+        text: CALIB_ENTRY,
+        type: "journal",
+        embedding: await embed(CALIB_ENTRY),
+      })
+      .returning();
+    await extractMemories(calUid, ce.id, CALIB_ENTRY);
+    const mr = (await db.execute(sql`
+      SELECT id, content, confidence FROM memories WHERE user_id = ${calUid} AND status = 'active'
+    `)) as unknown as { id: string; content: string; confidence: number }[];
+    const fact = mr.find((m) => /porto|march|lease|move|flat/i.test(m.content));
+    const infer = mr.find((m) => /drift|settl|wander/i.test(m.content));
+    if (!fact || !infer) return false;
+    const monotonic = Number(fact.confidence) > Number(infer.confidence);
+    // a user edit must make the memory certain
+    await updateMemoryContent(calUid, fact.id, fact.content + " (confirmed)");
+    const after = (await db.execute(sql`
+      SELECT confidence FROM memories WHERE id = ${fact.id}
+    `)) as unknown as { confidence: number }[];
+    return monotonic && Number(after[0]?.confidence) === 1;
+  });
+  await clearCalib();
+  await db.delete(users).where(eq(users.id, calUid));
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -597,6 +647,7 @@ export async function runEvals(): Promise<EvalResult> {
     noPiiLeak,
     firstAha,
     cryptoOk,
+    confidenceCalibrated,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -716,6 +767,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: cryptoOk ? 1 : 0,
       details: { roundTrip: cRoundTrip, tamper: cTamper, wrongKey: cWrongKey, ivUnique: cIvUnique },
     },
+    {
+      suite: "confidence-calibration",
+      passed: gates.confidenceCalibrated,
+      score: confidenceCalibrated ? 1 : 0,
+      details: {},
+    },
   ]);
 
   return {
@@ -741,6 +798,7 @@ export async function runEvals(): Promise<EvalResult> {
     firstAha,
     ahaSeconds,
     cryptoOk,
+    confidenceCalibrated,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
