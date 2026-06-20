@@ -31,6 +31,7 @@ import { buildMirror } from "./mirror";
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { generateNudge } from "./proactivity";
 import { resurface } from "./resurface";
+import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
 import { exportMindfile } from "./mindfile";
 import { forgetRange, deleteAccount } from "./dataops";
@@ -186,6 +187,14 @@ export const updateSettingsFn = createServerFn({ method: "POST" })
     await updateSettings(userId, data);
     return { ok: true };
   });
+
+// Generate a "Save to Knole" browser-extension token for the signed-in user. The raw token is
+// returned once (only its hash is stored); regenerating invalidates any prior token.
+export const genExtensionTokenFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  const token = await generateExtensionToken(userId);
+  return { token };
+});
 
 export const saveFn = createServerFn({ method: "POST" })
   .validator(
