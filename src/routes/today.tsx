@@ -60,7 +60,7 @@ function TodayPage() {
     setRecalled([]);
     setReflected(false);
     try {
-      const res = await fetch("/api/journal/stream", {
+      const res = await fetch("/journal/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ entry }),

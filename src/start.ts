@@ -85,7 +85,8 @@ const extensionMiddleware = createMiddleware().server(async ({ next }) => {
 // because server fns can't stream a response body; the CSRF/auth/rate guards live in the handler.
 const journalStreamMiddleware = createMiddleware().server(async ({ next }) => {
   const request = getRequest();
-  if (new URL(request.url).pathname !== "/api/journal/stream") return next();
+  // Not under /api/ — Vercel reserves /api/* for its functions dir, so those never reach the SSR.
+  if (new URL(request.url).pathname !== "/journal/stream") return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
   return handleJournalStream(request);
 });
