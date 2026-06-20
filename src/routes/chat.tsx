@@ -37,7 +37,9 @@ function ChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    // Respect reduced-motion: jump instead of smooth-scroll for motion-sensitive users.
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    endRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "end" });
   }, [messages, loading]);
 
   const send = async () => {

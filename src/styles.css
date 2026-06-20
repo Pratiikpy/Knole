@@ -189,6 +189,11 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Infinite animations (the breathe glow, the typing-cursor blink) must run ONCE, not loop at
+       0.01ms — an infinite 0.01ms loop is a rapid strobe, worse for motion-sensitive users than the
+       original slow pulse. iteration-count:1 + the ~0 duration makes them settle instantly. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
