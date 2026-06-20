@@ -35,6 +35,7 @@ type Memory = {
   status: string;
   sourceQuote: string | null;
   recallCount: number;
+  confidence: number;
   createdAt: string;
   kvRef: string | null;
 };
@@ -260,6 +261,28 @@ function TheIndex() {
                           ? `recalled ${f.recallCount}×`
                           : `noticed ${fmtDate(f.createdAt)}`}
                       </span>
+                      {f.confidence < 0.65 && (
+                        <>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span
+                            className="text-muted-foreground/70"
+                            title="Knole inferred this from your words — not certain yet"
+                          >
+                            still forming
+                          </span>
+                        </>
+                      )}
+                      {f.confidence >= 0.99 && (
+                        <>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span
+                            className="text-tan"
+                            title="You edited this yourself — Knole treats it as certain"
+                          >
+                            you confirmed this
+                          </span>
+                        </>
+                      )}
                       {f.kvRef && (
                         <span title={`Stored on 0G · ${f.kvRef}`} className="text-tan">
                           ⬡ 0G

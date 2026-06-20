@@ -180,7 +180,7 @@ export async function retrieveEntries(
 // ── extract durable memories from an entry (+ dedup) ─────
 const EXTRACT_SYS = `Extract durable, useful long-term memories about the user from their journal entry. Only keep things worth remembering across future sessions: facts, people, goals, recurring feelings or patterns, commitments, preferences, values. Ignore fleeting detail.
 Write each memory in the second person, addressed to them — "You…" / "Your…" (e.g. "You're training for the Chicago marathon", "Your sister Mara is a steady support"). Never write "the user" or "they".
-Return a JSON array; each item: {"content": "<concise fact about them, in second person>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>"}.
+Return a JSON array; each item: {"content": "<concise fact about them, in second person>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>", "confidence": <0.0-1.0 — how sure you are this is true and lasting: ~0.9 for something they state plainly, ~0.6 for a fair inference, ~0.4 for a tentative read you're guessing at>}.
 Return [] if nothing durable. Output ONLY the JSON array, no prose.`;
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -220,7 +220,7 @@ export async function extractMemories(userId: string, entryId: string, entryText
     { temperature: 0.2, maxTokens: 700 },
   );
 
-  let items: { content?: string; type?: string; quote?: string }[] = [];
+  let items: { content?: string; type?: string; quote?: string; confidence?: number }[] = [];
   try {
     const m = raw.match(/\[[\s\S]*\]/);
     // No array at all (model wrapped/refused) is a real extraction miss — surface it, don't vanish.
@@ -239,6 +239,9 @@ export async function extractMemories(userId: string, entryId: string, entryText
   for (const it of items) {
     if (!it?.content) continue;
     const type = it.type && VALID_TYPES.has(it.type) ? it.type : "fact";
+    // How sure the model is this memory is true + durable. Clamp to a sane floor so a missing/garbage
+    // value still lands at the old default. Earned higher later by recall + a user edit.
+    const conf = Math.max(0.3, Math.min(1, Number(it.confidence) || 0.7));
     const ch = hash(normalize(it.content));
     const v = await embed(it.content);
     const vlit = toVectorLiteral(v);
@@ -278,7 +281,7 @@ export async function extractMemories(userId: string, entryId: string, entryText
       INSERT INTO memories
         (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance)
       VALUES
-        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, 0.7, 0.6)
+        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, ${conf}, 0.6)
       ON CONFLICT (user_id, content_hash)
         DO UPDATE SET recall_count = memories.recall_count + 1, updated_at = now()
       RETURNING id, content
@@ -332,13 +335,15 @@ export type MemoryRow = {
   status: string;
   sourceQuote: string | null;
   recallCount: number;
+  confidence: number;
   createdAt: string;
   kvRef: string | null;
 };
 
 export async function listMemories(userId: string): Promise<MemoryRow[]> {
   const rows = await db.execute(sql`
-    SELECT m.id, m.content, m.type, m.status, m.source_quote, m.recall_count, m.created_at, e.kv_ref
+    SELECT m.id, m.content, m.type, m.status, m.source_quote, m.recall_count, m.confidence,
+           m.created_at, e.kv_ref
     FROM memories m
     LEFT JOIN entries e ON e.id = m.source_entry_id
     WHERE m.user_id = ${userId} AND m.status NOT IN ('forgotten', 'superseded', 'rejected')
@@ -351,6 +356,7 @@ export async function listMemories(userId: string): Promise<MemoryRow[]> {
     status: String(r.status),
     sourceQuote: r.source_quote == null ? null : String(r.source_quote),
     recallCount: Number(r.recall_count ?? 0),
+    confidence: Number(r.confidence ?? 0.7),
     createdAt: String(r.created_at),
     kvRef: r.kv_ref == null ? null : String(r.kv_ref),
   }));
@@ -393,6 +399,7 @@ export async function updateMemoryContent(userId: string, id: string, content: s
       content,
       contentHash: hash(normalize(content)),
       embedding: v,
+      confidence: 1, // the user confirmed it in their own words — now certain
       userVerifiedAt: new Date(), // user-edit-wins lock
       updatedAt: new Date(),
     })
