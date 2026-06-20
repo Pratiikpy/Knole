@@ -146,6 +146,9 @@ function RememberedPage() {
               <textarea
                 value={response}
                 onChange={(e) => setResponse(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send();
+                }}
                 rows={4}
                 autoFocus
                 placeholder="answer your past self…"

@@ -143,6 +143,9 @@ function TodayPage() {
                 setReflection(null);
                 setRecalled([]);
               }}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleReflect();
+              }}
               rows={6}
               className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Write what's true, even if it's small."
