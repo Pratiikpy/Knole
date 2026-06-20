@@ -115,7 +115,22 @@ Fund the 0G compute ledger, set `OG_SEALED_INFERENCE=on`, and point `ZG_SERVICE_
 `ZG_API_SECRET` at your compute provider. Reflections then route through the TEE, with
 NVIDIA as the automatic fallback.
 
-## 7. Before mainnet / real funds
+## 7. Optional — billing (Stripe)
+
+Subscriptions are feature-gated: with no Stripe keys the upgrade page stays honest and disabled
+(no dead button). To enable it:
+
+1. Create a Stripe product with a **monthly** and a **yearly** recurring price; set
+   `STRIPE_SECRET_KEY`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY` (test mode first).
+2. Add a webhook endpoint at `<your-origin>/stripe/webhook` for `checkout.session.completed` and
+   `customer.subscription.*`; set the signing secret as `STRIPE_WEBHOOK_SECRET`.
+3. Entitlement is the single `users.plan` field (`free` | `deep`), flipped **only** by
+   signature-verified webhooks — never by the client.
+
+Verify the trust boundary without a Stripe account: `npm run test:billing` (a valid signature flips
+the plan to `deep`; a tampered one is rejected; `subscription.deleted` downgrades to `free`).
+
+## 8. Before mainnet / real funds
 
 - **Rotate every secret** (`EVM_PRIVATE_KEY`, `KNOLE_KDF_SECRET`, Privy/NVIDIA keys) — the
   testnet values were used in development.

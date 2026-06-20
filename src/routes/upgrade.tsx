@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { startCheckoutFn } from "@/server/fns";
 import { useState } from "react";
 
 export const Route = createFileRoute("/upgrade")({
@@ -47,6 +49,31 @@ const tiers = [
 
 function UpgradePage() {
   const [yearly, setYearly] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const doCheckout = useServerFn(startCheckoutFn);
+
+  async function goDeeper() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await doCheckout({ data: { yearly } });
+      if (res.ok) {
+        window.location.href = res.url; // off to Stripe Checkout
+        return;
+      }
+      setStatus(
+        res.reason === "auth_required"
+          ? "Sign in first — a subscription belongs to your own account, not the demo."
+          : "Billing isn't switched on in this demo yet — the deeper plan is coming soon.",
+      );
+    } catch {
+      setStatus("Couldn't start checkout just now. Please try again in a moment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Shell>
       <section className="px-6 pb-28 pt-14">
@@ -110,15 +137,19 @@ function UpgradePage() {
                 ))}
               </ul>
               <button
-                disabled={t.disabled}
+                disabled={t.disabled || (t.featured && busy)}
+                onClick={t.featured ? goDeeper : undefined}
                 className={`mt-8 rounded-full px-5 py-3 text-[13px] font-medium transition-all ${
                   t.featured
                     ? "bg-ink text-paper hover:translate-y-[-1px]"
                     : "border border-rule text-muted-foreground"
                 } disabled:cursor-default disabled:opacity-60 disabled:hover:translate-y-0`}
               >
-                {t.cta}
+                {t.featured && busy ? "Starting…" : t.cta}
               </button>
+              {t.featured && status && (
+                <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">{status}</p>
+              )}
             </div>
           ))}
         </div>

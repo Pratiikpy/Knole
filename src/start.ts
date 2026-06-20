@@ -6,6 +6,7 @@ import { handleExtensionSave } from "./server/extensionSave";
 import { handleJournalStream } from "./server/journalStream";
 import { handleChatStream } from "./server/chatStream";
 import { handleAskStream } from "./server/askStream";
+import { handleStripeWebhookRequest } from "./server/stripeWebhook";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
 // (framing), and full-URL referrer leakage; deny unused device permissions. The CSP is
@@ -105,10 +106,19 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
   return handler(request);
 });
 
+// Stripe webhook — raw body + signature auth, same rationale as the streaming endpoints (not a
+// server fn, not under /api/*). Intercepted before the router; everything else falls through.
+const stripeWebhookMiddleware = createMiddleware().server(async ({ next }) => {
+  const request = getRequest();
+  if (new URL(request.url).pathname !== "/stripe/webhook") return next();
+  return handleStripeWebhookRequest(request);
+});
+
 export const startInstance = createStart(() => ({
   requestMiddleware: [
     extensionMiddleware,
     streamMiddleware,
+    stripeWebhookMiddleware,
     securityHeadersMiddleware,
     errorMiddleware,
     csrfMiddleware,

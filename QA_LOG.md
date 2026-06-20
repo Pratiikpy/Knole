@@ -40,6 +40,7 @@ and tx links are real `chainscan-galileo.0g.ai` URLs.
 | --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | 1   | LOW      | README claimed the Mirror reveals on "day 14"; landing ("day fifteen") + code (`REVEAL_DAY=14` days-since = day 15) say day 15                              | **FIXED** (`027c756`)  |
 | 2   | LOW      | Nav labels the flagship "Pattern Mirror" and the dashboard "Memory", while the README/docs use "The Mirror" / "The Index" — a naming variance, not an error | OPEN (naming decision) |
+| 3   | HIGH     | `/upgrade` "Go deeper" was a **dead button** (no handler) — a primary CTA that did nothing (found via code audit)                                            | **FIXED** (billing scaffold — real Stripe checkout when configured, honest message otherwise) |
 
 ---
 

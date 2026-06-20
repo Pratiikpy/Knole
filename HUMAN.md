@@ -43,16 +43,20 @@ by `CRON_SECRET`) — no separate host needed. For an always-on host instead, ru
 
 ## Phase 1 — turn on billing
 
-Billing is the last unbuilt Phase-1 feature (Stripe subscription + paywall-on-depth + the upgrade
-flow). When it lands, turning it on will need:
+Billing is **built** (Stripe subscription + the upgrade flow + a signature-verified webhook;
+entitlement is `users.plan`, flipped only by verified webhooks). It stays cleanly disabled until you
+set the keys — the upgrade CTA says so honestly rather than dead-ending. To switch it on:
 
-| #   | Item                         | Type | Env var(s)              | Where / how                                                                     |
-| --- | ---------------------------- | ---- | ----------------------- | ------------------------------------------------------------------------------- |
-| 10  | Stripe account               | ☁️💳 | `STRIPE_SECRET_KEY`     | dashboard.stripe.com → test mode first, then activate for live payouts          |
-| 11  | Subscription product + price | 🧭   | `STRIPE_PRICE_ID`       | create the product/price in Stripe; decide the **tier(s) + amount**             |
-| 12  | Stripe webhook               | 🔑   | `STRIPE_WEBHOOK_SECRET` | add an endpoint → `…/api/stripe/webhook`; copy the signing secret               |
-| 13  | Paywall threshold            | 🧭   | (config)                | decide what's free vs paid (e.g. depth/volume after the first "wow")            |
-| 14  | 0G Pay compute treasury      | ☁️💳 | —                       | optional; funds the compute ledger from usage. Stripe alone is enough to start. |
+| #   | Item                          | Type | Env var(s)                                | Where / how                                                                          |
+| --- | ----------------------------- | ---- | ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| 10  | Stripe account                | ☁️💳 | `STRIPE_SECRET_KEY`                       | dashboard.stripe.com → test mode first, then activate for live payouts               |
+| 11  | Monthly + yearly prices       | 🧭   | `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY` | create the product + two recurring prices; decide the **amounts** (UI shows $9 / $84) |
+| 12  | Stripe webhook                | 🔑   | `STRIPE_WEBHOOK_SECRET`                   | add an endpoint → `<your-origin>/stripe/webhook`; copy the signing secret            |
+| 13  | 0G Pay compute treasury       | ☁️💳 | —                                         | optional; funds the compute ledger from usage. Stripe alone is enough to start.       |
+
+> Verify the webhook trust boundary locally without a Stripe account: `npm run test:billing`
+> (a valid signature flips the plan to `deep`; a tampered one is rejected; `subscription.deleted`
+> downgrades to `free`).
 
 ---
 

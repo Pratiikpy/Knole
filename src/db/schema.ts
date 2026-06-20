@@ -81,6 +81,9 @@ export const users = pgTable("users", {
   // "Save to Knole" extension: sha256 of the user's high-entropy token (the raw token is
   // shown once and never stored). null until they generate one.
   extensionTokenHash: text("extension_token_hash"),
+  // Stripe billing — written only by verified webhooks. `plan` ("free" | "deep") is the entitlement.
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

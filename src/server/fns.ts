@@ -19,6 +19,7 @@ import { embed, warmEmbed } from "./embed";
 import { warmNER } from "./anonymise";
 import {
   currentUserId,
+  getSessionUserId,
   requireUserId,
   REQUIRE_AUTH,
   startSessionFromToken,
@@ -37,6 +38,7 @@ import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
 import { exportMindfile } from "./mindfile";
 import { forgetRange, deleteAccount } from "./dataops";
+import { createCheckoutSession, getBilling, billingConfigured } from "./billing";
 
 // The full daily-loop flow: retrieve past memories → reflect with them →
 // persist the entry + AI reply → extract new memories for next time.
@@ -67,6 +69,25 @@ export const listMemoriesFn = createServerFn({ method: "GET" }).handler(async ()
   const userId = await currentUserId();
   return { memories: await listMemories(userId) };
 });
+
+// ── billing (Stripe subscription) ──
+export const getBillingFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return getBilling(userId);
+});
+
+export const startCheckoutFn = createServerFn({ method: "POST" })
+  .validator(z.object({ yearly: z.boolean().default(false) }))
+  .handler(async ({ data }) => {
+    // Subscribing requires billing to be enabled AND a real signed-in user — never the shared demo
+    // user. Both "no" answers are honest, surfaced to the UI (no dead button, no silent failure).
+    if (!billingConfigured()) return { ok: false as const, reason: "not_configured" as const };
+    const userId = await getSessionUserId();
+    if (!userId) return { ok: false as const, reason: "auth_required" as const };
+    enforceRate("checkout", 10, 60_000);
+    const url = await createCheckoutSession(userId, { yearly: data.yearly });
+    return { ok: true as const, url };
+  });
 
 export const setMemoryStatusFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), status: z.enum(["active", "pinned", "forgotten"]) }))
