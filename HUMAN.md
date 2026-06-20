@@ -33,8 +33,9 @@ accounts (or to confirm what's set).
 - ✅ **Sign in once** (Settings → Sign in → email OTP). The logged-in path can't be driven
   headlessly. Confirm a `users` row appears with your `privy_id` and your data is isolated
   from the demo. (Or enable Privy "test credentials" and run `npm run test:auth`.)
-- 🧭 **Flip `KNOLE_REQUIRE_AUTH=on`** on the public deploy so anonymous visitors get the
-  seeded demo **read-only** instead of being able to write to it.
+- 🧭 **`KNOLE_REQUIRE_AUTH` now defaults to on** (writes need a real session — secure-by-default). A
+  real multi-user deploy needs **nothing**: just leave it unset. Only the public _writable_ no-signup
+  demo sets `KNOLE_REQUIRE_AUTH=off` to let anonymous visitors try writing to the shared demo.
 
 The nightly Dreaming worker is already wired as a **Vercel Cron** (`/api/cron/dream`, guarded
 by `CRON_SECRET`) — no separate host needed. For an always-on host instead, run `npm run worker`.
@@ -47,12 +48,12 @@ Billing is **built** (Stripe subscription + the upgrade flow + a signature-verif
 entitlement is `users.plan`, flipped only by verified webhooks). It stays cleanly disabled until you
 set the keys — the upgrade CTA says so honestly rather than dead-ending. To switch it on:
 
-| #   | Item                          | Type | Env var(s)                                | Where / how                                                                          |
-| --- | ----------------------------- | ---- | ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| 10  | Stripe account                | ☁️💳 | `STRIPE_SECRET_KEY`                       | dashboard.stripe.com → test mode first, then activate for live payouts               |
-| 11  | Monthly + yearly prices       | 🧭   | `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY` | create the product + two recurring prices; decide the **amounts** (UI shows $9 / $84) |
-| 12  | Stripe webhook                | 🔑   | `STRIPE_WEBHOOK_SECRET`                   | add an endpoint → `<your-origin>/stripe/webhook`; copy the signing secret            |
-| 13  | 0G Pay compute treasury       | ☁️💳 | —                                         | optional; funds the compute ledger from usage. Stripe alone is enough to start.       |
+| #   | Item                    | Type | Env var(s)                                    | Where / how                                                                           |
+| --- | ----------------------- | ---- | --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 10  | Stripe account          | ☁️💳 | `STRIPE_SECRET_KEY`                           | dashboard.stripe.com → test mode first, then activate for live payouts                |
+| 11  | Monthly + yearly prices | 🧭   | `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY` | create the product + two recurring prices; decide the **amounts** (UI shows $9 / $84) |
+| 12  | Stripe webhook          | 🔑   | `STRIPE_WEBHOOK_SECRET`                       | add an endpoint → `<your-origin>/stripe/webhook`; copy the signing secret             |
+| 13  | 0G Pay compute treasury | ☁️💳 | —                                             | optional; funds the compute ledger from usage. Stripe alone is enough to start.       |
 
 > Verify the webhook trust boundary locally without a Stripe account: `npm run test:billing`
 > (a valid signature flips the plan to `deep`; a tampered one is rejected; `subscription.deleted`

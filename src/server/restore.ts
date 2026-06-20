@@ -9,6 +9,13 @@ export type RestoredEntry = { entryId: string; text: string; savedAt?: string };
 
 /** Pull one entry's canonical copy back from 0G Storage and decrypt it with the user's key. */
 export async function restoreEntryFromChain(userId: string, kvRef: string): Promise<RestoredEntry> {
+  // Ownership guard: only restore a root that belongs to this user's own entries. The AES-256-GCM auth
+  // tag already stops reading another user's blob (a wrong key fails to decrypt), but this rejects a
+  // foreign or forged root *before* any 0G fetch — defense-in-depth, not crypto as the sole gate.
+  const owned = (await db.execute(sql`
+    SELECT 1 FROM entries WHERE user_id = ${userId} AND kv_ref = ${kvRef} LIMIT 1
+  `)) as unknown as unknown[];
+  if (owned.length === 0) throw new Error("root not owned by this user");
   const bytes = await getData(kvRef, { keys: userKeyCandidates(userId) });
   const obj = JSON.parse(new TextDecoder().decode(bytes)) as Partial<RestoredEntry>;
   // The blob is decrypted with the user's key; validate shape before trusting it.

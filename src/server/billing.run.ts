@@ -74,7 +74,12 @@ async function main() {
     object: "event",
     type: "customer.subscription.deleted",
     data: {
-      object: { id: "sub_test_1", object: "subscription", status: "canceled", customer: "cus_test_eval" },
+      object: {
+        id: "sub_test_1",
+        object: "subscription",
+        status: "canceled",
+        customer: "cus_test_eval",
+      },
     },
   });
   await handleStripeWebhook(deleted, signed(deleted));

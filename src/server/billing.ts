@@ -1,6 +1,6 @@
 import "dotenv/config";
 import Stripe from "stripe";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db, schema } from "../db";
 
 // Subscription billing via Stripe. Everything here is feature-gated: with no Stripe keys set
@@ -101,15 +101,18 @@ export async function handleStripeWebhook(
     case "checkout.session.completed": {
       const s = event.data.object as Stripe.Checkout.Session;
       const userId = s.metadata?.knoleUserId;
-      if (userId) {
+      // Grant only when the user id from (server-set) metadata also matches the customer Stripe
+      // attached to this paid session — the same customer cross-check the subscription branches use,
+      // so a tampered knoleUserId can't move a plan onto an account that didn't pay.
+      if (userId && s.customer) {
         await db
           .update(users)
           .set({
             plan: "deep",
-            ...(s.customer ? { stripeCustomerId: String(s.customer) } : {}),
+            stripeCustomerId: String(s.customer),
             ...(s.subscription ? { stripeSubscriptionId: String(s.subscription) } : {}),
           })
-          .where(eq(users.id, userId));
+          .where(and(eq(users.id, userId), eq(users.stripeCustomerId, String(s.customer))));
       }
       break;
     }
