@@ -21,6 +21,9 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
     "x-frame-options": "DENY",
     "referrer-policy": "strict-origin-when-cross-origin",
     "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    // Isolate the page from cross-origin openers while still allowing the Privy OAuth popup to talk
+    // back — the recommended COOP for popup auth, and it clears Privy's COOP-check console error.
+    "cross-origin-opener-policy": "same-origin-allow-popups",
     "content-security-policy": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
   } as unknown as Parameters<typeof setResponseHeaders>[0]);
   return next();
