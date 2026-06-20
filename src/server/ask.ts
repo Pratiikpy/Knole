@@ -1,6 +1,7 @@
 import { embed } from "./embed";
 import { chatPrivate } from "./sealed";
 import { retrieveEntries, retrieveMemories } from "./engine";
+import { anonymiseMessages, deAnonymise } from "./anonymise";
 
 const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the journal excerpts and remembered facts provided below.
 - Ground every claim in what they actually wrote. Never invent events, dates, numbers, or feelings.
@@ -45,22 +46,34 @@ export async function askMyLife(userId: string, question: string): Promise<AskRe
     };
   }
 
+  // Anonymise the model-facing payload — the question, the excerpts, the facts — under one shared
+  // map so no raw PII reaches the model. The receipts below keep the user's real words (they're
+  // shown only to the user), and the summary is de-anonymised before return.
+  const { messages: anon, map } = await anonymiseMessages([
+    { content: question },
+    ...entries.map((e) => ({ content: e.text })),
+    ...memories.map((m) => ({ content: m.content })),
+  ]);
+  let ai = 0;
+  const anonQuestion = anon[ai++].content;
+  const anonEntries = entries.map(() => anon[ai++].content);
+  const anonMems = memories.map(() => anon[ai++].content);
   const context = [
     "JOURNAL EXCERPTS:",
-    ...entries.map((e, i) => `[${i + 1}] (${fmtDate(e.createdAt)}) ${e.text}`),
+    ...anonEntries.map((t, i) => `[${i + 1}] (${fmtDate(entries[i].createdAt)}) ${t}`),
     "",
     "REMEMBERED FACTS:",
-    ...memories.map((m) => `- ${m.content}`),
+    ...anonMems.map((c) => `- ${c}`),
   ].join("\n");
 
   const r = await chatPrivate(
     [
       { role: "system", content: ASK_SYS },
-      { role: "user", content: `Question: ${question}\n\n${context}` },
+      { role: "user", content: `Question: ${anonQuestion}\n\n${context}` },
     ],
     { temperature: 0.5, maxTokens: 220 },
   );
-  const summary = r.content;
+  const summary = deAnonymise(r.content, map);
 
   const receipts = entries.map((e) => ({
     date: fmtDate(e.createdAt),

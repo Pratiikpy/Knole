@@ -13,6 +13,7 @@ import {
 } from "./engine";
 import { reflect } from "./reflect";
 import { generateNudge } from "./proactivity";
+import { anonymise } from "./anonymise";
 import { buildMirror } from "./mirror";
 import { chat } from "./llm";
 
@@ -73,6 +74,8 @@ export type EvalResult = {
   nudgeGrounded: boolean;
   dataIsolation: boolean;
   mirrorGrounded: boolean;
+  noPiiLeak: boolean;
+  piiScrubRate: number;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -433,6 +436,39 @@ export async function runEvals(): Promise<EvalResult> {
   await db.delete(entries).where(eq(entries.userId, mUid));
   await db.delete(users).where(eq(users.id, mUid));
 
+  // ── privacy-leak: PII scrubbed before the model on the fallback path. The NER is best-effort
+  // defense-in-depth (catches names/places/orgs in natural journal contexts); the TEE is the hard
+  // cryptographic guarantee. We gate on a high scrub rate, not a perfect 0 a NER can't promise. ──
+  const piiCases: [string, string[]][] = [
+    [
+      "I went for a long walk with Mara this morning, then headed to the office in Berlin.",
+      ["Mara", "Berlin"],
+    ],
+    [
+      "My dad Robert finally called from Austin; we talked for nearly an hour.",
+      ["Robert", "Austin"],
+    ],
+    [
+      "I had coffee with Priya, who recently joined Sequoia, near my flat in Lisbon.",
+      ["Priya", "Sequoia", "Lisbon"],
+    ],
+    [
+      "My therapist Doctor Chen helped me see the pattern with my brother Daniel.",
+      ["Chen", "Daniel"],
+    ],
+  ];
+  let piiTotal = 0;
+  let piiLeaks = 0;
+  for (const [text, terms] of piiCases) {
+    const { anonymised } = await anonymise(text);
+    for (const term of terms) {
+      piiTotal++;
+      if (new RegExp(`\\b${term}\\b`).test(anonymised)) piiLeaks++;
+    }
+  }
+  const piiScrubRate = piiTotal ? (piiTotal - piiLeaks) / piiTotal : 1;
+  const noPiiLeak = piiScrubRate >= 0.85;
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -451,6 +487,7 @@ export async function runEvals(): Promise<EvalResult> {
     nudgeGrounded,
     dataIsolation,
     mirrorGrounded,
+    noPiiLeak,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -546,6 +583,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: mirrorGrounded ? 1 : 0,
       details: {},
     },
+    {
+      suite: "privacy-leak",
+      passed: gates.noPiiLeak,
+      score: noPiiLeak ? 1 : 0,
+      details: { piiLeaks, piiTotal, piiScrubRate },
+    },
   ]);
 
   return {
@@ -565,6 +608,8 @@ export async function runEvals(): Promise<EvalResult> {
     nudgeGrounded,
     dataIsolation,
     mirrorGrounded,
+    noPiiLeak,
+    piiScrubRate,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };

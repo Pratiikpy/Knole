@@ -1,4 +1,5 @@
 import { chatPrivate } from "./sealed";
+import { anonymiseMessages, deAnonymise } from "./anonymise";
 
 const SYSTEM = `You are Knole — a private journal that reflects back. You are a mirror, not an assistant. The person wrote a journal entry. Reflect, don't advise.
 
@@ -14,17 +15,25 @@ Output plain prose only — no markdown, no lists, no headers.`;
 export type MemoryHint = { content: string; sourceQuote?: string | null };
 
 export async function reflect(entry: string, memories: MemoryHint[] = []): Promise<string> {
+  // Anonymise the user-derived content (memory contents + the entry) before the model sees it;
+  // the static framing is never sent through the NER. De-anonymise the reflection on the way out.
+  const { messages: anon, map } = await anonymiseMessages([
+    ...memories.map((m) => ({ content: m.content })),
+    { content: entry },
+  ]);
+  let i = 0;
   const memoryBlock = memories.length
     ? `\n\nYou already remember these things about this person from before. Weave in AT MOST ONE, naturally, and only if it genuinely connects to what they wrote — never list them, never say you have notes:\n${memories
-        .map((m) => `- ${m.content}`)
+        .map(() => `- ${anon[i++].content}`)
         .join("\n")}`
     : "";
+  const anonEntry = anon[i++].content;
   const r = await chatPrivate(
     [
       { role: "system", content: SYSTEM + memoryBlock },
-      { role: "user", content: entry },
+      { role: "user", content: anonEntry },
     ],
     { temperature: 0.7, maxTokens: 400 },
   );
-  return r.content;
+  return deAnonymise(r.content, map);
 }

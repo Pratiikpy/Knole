@@ -19,5 +19,8 @@ console.log(`provenance   : ${r.provenance ? "ok" : "FAIL"}`);
 console.log(`nudge-ground : ${r.nudgeGrounded ? "ok" : "FAIL"}`);
 console.log(`data-isolation: ${r.dataIsolation ? "ok" : "FAIL"}`);
 console.log(`mirror-ground : ${r.mirrorGrounded ? "ok" : "FAIL"}`);
+console.log(
+  `privacy-leak  : ${(r.piiScrubRate * 100).toFixed(0)}% PII scrubbed ${r.noPiiLeak ? "✓" : "✗"}`,
+);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);
