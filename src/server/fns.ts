@@ -29,6 +29,7 @@ import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
 import { buildMirror } from "./mirror";
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
+import { latestAnchor } from "./anchor";
 import { generateNudge } from "./proactivity";
 import { resurface } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
@@ -171,7 +172,7 @@ export const mirrorFn = createServerFn({ method: "GET" }).handler(async () => {
 
 export const ownershipFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
-  return ownershipSummary(userId);
+  return { ...(await ownershipSummary(userId)), anchor: await latestAnchor(userId) };
 });
 
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {

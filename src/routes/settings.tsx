@@ -428,6 +428,25 @@ function SettingsPage() {
                 </ul>
               )}
 
+              {own.anchor && (
+                <div className="mt-5 flex items-start gap-2 rounded-lg border border-tan/20 bg-paper/50 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                  <span className="mt-px text-tan">⛓</span>
+                  <span>
+                    Your whole memory is anchored on-chain — a daily tamper-proof commitment over
+                    all {own.anchor.count} entries. Change one and the root no longer matches the
+                    chain.{" "}
+                    <a
+                      href={`https://chainscan-galileo.0g.ai/tx/${own.anchor.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-tan underline"
+                    >
+                      {own.anchor.txHash.slice(0, 12)}…
+                    </a>
+                  </span>
+                </div>
+              )}
+
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button
                   onClick={verify}
