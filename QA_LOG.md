@@ -148,6 +148,24 @@ works or is properly guarded — no dead buttons, no unguarded destruction, no f
 - Privacy rows (Encrypted on your key, Anonymised before the AI) are honest static **ON · ALWAYS**
   labels — not fake toggles.
 
+---
+
+## 2026-06-21 — Guest-gate console cleanliness (all raw-fetch flows audited)
+
+Driving the write flows as a demo guest surfaced a **401 console error**: the raw streaming endpoints
+return a real 401 when a guest is auth-gated, and the doomed fetch logs it. Audited every raw client
+fetch in the routes — three total:
+
+- `/chat/stream` (write · `requireUserId`) → 401-as-guest → **fixed**: the client prefetches `whoami` and,
+  when the demo is gated, shows the sign-in line directly (no fetch). The endpoint still returns a real
+  401 for genuine unauthenticated API calls; only the known-guest UI skips the doomed request.
+- `/journal/stream` (write · `requireUserId`) → 401-as-guest → **fixed** (same guard).
+- `/ask/stream` (read · `currentUserId`) → "the demo can ask too" → **no 401**, guest-accessible by design.
+
+Verified by driving both write flows on a local gated demo (sign-in line shows, console clean — was
+1×401 each) and the ungated write still streams (journal spec 1/1). The fix is comprehensive, not a
+spot patch.
+
 ### Not yet covered — queued for the next passes
 
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
