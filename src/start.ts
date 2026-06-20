@@ -4,6 +4,7 @@ import { setResponseHeaders, getRequest } from "@tanstack/react-start/server";
 import { renderErrorPage } from "./lib/error-page";
 import { handleExtensionSave } from "./server/extensionSave";
 import { handleJournalStream } from "./server/journalStream";
+import { handleChatStream } from "./server/chatStream";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
 // (framing), and full-URL referrer leakage; deny unused device permissions. The CSP is
@@ -81,20 +82,27 @@ const extensionMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
-// Same-origin streaming journal endpoint — token-by-token reflection (TTFT). Intercepted here
-// because server fns can't stream a response body; the CSRF/auth/rate guards live in the handler.
-const journalStreamMiddleware = createMiddleware().server(async ({ next }) => {
+// Same-origin streaming reply endpoints — token-by-token reflection + chat (TTFT). Intercepted here
+// because server fns can't stream a response body; the CSRF/auth/rate guards live in the handlers.
+// Not under /api/ — Vercel reserves /api/* for its functions dir, so those never reach the SSR.
+const streamMiddleware = createMiddleware().server(async ({ next }) => {
   const request = getRequest();
-  // Not under /api/ — Vercel reserves /api/* for its functions dir, so those never reach the SSR.
-  if (new URL(request.url).pathname !== "/journal/stream") return next();
+  const path = new URL(request.url).pathname;
+  const handler =
+    path === "/journal/stream"
+      ? handleJournalStream
+      : path === "/chat/stream"
+        ? handleChatStream
+        : null;
+  if (!handler) return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
-  return handleJournalStream(request);
+  return handler(request);
 });
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [
     extensionMiddleware,
-    journalStreamMiddleware,
+    streamMiddleware,
     securityHeadersMiddleware,
     errorMiddleware,
     csrfMiddleware,

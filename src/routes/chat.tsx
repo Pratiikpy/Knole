@@ -1,9 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { MemoryPill } from "@/components/knole/MemoryPill";
-import { isAuthRequired } from "@/lib/authError";
-import { chatFn } from "@/server/fns";
 import { useState, useRef, useEffect } from "react";
 
 export const Route = createFileRoute("/chat")({
@@ -30,7 +27,6 @@ const seed: Msg[] = [
 ];
 
 function ChatPage() {
-  const doChat = useServerFn(chatFn);
   const [messages, setMessages] = useState<Msg[]>(seed);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,22 +45,46 @@ function ChatPage() {
       role: (m.who === "you" ? "user" : "assistant") as "user" | "assistant",
       content: m.text,
     }));
-    setMessages((m) => [...m, { who: "you", text }]);
+    // Add the user turn + an empty Knole turn that fills in as the reply streams.
+    setMessages((m) => [...m, { who: "you", text }, { who: "knole", text: "" }]);
     setDraft("");
     setLoading(true);
+    const setLastKnole = (t: string) =>
+      setMessages((m) => {
+        const copy = m.slice();
+        for (let i = copy.length - 1; i >= 0; i--) {
+          if (copy[i].who === "knole") {
+            copy[i] = { ...copy[i], text: t };
+            break;
+          }
+        }
+        return copy;
+      });
     try {
-      const res = await doChat({ data: { message: text, history } });
-      setMessages((m) => [...m, { who: "knole", text: res.reply }]);
-    } catch (e) {
-      setMessages((m) => [
-        ...m,
-        {
-          who: "knole",
-          text: isAuthRequired(e)
+      const res = await fetch("/chat/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: text, history }),
+      });
+      if (!res.ok || !res.body) {
+        setLastKnole(
+          res.status === 401
             ? "Sign in to chat with your own Knole — you're viewing the demo."
             : "Something interrupted me — say that again?",
-        },
-      ]);
+        );
+        return;
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        setLastKnole(acc);
+      }
+    } catch {
+      setLastKnole("Something interrupted me — say that again?");
     } finally {
       setLoading(false);
     }
@@ -98,6 +118,9 @@ function ChatPage() {
                     </div>
                     <p className="font-display text-[19px] leading-[1.5] italic text-ink-soft">
                       {m.text}
+                      {loading && i === messages.length - 1 && (
+                        <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-breathe bg-tan align-middle" />
+                      )}
                     </p>
                     {m.remembered && (
                       <div className="mt-4">
@@ -108,12 +131,6 @@ function ChatPage() {
                 )}
               </div>
             ))}
-            {loading && (
-              <div className="animate-fade-up border-l-2 border-tan/30 pl-5">
-                <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan">Knole</div>
-                <p className="font-display text-[19px] italic text-muted-foreground">thinking…</p>
-              </div>
-            )}
             <div ref={endRef} />
           </div>
         </div>
