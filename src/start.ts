@@ -1,7 +1,8 @@
 import { createStart, createMiddleware, createCsrfMiddleware } from "@tanstack/react-start";
-import { setResponseHeaders } from "@tanstack/react-start/server";
+import { setResponseHeaders, getRequest } from "@tanstack/react-start/server";
 
 import { renderErrorPage } from "./lib/error-page";
+import { handleExtensionSave } from "./server/extensionSave";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
 // (framing), and full-URL referrer leakage; deny unused device permissions. The CSP is
@@ -42,6 +43,48 @@ const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
 });
 
+// "Save to Knole" extension endpoint. The extension is a different origin, so it can't use the
+// CSRF-protected server fns — this is a raw, CORS-open, token-authenticated POST handled here in
+// the SSR (which already has the engine + embeddings model loaded). Intercepted before the
+// router; every other path falls straight through via next().
+const extensionMiddleware = createMiddleware().server(async ({ next }) => {
+  const request = getRequest();
+  if (new URL(request.url).pathname !== "/ext/save") return next();
+  const cors: Record<string, string> = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-headers": "authorization, content-type",
+    "access-control-max-age": "86400",
+  };
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "content-type": "application/json" },
+    });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (request.method !== "POST") return json(405, { ok: false, error: "method not allowed" });
+  try {
+    const auth = request.headers.get("authorization") ?? "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    let body: { highlight?: string; source?: string; thought?: string } = {};
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      /* empty/invalid JSON — falls through to the missing-highlight check */
+    }
+    const result = await handleExtensionSave(token, body);
+    return json(result.ok ? 200 : result.status, result);
+  } catch (e) {
+    console.error("ext/save failed:", (e as Error).message);
+    return json(500, { ok: false, error: "internal error" });
+  }
+});
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [securityHeadersMiddleware, errorMiddleware, csrfMiddleware],
+  requestMiddleware: [
+    extensionMiddleware,
+    securityHeadersMiddleware,
+    errorMiddleware,
+    csrfMiddleware,
+  ],
 }));
