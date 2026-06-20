@@ -280,6 +280,7 @@ function SettingsPage() {
                 value={freq}
                 onChange={(e) => onFreq(Number(e.target.value))}
                 aria-label="How often Knole reaches out"
+                aria-valuetext={frequencyLabels[freq]}
                 className="w-full accent-[var(--tan)]"
               />
               <div className="mt-4 flex items-center justify-between">
@@ -310,29 +311,38 @@ function SettingsPage() {
 
           {/* Voice */}
           <Group title="Knole's voice">
-            <div className="grid gap-2">
+            <fieldset className="grid gap-2">
+              <legend className="sr-only">Knole's voice</legend>
               {[
                 { id: "warm", name: "Warm & patient" },
                 { id: "structural", name: "Structural & clear" },
                 { id: "honest", name: "Direct & honest" },
                 { id: "curious", name: "Quietly curious" },
               ].map((v) => (
-                <button
+                <label
                   key={v.id}
-                  onClick={() => onVoice(v.id)}
-                  className={`flex items-center justify-between rounded-xl border p-4 text-left ${
+                  className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 text-left transition-colors focus-within:ring-2 focus-within:ring-tan/30 ${
                     voice === v.id ? "border-tan/40 bg-tan/[0.06]" : "border-rule bg-card/40"
                   }`}
                 >
+                  <input
+                    type="radio"
+                    name="voice"
+                    value={v.id}
+                    checked={voice === v.id}
+                    onChange={() => onVoice(v.id)}
+                    className="sr-only"
+                  />
                   <span className="text-[14px]">{v.name}</span>
                   <span
+                    aria-hidden="true"
                     className={`size-3 rounded-full ${
                       voice === v.id ? "bg-tan" : "border border-rule"
                     }`}
                   />
-                </button>
+                </label>
               ))}
-            </div>
+            </fieldset>
           </Group>
 
           {/* Import your history — the refugee wedge */}

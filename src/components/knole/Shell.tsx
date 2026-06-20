@@ -30,6 +30,12 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
   }, [whoami]);
   return (
     <div className="grain min-h-screen bg-paper text-ink">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:text-[13px] focus:text-paper"
+      >
+        Skip to content
+      </a>
       <header className="sticky top-0 z-40 border-b border-rule bg-paper/75 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[82ch] items-center justify-between px-6">
           <Link
@@ -123,7 +129,9 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
           </Link>
         </div>
       )}
-      <main>{children}</main>
+      <main id="main" tabIndex={-1} className="outline-none">
+        {children}
+      </main>
       <footer className="border-t border-rule py-12 text-center">
         <p className="font-display text-sm italic text-muted-foreground">
           A quiet, private mirror — only you can read this.
