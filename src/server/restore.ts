@@ -22,13 +22,14 @@ export async function restoreEntryFromChain(userId: string, kvRef: string): Prom
  */
 export async function restoreAllFromChain(
   userId: string,
-): Promise<{ total: number; restored: number; matched: number }> {
+): Promise<{ total: number; restored: number; matched: number; failed: number }> {
   const rows = (await db.execute(sql`
     SELECT id, kv_ref, text FROM entries WHERE user_id = ${userId} AND kv_ref IS NOT NULL
   `)) as unknown as Record<string, unknown>[];
 
   let restored = 0;
   let matched = 0;
+  let failed = 0;
   for (const r of rows) {
     const id = String(r.id);
     const kvRef = String(r.kv_ref);
@@ -38,11 +39,18 @@ export async function restoreAllFromChain(
       await db.update(entries).set({ text: payload.text }).where(eq(entries.id, id));
       restored++;
       if (payload.text === before) matched++;
-    } catch {
-      // node unreachable for this root — skip, leave cache as-is
+    } catch (e) {
+      // A node may be transiently unreachable — but this also catches gcmDecrypt auth-tag failures
+      // (a tampered blob or wrong key) and bad payloads, which are integrity signals, not skips.
+      // Log + count so a corrupt/tampered blob is visible, not silently folded into "skipped".
+      failed++;
+      console.error(
+        `restoreAllFromChain: entry=${id} root=${kvRef.slice(0, 18)}… failed:`,
+        (e as Error).message,
+      );
     }
   }
-  return { total: rows.length, restored, matched };
+  return { total: rows.length, restored, matched, failed };
 }
 
 /** Read-only ownership summary for the UI: how much of the user's life is on 0G. */

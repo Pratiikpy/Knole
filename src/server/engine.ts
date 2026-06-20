@@ -126,7 +126,9 @@ export async function retrieveMemories(
     void bumpRecall(
       userId,
       result.map((r) => r.id),
-    ).catch(() => {});
+    ).catch((e) =>
+      console.error("bumpRecall failed (recall-importance ranking stalls):", (e as Error).message),
+    );
   return result;
 }
 
@@ -221,8 +223,15 @@ export async function extractMemories(userId: string, entryId: string, entryText
   let items: { content?: string; type?: string; quote?: string }[] = [];
   try {
     const m = raw.match(/\[[\s\S]*\]/);
+    // No array at all (model wrapped/refused) is a real extraction miss — surface it, don't vanish.
+    if (!m) console.error("extractMemories: no JSON array in LLM output:", raw.slice(0, 200));
     items = m ? JSON.parse(m[0]) : [];
-  } catch {
+  } catch (e) {
+    console.error(
+      "extractMemories: unparseable JSON from LLM:",
+      (e as Error).message,
+      raw.slice(0, 200),
+    );
     items = [];
   }
 

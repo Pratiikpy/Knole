@@ -91,16 +91,21 @@ export function deAnonymise(text: string, map: Record<string, string>): string {
     result = result.split(token).join(word).split(token.slice(1, -1)).join(word);
   }
   // Safety net: any token the model invented or mangled past recognition must never surface to the
-  // user as a raw "[PERSON_2]" — collapse leftovers to a neutral word.
-  result = result.replace(/\[?\b(PERSON|PLACE|ORG|MISC)_\d+\b\]?/g, (_m, kind: string) =>
-    kind === "PLACE"
+  // user as a raw "[PERSON_2]" — collapse leftovers to a neutral word. Logged so a spike (a broken
+  // token map, a drifting model) is observable, not a silent slide into vague pronouns.
+  let collapsed = 0;
+  result = result.replace(/\[?\b(PERSON|PLACE|ORG|MISC)_\d+\b\]?/g, (_m, kind: string) => {
+    collapsed++;
+    return kind === "PLACE"
       ? "somewhere"
       : kind === "ORG"
         ? "a group"
         : kind === "MISC"
           ? "something"
-          : "someone",
-  );
+          : "someone";
+  });
+  if (collapsed)
+    console.error(`deAnonymise: collapsed ${collapsed} unresolved token(s) to neutral words`);
   return result;
 }
 

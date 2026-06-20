@@ -51,7 +51,10 @@ export const journalFn = createServerFn({ method: "POST" })
     // Extract memories + store the entry on 0G in the background — don't block the
     // reflection. background() uses waitUntil on serverless so the work isn't dropped.
     background(extractMemories(userId, entryRow.id, data.entry), "extractMemories");
-    background(storeEntryOn0G(userId, entryRow.id, data.entry), "0G store");
+    background(
+      storeEntryOn0G(userId, entryRow.id, data.entry),
+      `0G store entry=${entryRow.id} user=${userId}`,
+    );
     return {
       reflection,
       recalled: recalled.map((r) => ({ content: r.content, quote: r.sourceQuote })),
@@ -154,7 +157,10 @@ export const chatFn = createServerFn({ method: "POST" })
     const entryRow = await saveEntry(userId, data.message, qVec, "chat");
     await saveReply(entryRow.id, reply, true);
     background(extractMemories(userId, entryRow.id, data.message), "extractMemories");
-    background(storeEntryOn0G(userId, entryRow.id, data.message), "0G store");
+    background(
+      storeEntryOn0G(userId, entryRow.id, data.message),
+      `0G store entry=${entryRow.id} user=${userId}`,
+    );
     return { reply };
   });
 
@@ -212,7 +218,10 @@ export const saveFn = createServerFn({ method: "POST" })
     const text = parts.join(" ");
     const entryRow = await saveEntry(userId, text, undefined, "saved");
     background(extractMemories(userId, entryRow.id, text), "extractMemories");
-    background(storeEntryOn0G(userId, entryRow.id, text), "0G store");
+    background(
+      storeEntryOn0G(userId, entryRow.id, text),
+      `0G store entry=${entryRow.id} user=${userId}`,
+    );
     return { ok: true, entryId: entryRow.id };
   });
 
@@ -255,7 +264,10 @@ export const respondFn = createServerFn({ method: "POST" })
       : data.response;
     const entryRow = await saveEntry(userId, text, undefined, "journal");
     background(extractMemories(userId, entryRow.id, text), "extractMemories");
-    background(storeEntryOn0G(userId, entryRow.id, text), "0G store");
+    background(
+      storeEntryOn0G(userId, entryRow.id, text),
+      `0G store entry=${entryRow.id} user=${userId}`,
+    );
     return { ok: true };
   });
 
@@ -277,7 +289,10 @@ export const onboardFn = createServerFn({ method: "POST" })
     const reflection = await reflect(text);
     await saveReply(entryRow.id, reflection, true);
     background(extractMemories(userId, entryRow.id, text), "extractMemories");
-    background(storeEntryOn0G(userId, entryRow.id, text), "0G store");
+    background(
+      storeEntryOn0G(userId, entryRow.id, text),
+      `0G store entry=${entryRow.id} user=${userId}`,
+    );
     return { reflection };
   });
 
