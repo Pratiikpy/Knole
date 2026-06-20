@@ -1,5 +1,5 @@
-import "./xenova";
 import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
+import { configureXenovaCache } from "./xenova";
 
 // Local, private, free sentence embeddings (all-MiniLM-L6-v2 → 384-dim).
 // Model downloads once (~25MB) then caches. No data leaves the machine.
@@ -7,6 +7,7 @@ let extractorP: Promise<FeatureExtractionPipeline> | null = null;
 
 function getExtractor(): Promise<FeatureExtractionPipeline> {
   if (!extractorP) {
+    configureXenovaCache();
     extractorP = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
   }
   return extractorP;

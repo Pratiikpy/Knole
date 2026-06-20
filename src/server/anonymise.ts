@@ -1,5 +1,5 @@
-import "./xenova";
 import { pipeline } from "@xenova/transformers";
+import { configureXenovaCache } from "./xenova";
 
 // The "enchanted-twin": names / places / orgs are replaced with stable tokens before any text
 // reaches the LLM, then restored in the reply via the reverse map. The model never sees raw PII;
@@ -8,7 +8,10 @@ import { pipeline } from "@xenova/transformers";
 
 let nerPromise: Promise<unknown> | null = null;
 function getNER() {
-  if (!nerPromise) nerPromise = pipeline("token-classification", "Xenova/bert-base-NER");
+  if (!nerPromise) {
+    configureXenovaCache();
+    nerPromise = pipeline("token-classification", "Xenova/bert-base-NER");
+  }
   return nerPromise as Promise<(t: string) => Promise<NerToken[]>>;
 }
 
