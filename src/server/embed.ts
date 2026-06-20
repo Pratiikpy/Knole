@@ -1,3 +1,4 @@
+import "./xenova";
 import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
 
 // Local, private, free sentence embeddings (all-MiniLM-L6-v2 → 384-dim).

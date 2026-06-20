@@ -1,3 +1,4 @@
+import "./xenova";
 import { pipeline } from "@xenova/transformers";
 
 // The "enchanted-twin": names / places / orgs are replaced with stable tokens before any text
