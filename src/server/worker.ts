@@ -17,13 +17,27 @@ export async function tick(): Promise<{
   if (ticking) return { users: 0, dreamed: 0, skipped: true };
   ticking = true;
   try {
+    // Only users who still need today's dream (idempotency-aware), so we never waste the
+    // tick re-checking already-dreamed users and the time budget below never skips anyone
+    // who hasn't dreamed yet.
     const rows = (await db.execute(sql`
       SELECT u.id FROM users u
       WHERE (SELECT count(*) FROM entries e WHERE e.user_id = u.id) >= 2
+        AND NOT EXISTS (
+          SELECT 1 FROM reflection_artifacts ra
+          WHERE ra.user_id = u.id AND ra.thread_key = 'dreaming'
+            AND ra.created_at >= date_trunc('day', now())
+        )
+      ORDER BY u.id
     `)) as unknown as Record<string, unknown>[];
 
+    // Bounded work per tick so a serverless run (60s function cap) never times out — the
+    // remaining users are picked up on the next tick, and idempotency makes that safe.
+    const start = Date.now();
+    const budgetMs = Number(process.env.WORKER_TICK_BUDGET_MS ?? 50_000);
     let dreamed = 0;
     for (const r of rows) {
+      if (Date.now() - start > budgetMs) break;
       const userId = String(r.id);
       try {
         const d = await runDreaming(userId);
