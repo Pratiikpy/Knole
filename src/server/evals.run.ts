@@ -12,5 +12,6 @@ console.log(`reconcile    : ${r.reconcile ? "ok" : "FAIL"}`);
 console.log(`recall       : ${r.recall ? "ok" : "FAIL"}`);
 console.log(`hybrid (RRF) : ${r.hybrid ? "ok" : "FAIL"}`);
 console.log(`forgetting   : ${r.forgetting ? "ok" : "FAIL"}`);
+console.log(`pinned-surv. : ${r.pinnedSurvival ? "ok" : "FAIL"}`);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);

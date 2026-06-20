@@ -47,6 +47,7 @@ export type EvalResult = {
   recall: boolean;
   hybrid: boolean;
   forgetting: boolean;
+  pinnedSurvival: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -183,6 +184,28 @@ export async function runEvals(): Promise<EvalResult> {
   `)) as unknown as Record<string, unknown>[];
   const superseded = supRows[0]?.status === "superseded";
 
+  // pinned-survival: the SAME contradiction must NOT supersede a user-pinned memory
+  await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
+  await db.delete(memories).where(eq(memories.userId, userId));
+  const pinV = await embed("The user lives in Berlin.");
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+    VALUES (${userId}, 'The user lives in Berlin.', 'eval-pinned-survival', 'fact', 'pinned', ${toVectorLiteral(pinV)}::vector, 0.7, 0.6)
+  `);
+  const [pinEntry] = await db
+    .insert(entries)
+    .values({
+      userId,
+      text: "I moved to Lisbon last month, after years of living in Berlin.",
+      type: "journal",
+    })
+    .returning();
+  await extractMemories(userId, pinEntry.id, pinEntry.text);
+  const pinRows = (await db.execute(sql`
+    SELECT status FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-pinned-survival'
+  `)) as unknown as Record<string, unknown>[];
+  const pinnedSurvival = pinRows[0]?.status === "pinned";
+
   // noop: a reworded restatement reinforces the existing memory instead of duplicating it
   await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
   await db.delete(memories).where(eq(memories.userId, userId));
@@ -259,6 +282,7 @@ export async function runEvals(): Promise<EvalResult> {
     recall,
     hybrid,
     forgetting,
+    pinnedSurvival,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -312,6 +336,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: forgetting ? 1 : 0,
       details: { forgetBefore, forgetAfter },
     },
+    {
+      suite: "pinned-survival",
+      passed: gates.pinnedSurvival,
+      score: pinnedSurvival ? 1 : 0,
+      details: { finalStatus: pinRows[0]?.status ?? null },
+    },
   ]);
 
   return {
@@ -324,6 +354,7 @@ export async function runEvals(): Promise<EvalResult> {
     recall,
     hybrid,
     forgetting,
+    pinnedSurvival,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
