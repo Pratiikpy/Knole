@@ -4,7 +4,7 @@ import { chatPrivate } from "./sealed";
 
 const { reflectionArtifacts } = schema;
 
-const DREAM_SYS = `You are Knole, reflecting overnight on what the user has written recently. Surface exactly ONE fresh observation they probably haven't noticed themselves — a connection between two things, a quiet shift, a pattern just starting to form. 2-3 sentences, second person, warm and specific, grounded only in what they actually wrote. No preamble, no question at the end, plain text only.`;
+const DREAM_SYS = `You are Knole, reflecting overnight on what the user has written recently. Surface exactly ONE fresh observation they probably haven't noticed themselves — a connection between two things, a quiet shift, a pattern just starting to form. 2-3 complete, grammatical sentences — second person, warm and specific, grounded only in what they actually wrote. Finish every sentence; never trail off or garble a phrase. No preamble, no question at the end, plain text only.`;
 
 export type Dream = { observation: string; createdAt: string };
 
@@ -50,7 +50,7 @@ export async function runDreaming(userId: string): Promise<{ observation: string
       { role: "system", content: DREAM_SYS },
       { role: "user", content: context },
     ],
-    { temperature: 0.75, maxTokens: 200 },
+    { temperature: 0.65, maxTokens: 200 },
   );
   const observation = r.content.trim();
   if (!observation) return null;
