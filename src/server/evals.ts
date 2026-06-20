@@ -46,6 +46,7 @@ export type EvalResult = {
   reconcile: boolean;
   recall: boolean;
   hybrid: boolean;
+  forgetting: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -226,6 +227,27 @@ export async function runEvals(): Promise<EvalResult> {
   const hybridHits = await retrieveMemories(userId, await embed("Zlatan"), 5, "Zlatan");
   const hybrid = hybridHits.some((m) => m.content.includes("Zlatan"));
 
+  // ── forgetting-respected: a forgotten memory must never surface in retrieval again ──
+  const forgetProbe = "EVAL-FORGET-PROBE: the user is allergic to penicillin.";
+  const forgetV = await embed(forgetProbe);
+  await db.execute(sql`
+    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+    VALUES (${userId}, ${forgetProbe}, ${hashOf(normalize(forgetProbe))}, 'fact', 'active', ${toVectorLiteral(forgetV)}::vector, 0.7, 0.6)
+  `);
+  const matchesProbe = (hits: { content: string }[]) =>
+    hits.some((m) => m.content.includes("penicillin"));
+  const forgetBefore = matchesProbe(
+    await retrieveMemories(userId, forgetV, 5, "penicillin allergy"),
+  );
+  await db.execute(sql`
+    UPDATE memories SET status = 'forgotten'
+    WHERE user_id = ${userId} AND content_hash = ${hashOf(normalize(forgetProbe))}
+  `);
+  const forgetAfter = matchesProbe(
+    await retrieveMemories(userId, forgetV, 5, "penicillin allergy"),
+  );
+  const forgetting = forgetBefore && !forgetAfter;
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -236,6 +258,7 @@ export async function runEvals(): Promise<EvalResult> {
     reconcile,
     recall,
     hybrid,
+    forgetting,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -283,6 +306,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: hybrid ? 1 : 0,
       details: { hits: hybridHits.map((m) => m.content.slice(0, 40)) },
     },
+    {
+      suite: "forgetting",
+      passed: gates.forgetting,
+      score: forgetting ? 1 : 0,
+      details: { forgetBefore, forgetAfter },
+    },
   ]);
 
   return {
@@ -294,6 +323,7 @@ export async function runEvals(): Promise<EvalResult> {
     reconcile,
     recall,
     hybrid,
+    forgetting,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
