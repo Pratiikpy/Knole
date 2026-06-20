@@ -25,6 +25,9 @@ dist-ssr
 
 # playwright test artifacts
 .playwright-mcp/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Wrangler / Cloudflare
 .wrangler/
