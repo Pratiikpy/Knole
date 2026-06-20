@@ -1,0 +1,17 @@
+# Knole — the landing is the only public page. The app routes are private
+# surfaces: signed out they show a read-only demo, signed in they show your own
+# journal. Neither should be crawled or indexed.
+User-agent: *
+Allow: /
+Disallow: /today
+Disallow: /chat
+Disallow: /ask
+Disallow: /insights
+Disallow: /the-index
+Disallow: /remembered
+Disallow: /onboarding
+Disallow: /extension
+Disallow: /settings
+Disallow: /_serverFn/
+
+Sitemap: https://knole-app.vercel.app/sitemap.xml
