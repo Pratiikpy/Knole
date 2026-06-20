@@ -22,5 +22,8 @@ console.log(`mirror-ground : ${r.mirrorGrounded ? "ok" : "FAIL"}`);
 console.log(
   `privacy-leak  : ${(r.piiScrubRate * 100).toFixed(0)}% PII scrubbed ${r.noPiiLeak ? "✓" : "✗"}`,
 );
+console.log(
+  `first-aha     : ${r.ahaSeconds.toFixed(0)}s (reflection + memory) ${r.firstAha ? "✓" : "✗"}`,
+);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);

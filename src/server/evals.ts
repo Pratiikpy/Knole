@@ -76,6 +76,8 @@ export type EvalResult = {
   mirrorGrounded: boolean;
   noPiiLeak: boolean;
   piiScrubRate: number;
+  firstAha: boolean;
+  ahaSeconds: number;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -469,6 +471,19 @@ export async function runEvals(): Promise<EvalResult> {
   const piiScrubRate = piiTotal ? (piiTotal - piiLeaks) / piiTotal : 1;
   const noPiiLeak = piiScrubRate >= 0.85;
 
+  // ── first-aha: the onboarding payoff — a real reflection + a saved memory, fast (<90s) ──
+  const ahaOpener =
+    "I've been feeling stretched thin lately — busy with a dozen things but none of them feel like they actually matter.";
+  const ahaStart = Date.now();
+  const ahaReflection = await reflect(ahaOpener);
+  const ahaSeconds = (Date.now() - ahaStart) / 1000;
+  const [ahaEntry] = await db
+    .insert(entries)
+    .values({ userId, text: ahaOpener, type: "journal", embedding: await embed(ahaOpener) })
+    .returning();
+  const ahaMems = await extractMemories(userId, ahaEntry.id, ahaOpener);
+  const firstAha = ahaReflection.trim().length > 40 && ahaMems.length >= 1 && ahaSeconds < 90;
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -488,6 +503,7 @@ export async function runEvals(): Promise<EvalResult> {
     dataIsolation,
     mirrorGrounded,
     noPiiLeak,
+    firstAha,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -589,6 +605,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: noPiiLeak ? 1 : 0,
       details: { piiLeaks, piiTotal, piiScrubRate },
     },
+    {
+      suite: "first-aha",
+      passed: gates.firstAha,
+      score: firstAha ? 1 : 0,
+      details: { ahaSeconds, memories: ahaMems.length },
+    },
   ]);
 
   return {
@@ -610,6 +632,8 @@ export async function runEvals(): Promise<EvalResult> {
     mirrorGrounded,
     noPiiLeak,
     piiScrubRate,
+    firstAha,
+    ahaSeconds,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
