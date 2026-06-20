@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { chat, type ChatMsg } from "./llm";
+import { chat, chatStream, type ChatMsg } from "./llm";
 import { anonymiseMessages, deAnonymise } from "./anonymise";
 
 // 0G Sealed Inference — OpenAI-compatible call into 0G Private Compute (TEE).
@@ -92,4 +92,44 @@ export async function chatPrivate(
   const { messages: anon, map, ok } = await anonymiseMessages(messages);
   const r = await rawInference(anon, opts);
   return { ...r, content: deAnonymise(r.content, map), anonymised: ok };
+}
+
+/**
+ * Streaming sibling of chatPrivate, for TTFT on the long reflection/chat paths. Anonymises every
+ * prompt, streams the model, and de-anonymises progressively: it only ever emits text up to the
+ * last whitespace, so a placeholder (which has no internal whitespace — bracketed [PERSON_1] or
+ * bare PERSON_1) can never be split across the emit boundary and reach the client un-restored. The
+ * de-anonymised prefix grows monotonically because placeholders map deterministically, so each step
+ * just yields the newly-completed suffix. Yields de-anonymised deltas; returns {sealed, anonymised}.
+ *
+ * NVIDIA path for now (sealed/TEE inference is off until the 0G compute ledger is funded); the
+ * non-streaming chatPrivate still serves the sealed branch.
+ */
+export async function* chatPrivateStream(
+  messages: ChatMsg[],
+  opts: { temperature?: number; maxTokens?: number } = {},
+): AsyncGenerator<string, { sealed: boolean; anonymised: boolean }, void> {
+  const { messages: anon, map, ok } = await anonymiseMessages(messages);
+  let acc = "";
+  let emitted = "";
+  for await (const delta of chatStream(anon, opts)) {
+    acc += delta;
+    const cut = Math.max(acc.lastIndexOf(" "), acc.lastIndexOf("\n"));
+    if (cut <= 0) continue;
+    const deanon = deAnonymise(acc.slice(0, cut), map);
+    if (deanon.length > emitted.length && deanon.startsWith(emitted)) {
+      yield deanon.slice(emitted.length);
+      emitted = deanon;
+    }
+  }
+  // Final flush: de-anonymise the whole reply (incl. the held-back tail) and emit the remainder.
+  const finalText = deAnonymise(acc, map);
+  if (finalText.startsWith(emitted)) {
+    if (finalText.length > emitted.length) yield finalText.slice(emitted.length);
+  } else {
+    // Should not happen with stable placeholders; correct to the authoritative text if it ever does.
+    console.warn("chatPrivateStream: de-anonymised prefix diverged from final; correcting tail");
+    yield finalText.slice(Math.min(emitted.length, finalText.length));
+  }
+  return { sealed: false, anonymised: ok };
 }

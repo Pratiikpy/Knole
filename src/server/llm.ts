@@ -58,3 +58,60 @@ export async function chat(
   }
   throw new Error(`LLM request failed (${lastReason})`);
 }
+
+/**
+ * Streaming variant — yields content deltas as the model produces them (OpenAI SSE).
+ * No retry loop: streaming is best-effort for TTFT; callers fall back to chat() on failure.
+ */
+export async function* chatStream(
+  messages: ChatMsg[],
+  opts: { model?: string; temperature?: number; maxTokens?: number } = {},
+): AsyncGenerator<string, void, void> {
+  if (!KEY) throw new Error("NVIDIA_API_KEY is not set");
+  const timeoutMs = Number(process.env.LLM_TIMEOUT_MS ?? 60000);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: opts.model ?? DEFAULT_MODEL,
+        messages,
+        temperature: opts.temperature ?? 0.7,
+        max_tokens: opts.maxTokens ?? 1024,
+        stream: true,
+      }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok || !res.body) {
+      const body = res.ok ? "no response body" : (await res.text()).slice(0, 300);
+      throw new Error(`LLM stream failed (${res.status}): ${body}`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") return;
+        try {
+          const j = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+          const delta = j.choices?.[0]?.delta?.content;
+          if (delta) yield delta;
+        } catch {
+          /* keep-alive or split frame — ignore, the next read completes it */
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
