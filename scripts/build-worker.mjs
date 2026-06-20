@@ -11,6 +11,10 @@ await build({
   platform: "node",
   format: "esm",
   outfile: "dist/worker/index.mjs",
+  // The worker now reaches the @xenova PII anonymiser (via chatPrivate), which loads native
+  // onnxruntime / sharp .node binaries esbuild can't bundle. Externalise them — they resolve from
+  // node_modules at runtime, the same way the vite SSR build (which also uses @xenova) treats them.
+  external: ["@xenova/transformers", "onnxruntime-node", "sharp"],
   banner: {
     js: [
       "import { createRequire as __cr } from 'module';",
