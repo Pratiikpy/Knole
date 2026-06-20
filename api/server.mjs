@@ -20,6 +20,20 @@ export default async function handler(req, res) {
   const response = await app.fetch(request);
 
   res.statusCode = response.status;
-  response.headers.forEach((value, key) => res.setHeader(key, value));
-  res.end(Buffer.from(await response.arrayBuffer()));
+  // Skip content-length so the body goes out via chunked transfer encoding. Otherwise buffering the
+  // whole body to set a length would defeat the token-by-token /…/stream endpoints (the reflection,
+  // chat, and Ask My Life replies must reach the client as they're generated, not all at once).
+  response.headers.forEach((value, key) => {
+    if (key.toLowerCase() !== "content-length") res.setHeader(key, value);
+  });
+
+  if (response.body) {
+    const reader = response.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+  }
+  res.end();
 }
