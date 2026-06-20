@@ -58,6 +58,7 @@ export type EvalResult = {
   forgetting: boolean;
   pinnedSurvival: boolean;
   userCorrectionWins: boolean;
+  provenance: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -133,6 +134,24 @@ export async function runEvals(): Promise<EvalResult> {
   const blob = extracted.map((m) => m.content.toLowerCase()).join(" ");
   const covered = EXTRACTION_KEYWORDS.filter((k) => blob.includes(k));
   const extraction = covered.length / EXTRACTION_KEYWORDS.length;
+
+  // ── provenance: every extracted memory traces back to its source entry (the link the
+  // recall X-ray relies on). source_entry_id is the engine's responsibility, so this is
+  // deterministic; quote coverage is reported alongside but not gated (the LLM may omit one).
+  const provRows = (await db.execute(sql`
+    SELECT source_entry_id, source_quote FROM memories
+    WHERE user_id = ${userId} AND id IN (${sql.join(
+      extracted.map((m) => sql`${m.id}`),
+      sql`, `,
+    )})
+  `)) as unknown as Record<string, unknown>[];
+  const withQuote = provRows.filter(
+    (r) => r.source_quote != null && String(r.source_quote).length > 0,
+  ).length;
+  const provenance =
+    extracted.length > 0 &&
+    provRows.length === extracted.length &&
+    provRows.every((r) => String(r.source_entry_id) === mira.id);
 
   // ── dedup: same content twice → one row, recall_count incremented ──
   const dupContent = "EVAL-DEDUP-PROBE: the user is learning to bake sourdough bread at home.";
@@ -296,6 +315,7 @@ export async function runEvals(): Promise<EvalResult> {
     forgetting,
     pinnedSurvival,
     userCorrectionWins,
+    provenance,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -361,6 +381,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: userCorrectionWins ? 1 : 0,
       details: { finalStatus: editedFinalStatus },
     },
+    {
+      suite: "provenance",
+      passed: gates.provenance,
+      score: provenance ? 1 : 0,
+      details: { count: extracted.length, withQuote },
+    },
   ]);
 
   return {
@@ -375,6 +401,7 @@ export async function runEvals(): Promise<EvalResult> {
     forgetting,
     pinnedSurvival,
     userCorrectionWins,
+    provenance,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
