@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { chat, type ChatMsg } from "./llm";
+import { anonymiseMessages, deAnonymise } from "./anonymise";
 
 // 0G Sealed Inference — OpenAI-compatible call into 0G Private Compute (TEE).
 // "Even we can't read it" becomes provable for the inference path, not just storage.
@@ -56,9 +57,9 @@ export async function chatSealed(
  * Prefer 0G Sealed Inference (TEE) when enabled; fall back to NVIDIA so the app
  * never goes dark if the compute ledger is empty or the endpoint is unreachable.
  */
-export async function chatPrivate(
+async function rawInference(
   messages: ChatMsg[],
-  opts: { temperature?: number; maxTokens?: number } = {},
+  opts: { temperature?: number; maxTokens?: number },
 ): Promise<PrivateResult> {
   if (sealedOn()) {
     try {
@@ -76,4 +77,19 @@ export async function chatPrivate(
     sealed: false,
     model: process.env.NVIDIA_DEFAULT_MODEL ?? "nvidia",
   };
+}
+
+/**
+ * The single inference gateway. Anonymises PII out of EVERY prompt before any model (TEE or NVIDIA
+ * fallback) sees it, and restores the real names in the reply. So the "anonymised before the AI"
+ * guarantee holds for every path — reflect, chat, ask, mirror, dream, nudge, resurface — not just
+ * the ones that remembered to call it. `anonymised` reports whether the scrub actually ran.
+ */
+export async function chatPrivate(
+  messages: ChatMsg[],
+  opts: { temperature?: number; maxTokens?: number } = {},
+): Promise<PrivateResult & { anonymised: boolean }> {
+  const { messages: anon, map, ok } = await anonymiseMessages(messages);
+  const r = await rawInference(anon, opts);
+  return { ...r, content: deAnonymise(r.content, map), anonymised: ok };
 }
