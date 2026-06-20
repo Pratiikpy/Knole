@@ -84,11 +84,19 @@ the warm opener + the "correct me anytime" honesty + the message composer. `/rem
 resurfacing arc: a past entry ("First morning without the alarm in years…") with Knole's gentle "now"
 reflection and an "answer it / not now" choice. No findings.
 
+---
+
+## 2026-06-20 — Automated harness (Playwright)
+
+The manual sweeps are now codified in `e2e/` (`npm run test:e2e`): the **L0 matrix** (all 11 routes ×
+desktop + mobile → render + non-error status + content + **zero console errors**) and the **Ask My
+Life RAG read-flow** (grounded answer + cited receipts). **24/24 green** against the live deploy — so
+every screen and the receipts flow is now a regression gate, not a one-time manual pass.
+
 ### Not yet covered — queued for the next passes
 
-- Mobile L0 for the remaining routes (`/the-index`, `/insights` checked desktop only so far).
-- L0 for `/extension`; `/upgrade` honest-state needs a local run (the live deploy predates the billing fix).
-- **L2 write flows** (journal → streaming reflection → memory saved → recalled) — needs a signed-in
-  session or a local run; the read-only demo can't exercise writes.
+- **L2 write flows** (journal → streaming reflection → memory saved → recalled) — the harness is wired
+  for them (`E2E_BASE_URL=http://localhost:3000`), but they need a local dev run since the deployed
+  demo is read-only. Next: write-flow specs behind that base URL.
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
-- The automated **Playwright harness** that makes this sweep repeatable in CI.
+- `/upgrade` honest-state — verify after the next deploy (the live deploy predates the billing fix).
