@@ -222,7 +222,10 @@ function TodayPage() {
             )}
 
             {reflected && reflection && (
-              <div className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6">
+              <div
+                data-testid="reflection"
+                className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6"
+              >
                 {recalled.length > 0 && (
                   <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-tan">
                     ↳ drew on {recalled.length} thing{recalled.length > 1 ? "s" : ""} you've shared
