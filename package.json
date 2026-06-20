@@ -17,6 +17,7 @@
     "test:restore": "tsx src/server/restore.run.ts",
     "test:privacy": "tsx src/server/privacy.run.ts",
     "test:remembers": "tsx src/server/remembers.run.ts",
+    "test:multiuser": "tsx src/server/multiuser.run.ts",
     "dream": "tsx src/server/dreaming.run.ts",
     "seed": "tsx src/server/seed.run.ts",
     "worker": "tsx src/server/worker.run.ts"
