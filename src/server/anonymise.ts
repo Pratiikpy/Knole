@@ -86,7 +86,21 @@ export async function anonymise(text: string): Promise<Anonymised> {
 /** Restore the real PII in an LLM reply by reversing the token map. */
 export function deAnonymise(text: string, map: Record<string, string>): string {
   let result = text;
-  for (const [token, word] of Object.entries(map)) result = result.split(token).join(word);
+  for (const [token, word] of Object.entries(map)) {
+    // The model sometimes drops the brackets ("PERSON_1" instead of "[PERSON_1]"), so restore both.
+    result = result.split(token).join(word).split(token.slice(1, -1)).join(word);
+  }
+  // Safety net: any token the model invented or mangled past recognition must never surface to the
+  // user as a raw "[PERSON_2]" — collapse leftovers to a neutral word.
+  result = result.replace(/\[?\b(PERSON|PLACE|ORG|MISC)_\d+\b\]?/g, (_m, kind: string) =>
+    kind === "PLACE"
+      ? "somewhere"
+      : kind === "ORG"
+        ? "a group"
+        : kind === "MISC"
+          ? "something"
+          : "someone",
+  );
   return result;
 }
 
