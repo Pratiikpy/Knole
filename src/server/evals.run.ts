@@ -25,5 +25,8 @@ console.log(
 console.log(
   `first-aha     : ${r.ahaSeconds.toFixed(0)}s (reflection + memory) ${r.firstAha ? "✓" : "✗"}`,
 );
+console.log(
+  `crypto        : AES-256-GCM round-trip + tamper + wrong-key ${r.cryptoOk ? "✓" : "✗"}`,
+);
 console.log("\n" + (r.passed ? "✅ EVALS PASSED" : "❌ EVALS FAILED"));
 process.exit(r.passed ? 0 : 1);

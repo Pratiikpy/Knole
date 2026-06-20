@@ -16,6 +16,7 @@ import { generateNudge } from "./proactivity";
 import { anonymise } from "./anonymise";
 import { buildMirror } from "./mirror";
 import { chat } from "./llm";
+import { gcmEncrypt, gcmDecrypt, newAesKey } from "./og";
 
 const { users, entries, memories, memoryHistory, evalRuns } = schema;
 
@@ -78,6 +79,7 @@ export type EvalResult = {
   piiScrubRate: number;
   firstAha: boolean;
   ahaSeconds: number;
+  cryptoOk: boolean;
   passed: boolean;
   details: Record<string, unknown>;
 };
@@ -484,6 +486,32 @@ export async function runEvals(): Promise<EvalResult> {
   const ahaMems = await extractMemories(userId, ahaEntry.id, ahaOpener);
   const firstAha = ahaReflection.trim().length > 40 && ahaMems.length >= 1 && ahaSeconds < 90;
 
+  // ── crypto: the "only your key reads it" primitive — AES-256-GCM round-trip, tamper-evidence,
+  // wrong-key rejection, and no IV reuse. Fast unit-level guard (test:privacy proves it live). ──
+  const cKey = newAesKey();
+  const cPlain = new TextEncoder().encode("A private entry only my key should read. 私的な日記。");
+  const cBlob = gcmEncrypt(cKey, cPlain);
+  const cRoundTrip = Buffer.from(gcmDecrypt(cKey, cBlob)).equals(Buffer.from(cPlain));
+  let cTamper = false;
+  try {
+    const t = Uint8Array.from(cBlob);
+    t[t.length - 1] ^= 1; // flip a ciphertext byte
+    gcmDecrypt(cKey, t);
+  } catch {
+    cTamper = true; // auth tag must reject the tampered blob
+  }
+  let cWrongKey = false;
+  try {
+    gcmDecrypt(newAesKey(), cBlob);
+  } catch {
+    cWrongKey = true; // a different key must fail loudly, not yield garbage
+  }
+  const cIvUnique = !Buffer.from(gcmEncrypt(cKey, cPlain)).equals(
+    Buffer.from(gcmEncrypt(cKey, cPlain)),
+  );
+  const cCipherOnly = !Buffer.from(cBlob).toString("latin1").includes("private entry");
+  const cryptoOk = cRoundTrip && cTamper && cWrongKey && cIvUnique && cCipherOnly;
+
   // ── gates ──
   const gates = {
     retrieval1: retrieval1 >= 0.8,
@@ -504,6 +532,7 @@ export async function runEvals(): Promise<EvalResult> {
     mirrorGrounded,
     noPiiLeak,
     firstAha,
+    cryptoOk,
   };
   const passed = Object.values(gates).every(Boolean);
 
@@ -611,6 +640,12 @@ export async function runEvals(): Promise<EvalResult> {
       score: firstAha ? 1 : 0,
       details: { ahaSeconds, memories: ahaMems.length },
     },
+    {
+      suite: "crypto",
+      passed: gates.cryptoOk,
+      score: cryptoOk ? 1 : 0,
+      details: { roundTrip: cRoundTrip, tamper: cTamper, wrongKey: cWrongKey, ivUnique: cIvUnique },
+    },
   ]);
 
   return {
@@ -634,6 +669,7 @@ export async function runEvals(): Promise<EvalResult> {
     piiScrubRate,
     firstAha,
     ahaSeconds,
+    cryptoOk,
     passed,
     details: { retrievalDetails, extracted: extracted.map((m) => m.content), groundDetails, gates },
   };
