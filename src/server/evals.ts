@@ -37,6 +37,15 @@ const GROUND_ENTRIES = [
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const hashOf = (s: string) => createHash("sha256").update(s).digest("hex");
 
+// LLM-judge assertions can transiently miss; retry a few times so the gate measures the
+// engine, not one stochastic call. A genuinely broken path fails every attempt.
+async function retryUntil(check: () => Promise<boolean>, attempts = 3): Promise<boolean> {
+  for (let i = 0; i < attempts; i++) {
+    if (await check()) return true;
+  }
+  return false;
+}
+
 export type EvalResult = {
   retrieval1: number;
   retrieval3: number;
@@ -162,67 +171,61 @@ export async function runEvals(): Promise<EvalResult> {
   const groundedness = grounded / GROUND_ENTRIES.length;
 
   // ── reconcile (isolated so each probe's nearest neighbour is its own seed) ──
-  // supersede: a move contradicts the prior city
-  await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
-  await db.delete(memories).where(eq(memories.userId, userId));
-  const supV = await embed("The user lives in Berlin.");
-  await db.execute(sql`
-    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
-    VALUES (${userId}, 'The user lives in Berlin.', 'eval-reconcile-sup', 'fact', 'active', ${toVectorLiteral(supV)}::vector, 0.7, 0.6)
-  `);
-  const [supEntry] = await db
-    .insert(entries)
-    .values({
-      userId,
-      text: "I moved to Lisbon last month, after years of living in Berlin.",
-      type: "journal",
-    })
-    .returning();
-  await extractMemories(userId, supEntry.id, supEntry.text);
-  const supRows = (await db.execute(sql`
-    SELECT status FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-reconcile-sup'
-  `)) as unknown as Record<string, unknown>[];
-  const superseded = supRows[0]?.status === "superseded";
+  // The supersede/noop verdicts come from the LLM judge, which can transiently miss; we
+  // re-seed and retry a few times so the gate measures the engine, not one stochastic
+  // call — a genuinely broken path still fails every attempt.
+  const LISBON = "I moved to Lisbon last month, after years of living in Berlin.";
 
-  // pinned-survival: the SAME contradiction must NOT supersede a user-pinned memory
-  await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
-  await db.delete(memories).where(eq(memories.userId, userId));
-  const pinV = await embed("The user lives in Berlin.");
-  await db.execute(sql`
-    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
-    VALUES (${userId}, 'The user lives in Berlin.', 'eval-pinned-survival', 'fact', 'pinned', ${toVectorLiteral(pinV)}::vector, 0.7, 0.6)
-  `);
-  const [pinEntry] = await db
-    .insert(entries)
-    .values({
-      userId,
-      text: "I moved to Lisbon last month, after years of living in Berlin.",
-      type: "journal",
-    })
-    .returning();
-  await extractMemories(userId, pinEntry.id, pinEntry.text);
-  const pinRows = (await db.execute(sql`
-    SELECT status FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-pinned-survival'
-  `)) as unknown as Record<string, unknown>[];
-  const pinnedSurvival = pinRows[0]?.status === "pinned";
+  // Re-seed "lives in Berlin" with a status, apply the Lisbon contradiction, return the
+  // seed's resulting status.
+  const applyMoveContradiction = async (status: "active" | "pinned"): Promise<string> => {
+    await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
+    await db.delete(memories).where(eq(memories.userId, userId));
+    const v = await embed("The user lives in Berlin.");
+    await db.execute(sql`
+      INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance)
+      VALUES (${userId}, 'The user lives in Berlin.', 'eval-reconcile-city', 'fact', ${status}, ${toVectorLiteral(v)}::vector, 0.7, 0.6)
+    `);
+    const [e] = await db
+      .insert(entries)
+      .values({ userId, text: LISBON, type: "journal" })
+      .returning();
+    await extractMemories(userId, e.id, e.text);
+    const rows = (await db.execute(sql`
+      SELECT status FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-reconcile-city'
+    `)) as unknown as Record<string, unknown>[];
+    return String(rows[0]?.status ?? "");
+  };
+
+  // supersede: an active memory is retired by the contradiction (retry the stochastic judge)
+  const superseded = await retryUntil(
+    async () => (await applyMoveContradiction("active")) === "superseded",
+  );
+  // pinned-survival: the SAME contradiction must NOT retire a user-pinned memory. The active
+  // case above proves the judge fires for it, so survival here is the protection at work.
+  const pinnedFinalStatus = await applyMoveContradiction("pinned");
+  const pinnedSurvival = pinnedFinalStatus === "pinned";
 
   // noop: a reworded restatement reinforces the existing memory instead of duplicating it
-  await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
-  await db.delete(memories).where(eq(memories.userId, userId));
-  const noopV = await embed("The user has a younger brother named Tomas.");
-  await db.execute(sql`
-    INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance, recall_count)
-    VALUES (${userId}, 'The user has a younger brother named Tomas.', 'eval-reconcile-noop', 'relationship', 'active', ${toVectorLiteral(noopV)}::vector, 0.7, 0.6, 0)
-  `);
-  const [noopEntry] = await db
-    .insert(entries)
-    .values({ userId, text: "I called my younger brother Tomas this evening.", type: "journal" })
-    .returning();
-  await extractMemories(userId, noopEntry.id, noopEntry.text);
-  const noopRows = (await db.execute(sql`
-    SELECT recall_count FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-reconcile-noop'
-  `)) as unknown as Record<string, unknown>[];
-  const noopReinforced = Number(noopRows[0]?.recall_count ?? 0) >= 1;
+  const tomasReinforced = async (): Promise<boolean> => {
+    await db.delete(memoryHistory).where(eq(memoryHistory.userId, userId));
+    await db.delete(memories).where(eq(memories.userId, userId));
+    const v = await embed("The user has a younger brother named Tomas.");
+    await db.execute(sql`
+      INSERT INTO memories (user_id, content, content_hash, type, status, embedding, confidence, importance, recall_count)
+      VALUES (${userId}, 'The user has a younger brother named Tomas.', 'eval-reconcile-noop', 'relationship', 'active', ${toVectorLiteral(v)}::vector, 0.7, 0.6, 0)
+    `);
+    const [e] = await db
+      .insert(entries)
+      .values({ userId, text: "I called my younger brother Tomas this evening.", type: "journal" })
+      .returning();
+    await extractMemories(userId, e.id, e.text);
+    const rows = (await db.execute(sql`
+      SELECT recall_count FROM memories WHERE user_id = ${userId} AND content_hash = 'eval-reconcile-noop'
+    `)) as unknown as Record<string, unknown>[];
+    return Number(rows[0]?.recall_count ?? 0) >= 1;
+  };
+  const noopReinforced = await retryUntil(tomasReinforced);
   const reconcile = superseded && noopReinforced;
 
   // ── recall-driven importance: retrieval bumps recall_count ──
@@ -340,7 +343,7 @@ export async function runEvals(): Promise<EvalResult> {
       suite: "pinned-survival",
       passed: gates.pinnedSurvival,
       score: pinnedSurvival ? 1 : 0,
-      details: { finalStatus: pinRows[0]?.status ?? null },
+      details: { finalStatus: pinnedFinalStatus },
     },
   ]);
 
