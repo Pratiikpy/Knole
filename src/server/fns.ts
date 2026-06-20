@@ -16,7 +16,13 @@ import {
   getMemoryProvenance,
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
-import { currentUserId, startSessionFromToken, endSession } from "./session";
+import {
+  currentUserId,
+  requireUserId,
+  REQUIRE_AUTH,
+  startSessionFromToken,
+  endSession,
+} from "./session";
 import { enforceRate } from "./rateLimit";
 import { askMyLife } from "./ask";
 import { chatReply } from "./chat";
@@ -34,7 +40,7 @@ export const journalFn = createServerFn({ method: "POST" })
   .validator(z.object({ entry: z.string().min(1).max(20000) }))
   .handler(async ({ data }) => {
     enforceRate("journal", 30, 60_000);
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     const qVec = await embed(data.entry);
     const recalled = await retrieveMemories(userId, qVec, 6, data.entry);
     const reflection = await reflect(data.entry, recalled);
@@ -63,7 +69,7 @@ export const listMemoriesFn = createServerFn({ method: "GET" }).handler(async ()
 export const setMemoryStatusFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), status: z.enum(["active", "pinned", "forgotten"]) }))
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     await setMemoryStatus(userId, data.id, data.status);
     return { ok: true };
   });
@@ -71,7 +77,7 @@ export const setMemoryStatusFn = createServerFn({ method: "POST" })
 export const editMemoryFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), content: z.string().min(1).max(2000) }))
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     await updateMemoryContent(userId, data.id, data.content);
     return { ok: true };
   });
@@ -105,7 +111,7 @@ export const clearSessionFn = createServerFn({ method: "POST" }).handler(async (
 
 export const whoamiFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
-  return { userId, isDemo: userId === (await getDemoUserId()) };
+  return { userId, isDemo: userId === (await getDemoUserId()), gated: REQUIRE_AUTH };
 });
 
 export const exportFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -116,12 +122,12 @@ export const exportFn = createServerFn({ method: "GET" }).handler(async () => {
 export const forgetRangeFn = createServerFn({ method: "POST" })
   .validator(z.object({ from: z.string().min(8), to: z.string().min(8) }))
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     return forgetRange(userId, `${data.from}T00:00:00.000Z`, `${data.to}T23:59:59.999Z`);
   });
 
 export const deleteAccountFn = createServerFn({ method: "POST" }).handler(async () => {
-  const userId = await currentUserId();
+  const userId = await requireUserId();
   return deleteAccount(userId);
 });
 
@@ -145,7 +151,7 @@ export const chatFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     enforceRate("chat", 40, 60_000);
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     const qVec = await embed(data.message);
     const reply = await chatReply(userId, data.history, data.message, qVec);
     const entryRow = await saveEntry(userId, data.message, qVec, "chat");
@@ -184,7 +190,7 @@ export const updateSettingsFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     await updateSettings(userId, data);
     return { ok: true };
   });
@@ -198,7 +204,7 @@ export const saveFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     const parts = [`"${data.highlight}"`];
     if (data.source) parts.push(`— ${data.source}`);
     if (data.thought?.trim()) parts.push(`\nMy note: ${data.thought.trim()}`);
@@ -246,7 +252,7 @@ export const respondFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     const text = data.pastQuote
       ? `Answering my past self ("${data.pastQuote.slice(0, 140)}…"): ${data.response}`
       : data.response;
@@ -269,7 +275,7 @@ export const onboardFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     await updateSettings(userId, { voice: data.voice });
     const text = data.thing
       ? `${data.opener}\n(Quietly on my mind this week: ${data.thing})`
@@ -292,7 +298,7 @@ export const importFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     enforceRate("import", 5, 60_000);
-    const userId = await currentUserId();
+    const userId = await requireUserId();
     return importHistory(userId, data.text, data.source);
   });
 

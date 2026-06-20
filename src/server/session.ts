@@ -26,12 +26,25 @@ export async function getSessionUserId(): Promise<string | null> {
 }
 
 /**
- * The resolver the server functions use: the signed-in user when a valid session
- * exists, otherwise the shared demo user. Falling back to demo on *any* failure
- * means session bugs can never break the (unauthenticated) demo experience.
+ * The resolver READ paths use: the signed-in user when a valid session exists,
+ * otherwise the shared demo user. Falling back to demo on *any* failure means session
+ * bugs can never break the (unauthenticated) demo experience — the public showcase.
  */
 export async function currentUserId(): Promise<string> {
   return (await getSessionUserId()) ?? getDemoUserId();
+}
+
+// Writes require a real session in production, so anonymous visitors to the public demo
+// can't pollute or modify it. Locally (flag unset) writes fall back to the demo user, so
+// dev and the seeded demo keep working without signing in.
+export const REQUIRE_AUTH = (process.env.KNOLE_REQUIRE_AUTH ?? "").toLowerCase() === "on";
+
+/** The resolver WRITE paths use. Throws "AUTH_REQUIRED" when prod has no session. */
+export async function requireUserId(): Promise<string> {
+  const sid = await getSessionUserId();
+  if (sid) return sid;
+  if (!REQUIRE_AUTH) return getDemoUserId();
+  throw new Error("AUTH_REQUIRED");
 }
 
 /** Verify a Privy access token and open a session for that user. False on a bad token. */

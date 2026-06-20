@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState, type ReactNode } from "react";
+import { whoamiFn } from "@/server/fns";
 
 const nav = [
   { to: "/today", label: "Today" },
@@ -14,6 +16,18 @@ const nav = [
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  // Show the "you're in the demo" prompt only where writes are actually gated (production).
+  const [showDemo, setShowDemo] = useState(false);
+  const whoami = useServerFn(whoamiFn);
+  useEffect(() => {
+    let alive = true;
+    whoami()
+      .then((r) => alive && setShowDemo(!!r.isDemo && !!r.gated))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [whoami]);
   return (
     <div className="grain min-h-screen bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-rule bg-paper/75 backdrop-blur-md">
@@ -99,6 +113,14 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
           </nav>
         )}
       </header>
+      {!hideNav && showDemo && (
+        <div className="border-b border-tan/30 bg-tan/[0.06] px-6 py-2 text-center text-[12px] text-ink-soft">
+          You're exploring the demo.{" "}
+          <Link to="/settings" className="font-medium text-tan underline-offset-2 hover:underline">
+            Sign in to start your own private Knole →
+          </Link>
+        </div>
+      )}
       <main>{children}</main>
       <footer className="border-t border-rule py-12 text-center">
         <p className="font-display text-sm italic text-muted-foreground">
