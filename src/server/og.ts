@@ -95,3 +95,21 @@ export async function getData(rootHash: string, opts?: { key?: Uint8Array }): Pr
 export function newAesKey(): Uint8Array {
   return new Uint8Array(randomBytes(32));
 }
+
+/**
+ * Anchor a 32-byte root on-chain: a self-transaction carrying it in calldata — a cheap, timestamped,
+ * tamper-evident commitment to the whole memory state. Change any anchored entry and the recomputed
+ * root no longer matches what's on the chain. Returns the confirmed tx hash.
+ */
+export async function anchorOnChain(rootHex: string): Promise<string> {
+  const s = signer();
+  const data = rootHex.startsWith("0x") ? rootHex : `0x${rootHex}`;
+  const timeout = Number(process.env.OG_ANCHOR_TIMEOUT_MS ?? 90000);
+  const tx = await withTimeout(
+    s.sendTransaction({ to: s.address, value: 0n, data }),
+    timeout,
+    "0G anchor tx",
+  );
+  await withTimeout(tx.wait(), timeout, "0G anchor confirm");
+  return tx.hash;
+}

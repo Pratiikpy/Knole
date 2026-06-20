@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { runDreaming } from "./dreaming";
 import { storeEntryOn0G } from "./engine";
+import { anchorDue } from "./anchor";
 
 let ticking = false;
 
@@ -14,6 +15,7 @@ export async function tick(): Promise<{
   dreamed: number;
   pruned?: number;
   backfilled?: number;
+  anchored?: number;
   skipped?: boolean;
 }> {
   if (ticking) return { users: 0, dreamed: 0, skipped: true };
@@ -65,7 +67,16 @@ export async function tick(): Promise<{
     } catch (e) {
       console.error("0G backfill failed:", (e as Error).message);
     }
-    return { users: rows.length, dreamed, pruned, backfilled };
+
+    // Daily on-chain anchor of each due user's memory root — a timestamped, tamper-evident
+    // commitment to their whole state. Opportunistic + idempotent per day, like the backfill.
+    let anchored = 0;
+    try {
+      anchored = await anchorDue({ start, budgetMs });
+    } catch (e) {
+      console.error("anchor step failed:", (e as Error).message);
+    }
+    return { users: rows.length, dreamed, pruned, backfilled, anchored };
   } finally {
     ticking = false;
   }
