@@ -48,6 +48,7 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
                     <Link
                       key={n.to}
                       to={n.to}
+                      aria-current={active ? "page" : undefined}
                       className={`text-[12px] tracking-wide transition-colors ${
                         active ? "text-ink" : "text-muted-foreground hover:text-ink"
                       }`}
@@ -100,6 +101,7 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
                     <Link
                       to={n.to}
                       onClick={() => setOpen(false)}
+                      aria-current={active ? "page" : undefined}
                       className={`block rounded-md px-2 py-2.5 text-[14px] tracking-wide transition-colors ${
                         active ? "bg-card text-ink" : "text-muted-foreground hover:text-ink"
                       }`}
