@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { MemoryPill } from "@/components/knole/MemoryPill";
+import { isAuthRequired } from "@/lib/authError";
 import { chatFn } from "@/server/fns";
 import { useState, useRef, useEffect } from "react";
 
@@ -52,10 +53,15 @@ function ChatPage() {
     try {
       const res = await doChat({ data: { message: text, history } });
       setMessages((m) => [...m, { who: "knole", text: res.reply }]);
-    } catch {
+    } catch (e) {
       setMessages((m) => [
         ...m,
-        { who: "knole", text: "Something interrupted me — say that again?" },
+        {
+          who: "knole",
+          text: isAuthRequired(e)
+            ? "Sign in to chat with your own Knole — you're viewing the demo."
+            : "Something interrupted me — say that again?",
+        },
       ]);
     } finally {
       setLoading(false);

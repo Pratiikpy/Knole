@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { journalFn, nudgeFn } from "@/server/fns";
+import { isAuthRequired } from "@/lib/authError";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/today")({
@@ -62,8 +63,12 @@ function TodayPage() {
       setReflection(res.reflection);
       setRecalled(res.recalled ?? []);
       setReflected(true);
-    } catch {
-      setReflection("Something interrupted the reflection — try again in a moment.");
+    } catch (e) {
+      setReflection(
+        isAuthRequired(e)
+          ? "Sign in to start your own Knole — your words stay private to you. Use “Sign in” above."
+          : "Something interrupted the reflection — try again in a moment.",
+      );
       setReflected(true);
     } finally {
       setLoading(false);

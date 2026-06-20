@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { resurfaceFn, respondFn } from "@/server/fns";
 import { Composing } from "@/components/knole/Composing";
+import { isAuthRequired } from "@/lib/authError";
 import { useState } from "react";
 
 export const Route = createFileRoute("/remembered")({
@@ -30,17 +31,21 @@ function RememberedPage() {
   const [response, setResponse] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [sendError, setSendError] = useState(false);
+  const [sendError, setSendError] = useState("");
 
   const send = async () => {
     if (!response.trim() || sending) return;
     setSending(true);
-    setSendError(false);
+    setSendError("");
     try {
       await doRespond({ data: { response, pastQuote: entry?.text } });
       setSent(true);
-    } catch {
-      setSendError(true);
+    } catch (e) {
+      setSendError(
+        isAuthRequired(e)
+          ? "Sign in to keep this — you're viewing the demo."
+          : "Couldn't reach your journal — your words are still here. Try again.",
+      );
     } finally {
       setSending(false);
     }
@@ -156,7 +161,7 @@ function RememberedPage() {
               />
               {sendError && (
                 <p aria-live="polite" className="mt-3 text-[12px] text-destructive">
-                  Couldn't reach your journal — your words are still here. Try again.
+                  {sendError}
                 </p>
               )}
               <div className="mt-3 flex items-center justify-end gap-3">

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { saveFn } from "@/server/fns";
+import { isAuthRequired } from "@/lib/authError";
 import { useState } from "react";
 
 export const Route = createFileRoute("/extension")({
@@ -24,19 +25,23 @@ const SOURCE = "aeon.co · The quiet shape of attention";
 function ExtensionPage() {
   const doSave = useServerFn(saveFn);
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [thought, setThought] = useState("");
 
   const onDone = async () => {
     if (saving) return;
     setSaving(true);
-    setSaveError(false);
+    setSaveError("");
     try {
       await doSave({ data: { highlight: HIGHLIGHT, source: SOURCE, thought } });
       setSaved(true);
-    } catch {
-      setSaveError(true);
+    } catch (e) {
+      setSaveError(
+        isAuthRequired(e)
+          ? "Sign in to save — you're viewing the demo."
+          : "Couldn't save — your note is still here. Try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -155,7 +160,7 @@ function ExtensionPage() {
                   </div>
                   {saveError && (
                     <p aria-live="polite" className="mt-2 text-[11px] text-destructive">
-                      Couldn't save — your note is still here. Try again.
+                      {saveError}
                     </p>
                   )}
                 </div>
