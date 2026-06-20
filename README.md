@@ -4,6 +4,8 @@ A private AI that actually understands you — a journal and thinking partner th
 
 Knole is a mirror, not an assistant. You write; it reflects, remembers, and — only as much as you allow — reaches back.
 
+> **Live demo:** [knole-app.vercel.app](https://knole-app.vercel.app) — explore the seeded demo (read-only); sign in to start your own.
+
 ---
 
 ## What it does

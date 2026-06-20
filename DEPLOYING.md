@@ -28,6 +28,8 @@ Copy `.env.example` → `.env` and fill it in. Required at runtime:
 | `VITE_SITE_URL`     | Your deployed origin (e.g. `https://knole.app`) — makes social-share tags absolute.                            |
 
 Optional: `SESSION_SECRET` (separate session seal; falls back to `KNOLE_KDF_SECRET`),
+`KNOLE_REQUIRE_AUTH` (`on` for a **public** deploy — writes then require a real session, so
+anonymous visitors get the seeded demo read-only instead of being able to modify it),
 `OG_SEALED_INFERENCE` (`on` to route reflections through the 0G TEE), and the resilience
 tunables `LLM_TIMEOUT_MS` / `LLM_MAX_RETRIES` / `OG_TIMEOUT_MS` / `OG_UPLOAD_TIMEOUT_MS`.
 
@@ -56,6 +58,12 @@ npm run build               # → dist/client (static) + dist/server/server.js (
 Deploy `dist/` behind a Node host (or your platform's adapter). `npm run preview` serves
 the build locally to smoke-test it. Set `VITE_SITE_URL` to the live origin.
 
+**Vercel** (how the live demo runs): the TanStack Start build emits a Web `fetch` handler at
+`dist/server/server.js`, which `vercel.json` + `api/server.mjs` adapt into a serverless
+function (`maxDuration: 60` for the LLM calls) — `dist/client` serves static, everything else
+routes through the SSR handler. Push the env vars to the Vercel project, set
+`KNOLE_REQUIRE_AUTH=on` for a public deploy, then `vercel --prod`.
+
 ## 4. The Dreaming worker
 
 The overnight reflection worker is a separate process:
@@ -66,6 +74,10 @@ npm run worker -- --once    # single tick — wire this to a scheduled job inste
 ```
 
 It is re-entrant (a slow tick can't overlap the next) and isolates per-user errors.
+
+> On a serverless host (Vercel), this long-lived process can't run — give it an always-on
+> host (Railway/Render/Fly), or wire a scheduled job (e.g. a Vercel Cron) to a protected
+> endpoint that runs one tick. Until then, that deploy generates no nightly dreams.
 
 ## 5. Verify auth
 
