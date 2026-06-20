@@ -76,6 +76,10 @@ The logged-in path needs one real verification (it can't be driven headlessly):
 - enable **"test credentials"** in the Privy dashboard (Settings → Advanced) and run
   `npm run test:auth` for a fully headless check.
 
+Then prove the **ownership spine** — that Postgres is only a cache: `npm run test:restore`
+corrupts one on-chain entry's local copy and rebuilds it byte-identically from 0G (needs
+seeded on-chain entries + live testnet access).
+
 ## 6. Optional — live Sealed Inference (0G TEE)
 
 Fund the 0G compute ledger, set `OG_SEALED_INFERENCE=on`, and point `ZG_SERVICE_URL` /
