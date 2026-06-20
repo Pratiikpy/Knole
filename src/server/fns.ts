@@ -16,6 +16,7 @@ import {
   getMemoryProvenance,
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
+import { warmNER } from "./anonymise";
 import {
   currentUserId,
   requireUserId,
@@ -90,10 +91,11 @@ export const provenanceFn = createServerFn({ method: "POST" })
     return getMemoryProvenance(userId, data.memoryId);
   });
 
-// Pre-load the local embedding model server-side on first page view, so the
-// first reflection/journal isn't a ~10s cold start.
+// Pre-load BOTH local models server-side on first page view, so the first reflection / chat / ask
+// doesn't cold-load them on submit. The NER (anonymise) is the larger download (~105MB), so warming
+// it alongside the embedder — overlapping the download with the user's reading/typing — matters most.
 export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
-  await warmEmbed();
+  await Promise.all([warmEmbed(), warmNER()]);
   return { ok: true };
 });
 

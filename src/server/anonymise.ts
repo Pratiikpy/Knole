@@ -15,6 +15,11 @@ function getNER() {
   return nerPromise as Promise<(t: string) => Promise<NerToken[]>>;
 }
 
+/** Eagerly load the NER model so the first real anonymise isn't a cold start. */
+export function warmNER(): Promise<unknown> {
+  return getNER();
+}
+
 type NerToken = { entity: string; word: string; score: number };
 type Span = { group: string; word: string };
 
