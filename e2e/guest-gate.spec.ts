@@ -34,7 +34,9 @@ test.describe("guest write-gate is clean (no doomed fetch)", () => {
     await page.goto("/today", { waitUntil: "domcontentloaded" });
     await expect(page.getByText(/exploring the demo/i)).toBeVisible();
     await page.waitForTimeout(700);
-    await page.getByPlaceholder(/write what's true/i).fill("I have been feeling overwhelmed by work lately.");
+    await page
+      .getByPlaceholder(/write what's true/i)
+      .fill("I have been feeling overwhelmed by work lately.");
     await page.getByRole("button", { name: /^reflect$/i }).click();
     await expect(page.getByText(/sign in to start your own knole/i)).toBeVisible();
     expect(hitStream).toBe(false);

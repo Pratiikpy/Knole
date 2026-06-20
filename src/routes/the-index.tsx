@@ -265,7 +265,7 @@ function TheIndex() {
                         <>
                           <span className="text-muted-foreground/50">·</span>
                           <span
-                            className="text-muted-foreground/70"
+                            className="italic text-muted-foreground"
                             title="Knole inferred this from your words — not certain yet"
                           >
                             still forming
