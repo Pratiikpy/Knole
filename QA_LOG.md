@@ -36,11 +36,11 @@ and tx links are real `chainscan-galileo.0g.ai` URLs.
 
 ### Findings
 
-| #   | Severity | Finding                                                                                                                                                     | Status                 |
-| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 1   | LOW      | README claimed the Mirror reveals on "day 14"; landing ("day fifteen") + code (`REVEAL_DAY=14` days-since = day 15) say day 15                              | **FIXED** (`027c756`)  |
-| 2   | LOW      | Nav labels the flagship "Pattern Mirror" and the dashboard "Memory", while the README/docs use "The Mirror" / "The Index" — a naming variance, not an error | OPEN (naming decision) |
-| 3   | HIGH     | `/upgrade` "Go deeper" was a **dead button** (no handler) — a primary CTA that did nothing (found via code audit)                                            | **FIXED** (billing scaffold — real Stripe checkout when configured, honest message otherwise) |
+| #   | Severity | Finding                                                                                                                                                     | Status                                                                                        |
+| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1   | LOW      | README claimed the Mirror reveals on "day 14"; landing ("day fifteen") + code (`REVEAL_DAY=14` days-since = day 15) say day 15                              | **FIXED** (`027c756`)                                                                         |
+| 2   | LOW      | Nav labels the flagship "Pattern Mirror" and the dashboard "Memory", while the README/docs use "The Mirror" / "The Index" — a naming variance, not an error | OPEN (naming decision)                                                                        |
+| 3   | HIGH     | `/upgrade` "Go deeper" was a **dead button** (no handler) — a primary CTA that did nothing (found via code audit)                                           | **FIXED** (billing scaffold — real Stripe checkout when configured, honest message otherwise) |
 
 ---
 
@@ -59,10 +59,29 @@ overflow, z-stacking, text-wrap, sub-44px tap targets.
 ARIA (`expanded`), reveals all 7 nav links as full-width tap targets (>44px), and closes cleanly. No
 overlap or z-stacking. **No findings.**
 
+---
+
+## 2026-06-20 — L2 RAG flow (Ask My Life)
+
+`/ask` driven live (desktop). L0: renders, **0 console errors**, starter chips + grounding-honest copy.
+
+**L2 — clicked "How do I usually talk about my mother?"** → a grounded throughline streamed in, then a
+**RECEIPTS · YOUR OWN WORDS** block with four real cited entries by date: Jun 15 ("Listened to Mom's
+voicemail without calling back…"), Jun 9 ("…let it go to voicemail again. 'I'll call her back,' I keep
+saying. It's been five weeks now."), Jun 18 ("Ran five miles. At the turnaround I actually called Mom…
+she cried, I cried…"), Jun 17 (the "hard scene… a son who doesn't call his mother"). The throughline is
+consistent with the cited entries (no invented facts), and the footer states "Anonymised before the AI
+saw it — grounded only in your own words." Console-clean. The product's "never paraphrase without
+showing where it came from" promise is **proven through the UI**, against real entries.
+
+Note (LOW, not actionable): the LLM throughline once wrote "a emotional" (an a/an slip) — an inherent
+generation artifact, not a code defect.
+
 ### Not yet covered — queued for the next passes
 
 - Mobile L0 for the remaining routes (`/the-index`, `/insights` checked desktop only so far).
-- L0 for `/chat`, `/ask`, `/remembered`, `/extension`, `/upgrade`.
+- L0 for `/chat`, `/remembered`, `/extension`; `/upgrade` honest-state needs a local run (the live deploy
+  predates the billing fix).
 - **L2 write flows** (journal → streaming reflection → memory saved → recalled) — needs a signed-in
   session or a local run; the read-only demo can't exercise writes.
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
