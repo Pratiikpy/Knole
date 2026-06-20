@@ -77,11 +77,17 @@ showing where it came from" promise is **proven through the UI**, against real e
 Note (LOW, not actionable): the LLM throughline once wrote "a emotional" (an a/an slip) — an inherent
 generation artifact, not a code defect.
 
+### Desktop L0 — remaining routes (this pass)
+
+`/chat` and `/remembered` driven live (desktop): both render console-clean. `/chat` — "Think out loud",
+the warm opener + the "correct me anytime" honesty + the message composer. `/remembered` — the
+resurfacing arc: a past entry ("First morning without the alarm in years…") with Knole's gentle "now"
+reflection and an "answer it / not now" choice. No findings.
+
 ### Not yet covered — queued for the next passes
 
 - Mobile L0 for the remaining routes (`/the-index`, `/insights` checked desktop only so far).
-- L0 for `/chat`, `/remembered`, `/extension`; `/upgrade` honest-state needs a local run (the live deploy
-  predates the billing fix).
+- L0 for `/extension`; `/upgrade` honest-state needs a local run (the live deploy predates the billing fix).
 - **L2 write flows** (journal → streaming reflection → memory saved → recalled) — needs a signed-in
   session or a local run; the read-only demo can't exercise writes.
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
