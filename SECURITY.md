@@ -53,6 +53,29 @@ Knole's premise is that your inner life is yours alone. This document describes 
 - **Key custody + rotation are supported in code** (`keyProvider.ts`): the master secret can be injected from a KMS/enclave at boot, and rotated via versioned secrets without re-encrypting data. What remains is the operator step of **provisioning the KMS** and moving the secret off `.env` — see `HUMAN.md` (item 15). The session seal password (`SESSION_SECRET`/`KNOLE_KDF_SECRET`) should move with it.
 - A **hosted scheduler** for the Dreaming worker is wired as a Vercel Cron (`/api/cron/dream`, guarded by `CRON_SECRET`); an always-on host can run `npm run worker` instead.
 
+## Dependency audit
+
+`npm audit` (run `npm run audit`) reports 43 production vulnerabilities (28 high · 1 critical · 14
+moderate; +4 dev-only). **Every one is transitive** — none is in Knole's own code, and none has a
+non-breaking fix (`npm audit fix` changes nothing; `--force` would downgrade or break core
+dependencies). They cluster in three upstream trees, assessed by real reachability:
+
+- **axios 0.27** — via `@0gfoundation/0g-ts-sdk` (its JSON-RPC client) and the `@privy-io/react-auth`
+  → wagmi wallet stack. The 0G path is **server-side only and calls fixed, configured RPC/indexer
+  endpoints** — no user-controlled URL reaches it, so the SSRF / CSRF / redirect advisories are not
+  reachable. The wagmi path is wallet-connector UI that Knole's email-OTP auth never exercises. Both
+  pin axios 0.x; the patched line is 1.x (a breaking major).
+- **protobufjs 6.11** — via `@xenova/transformers` → `onnxruntime-web`, to parse the local
+  embedding/NER **model files**, which are fetched from the trusted `@xenova` CDN, never from user
+  input. The code-execution advisory needs a crafted protobuf payload the model-loader never receives
+  from an untrusted source.
+- **esbuild ≤0.24 (dev only)** — via `drizzle-kit`'s loader. The advisory only affects an exposed
+  esbuild **dev server**; drizzle-kit runs migrations locally and never serves the web.
+
+These are tracked, not ignored: a patched upstream release (a 0G SDK off axios 0.x, an onnxruntime on
+protobufjs 7.x) will be adopted as soon as it lands. We deliberately do **not** run `npm audit fix
+--force`, which would break the embedding runtime, the migration tool, and the 0G client.
+
 ## Reporting
 
 This is a testnet research build. For security concerns, open a private issue once the repository is published.
