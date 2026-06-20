@@ -13,6 +13,7 @@ import {
   deleteAccountFn,
   syncSessionFn,
   clearSessionFn,
+  genExtensionTokenFn,
 } from "@/server/fns";
 import { useState, useEffect } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
@@ -150,6 +151,37 @@ function SettingsPage() {
       URL.revokeObjectURL(url);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const doGenToken = useServerFn(genExtensionTokenFn);
+  const [extToken, setExtToken] = useState<string | null>(null);
+  const [genningToken, setGenningToken] = useState(false);
+  const [extError, setExtError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const genToken = async () => {
+    if (genningToken) return;
+    setGenningToken(true);
+    setExtError("");
+    try {
+      const res = await doGenToken();
+      setExtToken(res.token);
+    } catch (e) {
+      setExtError(
+        isAuthRequired(e) ? "Sign in above to generate a token." : "Couldn't generate — try again.",
+      );
+    } finally {
+      setGenningToken(false);
+    }
+  };
+  const copyToken = async () => {
+    if (!extToken) return;
+    try {
+      await navigator.clipboard.writeText(extToken);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked */
     }
   };
 
@@ -328,6 +360,48 @@ function SettingsPage() {
                   {importing ? "Importing…" : "Import"}
                 </button>
               </div>
+            </div>
+          </Group>
+
+          {/* Save to Knole — browser extension */}
+          <Group title="Save to Knole — browser extension">
+            <div className="rounded-xl border border-rule bg-card/50 p-6">
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                Highlight anything on the web and save it to Knole in one click. Generate a token
+                and paste it into the extension's settings — it's how the extension saves to your
+                account. Encrypted under your key, like everything else.
+              </p>
+              {extToken ? (
+                <div className="mt-4">
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded-lg border border-rule bg-paper px-3 py-2 font-mono text-[12px] text-ink">
+                      {extToken}
+                    </code>
+                    <button
+                      onClick={copyToken}
+                      className="shrink-0 rounded-full border border-rule px-4 py-2 text-[12px] hover:bg-tan/[0.06]"
+                    >
+                      {copied ? "Copied ✓" : "Copy"}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[12px] text-tan">
+                    Shown once — paste it into the extension now. Generating again replaces it.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <span className="text-[11px] text-muted-foreground">
+                    {extError || "The token authenticates the extension — keep it private."}
+                  </span>
+                  <button
+                    onClick={genToken}
+                    disabled={genningToken}
+                    className="shrink-0 rounded-full bg-ink px-4 py-2 text-[12px] text-paper transition-opacity disabled:opacity-40"
+                  >
+                    {genningToken ? "Generating…" : "Generate token"}
+                  </button>
+                </div>
+              )}
             </div>
           </Group>
 
