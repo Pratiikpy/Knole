@@ -42,7 +42,10 @@ await ctx.close(); // finalizes the .webm
 console.log("captured the magic moment (write, reflection, video)");
 
 // ── The rest of the journey, as retina stills. ──
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({
+  viewport: { width: 1280, height: 900 },
+  deviceScaleFactor: 2,
+});
 async function shot(name, path, action) {
   await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1400);
@@ -68,7 +71,10 @@ await shot("ask-receipts", "/ask", async () => {
   await box.click();
   await box.pressSequentially("How do I usually talk about my mother?", { delay: 8 });
   await box.press("Enter");
-  await page.getByText(/receipts|throughline/i).first().waitFor({ timeout: 60_000 });
+  await page
+    .getByText(/receipts|throughline/i)
+    .first()
+    .waitFor({ timeout: 60_000 });
   await page.waitForTimeout(2500);
 });
 

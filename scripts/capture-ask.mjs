@@ -6,7 +6,10 @@ import { chromium } from "@playwright/test";
 
 const BASE = process.env.PROOF_BASE_URL ?? "https://knole-app.vercel.app";
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({
+  viewport: { width: 1280, height: 900 },
+  deviceScaleFactor: 2,
+});
 
 await page.goto(`${BASE}/ask`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(1200);
