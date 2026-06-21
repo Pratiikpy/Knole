@@ -8,7 +8,7 @@ This document is the evidence behind every claim Knole makes. It is written for 
 
 The reconciled, code-true numbers used throughout (verify them yourself):
 
-- **Eval gate: 21 suites.** `grep -c "suite:" src/server/evals.ts` → `21`. The `EvalResult` type carries 21 suite gates, and `runEvals()` writes 21 rows to `eval_runs`. The README badge (`evals-21/21`) is correct; SECURITY.md and QA_PLAN.md say "22-suite" — an off-by-one in prose, flagged in §15 and §24 as a P0 honesty fix.
+- **Eval gate: 21 suites.** `grep -c "suite:" src/server/evals.ts` → `21`; `runEvals()` writes 21 rows to `eval_runs`. Every live-claim doc (README, SECURITY.md, QA_PLAN.md, QA_LOG.md, DEPLOYING.md) says 21, and `npm run check:numbers` — a CI gate added this pass — derives the count from `evals.ts` and fails the build on any drift (the earlier SECURITY.md/QA_PLAN.md "22-suite" prose drift is fixed; see §15 / §24).
 - **L0 route sweep: 11 routes × 2 viewports = 22 cells**, codified in `e2e/screens.spec.ts`.
 - **Playwright on the live deploy: 24/24 green** (QA_LOG 2026-06-20; `test-results/.last-run.json` → `"status": "passed"`).
 
@@ -319,7 +319,7 @@ The credibility signal for a privacy-first, owned-memory product is the QA disci
 - Drop the demo-user fallback so unauthenticated writes are rejected, not served the demo (`SECURITY.md` "Known limitations" item 1).
 - Prove the logged-in single-session authenticated E2E (Privy test creds) and wire it into CI.
 - Commit the visual evidence (screenshots + `_metrics.json`).
-- Fix the eval-count drift (21 vs 22) and add an honest-numbers CI gate.
+- ~~Fix the eval-count drift and add an honest-numbers CI gate~~ — **done this pass** (`scripts/check-numbers.mjs`, wired into CI).
 
 **Before-mainnet:**
 
