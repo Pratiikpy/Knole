@@ -45,3 +45,4 @@ playwright/.cache/
 *.sw?
 
 .vercel
+scripts/demo-video/out/

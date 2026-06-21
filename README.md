@@ -4,7 +4,7 @@
 
 <p><em>A mirror, not an assistant. You write; it reflects, remembers, and — only as much as you allow — reaches back.</em></p>
 
-[![Live demo](https://img.shields.io/badge/Live_demo-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole-app.vercel.app)
+[![Live demo](https://img.shields.io/badge/Live_demo-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole-app.vercel.app) [![Watch the demo](https://img.shields.io/badge/Watch_the_demo-2_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/W4ZamPWuO-Q) [![Project overview](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
 
 <sub>explore the seeded demo · or sign in to start your own</sub>
 
@@ -14,7 +14,7 @@
 
 A private AI that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, and the reflections that read them are designed to run in a TEE so _even we can't read them_.
 
-**Don't take the claims on faith.** The [**proof deck**](https://knole-app.vercel.app/proof-deck.html) walks the whole flow in screenshots in a few minutes; [`docs/PROOF.md`](docs/PROOF.md) backs every claim with the exact command, eval, spec, or recorded result — and both state plainly what is pre-mainnet.
+**See the whole product in two minutes** — [watch the demo](https://youtu.be/W4ZamPWuO-Q). Then don't take the claims on faith: the [**proof deck**](https://knole-app.vercel.app/proof-deck.html) walks the flow in screenshots and [`docs/PROOF.md`](docs/PROOF.md) backs every claim with the exact command, eval, spec, or recorded result — both state plainly what is pre-mainnet.
 
 ---
 
