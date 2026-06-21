@@ -26,7 +26,7 @@ Every test step:
 1. **Recomputable crypto / chain** — `restoreEntryFromChain` rebuilds an entry byte-identically from
    0G; AES-256-GCM round-trip; the on-chain anchor tx.
 2. **Direct DB read** — the Postgres row (`entries`, `memories`, `memory_history`, `replies`).
-3. **Engine result** — `retrieveMemories`, `extractMemories`, `buildMirror`, the 22-suite eval gate.
+3. **Engine result** — `retrieveMemories`, `extractMemories`, `buildMirror`, the 21-suite eval gate.
 4. **Server-fn / streaming-endpoint response** — 2xx + correct body / stream.
 5. **Rendered UI (lowest)** — must mirror all of the above, never trusted alone. "Saved ✓" proves nothing.
 
@@ -35,7 +35,7 @@ Every test step:
 | Level  | Meaning                                                                          | Where it lives                                     |
 | ------ | -------------------------------------------------------------------------------- | -------------------------------------------------- |
 | **L0** | Page renders, **zero console errors**, honest empty states                       | New Playwright screen-matrix sweep                 |
-| **L1** | A function/route/engine path behaves on real data                                | **Already covered**: 22 evals + 7 `test:*` scripts |
+| **L1** | A function/route/engine path behaves on real data                                | **Already covered**: 21 evals + 7 `test:*` scripts |
 | **L2** | A flow works across components/services                                          | New Playwright flow specs                          |
 | **L3** | Maximal: real data, adversarial inputs, every state combo, ground-truth verified | New Playwright negative/combo specs                |
 
@@ -49,7 +49,7 @@ changed, the DB/0G read that confirms it.
 
 ## 2. What's already covered (don't rebuild it)
 
-**L1 engine gate — `npm run evals` (22 suites):** retrieval@1/@3, extraction, dedup, groundedness,
+**L1 engine gate — `npm run evals` (21 suites):** retrieval@1/@3, extraction, dedup, groundedness,
 reflect-form, reconcile, recall, hybrid (RRF), forgetting, pinned-survival, user-correction-wins,
 provenance, nudge-grounding, creepiness, **data-isolation/IDOR**, mirror-grounding, privacy-leak
 (0 PII), first-aha (<90s), crypto (AES-256-GCM), confidence-calibration, key-provider (rotation).

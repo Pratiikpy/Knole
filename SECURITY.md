@@ -46,7 +46,7 @@ Knole's premise is that your inner life is yours alone. This document describes 
 
 ## Quality gate
 
-`npm run evals` runs a **22-suite gate** spanning correctness (retrieval precision/recall, extraction coverage, dedup, reflection groundedness, memory reconciliation, recall-driven importance, RRF hybrid retrieval, provenance), trust (forgetting-respected, pinned-survival, user-correction-wins, confidence-calibration), quality (reflection form, nudge-grounding, mirror-grounding, no-creepiness, first-aha <90s), and security/crypto (data-isolation + IDOR, privacy-leak / 0 PII to the model, AES-256-GCM round-trip + tamper + wrong-key, key-provider rotation read-through) — recorded in `eval_runs`.
+`npm run evals` runs a **21-suite gate** spanning correctness (retrieval precision/recall, extraction coverage, dedup, reflection groundedness, memory reconciliation, recall-driven importance, RRF hybrid retrieval, provenance), trust (forgetting-respected, pinned-survival, user-correction-wins, confidence-calibration), quality (reflection form, nudge-grounding, mirror-grounding, no-creepiness, first-aha <90s), and security/crypto (data-isolation + IDOR, privacy-leak / 0 PII to the model, AES-256-GCM round-trip + tamper + wrong-key, key-provider rotation read-through) — recorded in `eval_runs`.
 
 ## Known limitations (pre-mainnet)
 

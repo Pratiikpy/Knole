@@ -18,6 +18,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run check:voice
+      - run: npm run check:numbers
       - run: npx tsc --noEmit
       - run: npm run build
 
