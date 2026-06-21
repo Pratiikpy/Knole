@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Knole · proof deck</title>
+    <meta
+      name="description"
+      content="See the whole of Knole in a few minutes — the full flow in screenshots, then the proof behind every claim. A private journal: encrypted under your key on 0G, anonymised before the model, recoverable from chain."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #faf9f6;
+        --ink: #1c1917;
+        --ink-soft: #2a2724;
+        --tan: #7c6545;
+        --card: #ffffff;
+        --muted: #efece5;
+        --muted-fg: #6b6b63;
+        --rule: rgba(28, 25, 23, 0.1);
+        --good: #4f6f52;
+        --serif: "Instrument Serif", ui-serif, Georgia, serif;
+        --sans: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.6;
+      }
+      .page {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 40px 28px 112px;
+      }
+      a {
+        color: var(--tan);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        background: var(--muted);
+        padding: 1px 6px;
+        border-radius: 5px;
+      }
+
+      /* hero */
+      .hero {
+        padding: 48px 0 28px;
+      }
+      .eyebrow {
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--tan);
+        margin-bottom: 18px;
+      }
+      .hero h1 {
+        font-family: var(--serif);
+        font-weight: 400;
+        font-size: clamp(40px, 7vw, 68px);
+        line-height: 1.04;
+        letter-spacing: -0.01em;
+        margin: 0 0 18px;
+      }
+      .hero .lead {
+        font-size: 20px;
+        line-height: 1.5;
+        color: var(--ink-soft);
+        max-width: 730px;
+        margin: 0 0 24px;
+      }
+      .tagline {
+        font-family: var(--serif);
+        font-size: 24px;
+        font-style: italic;
+        color: var(--tan);
+      }
+      .hero-links {
+        margin-top: 28px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 15px;
+        border: 1px solid var(--rule);
+      }
+      .btn--ink {
+        background: var(--ink);
+        color: var(--paper);
+        border-color: var(--ink);
+      }
+      .btn--ink:hover {
+        text-decoration: none;
+        opacity: 0.92;
+      }
+      .btn--ghost:hover {
+        text-decoration: none;
+        background: var(--muted);
+      }
+
+      /* stat band */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-top: 8px;
+      }
+      @media (max-width: 760px) {
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .stat {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        padding: 18px 20px;
+      }
+      .stat .n {
+        font-family: var(--serif);
+        font-size: 38px;
+        line-height: 1;
+        color: var(--ink);
+      }
+      .stat .l {
+        font-size: 13px;
+        color: var(--muted-fg);
+        margin-top: 8px;
+      }
+
+      /* band header */
+      .band {
+        margin-top: 80px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid var(--ink);
+      }
+      .band .kicker {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: var(--tan);
+      }
+      .band h2 {
+        font-family: var(--serif);
+        font-weight: 400;
+        font-size: clamp(30px, 5vw, 46px);
+        letter-spacing: -0.01em;
+        margin: 6px 0 0;
+      }
+      .band p {
+        font-size: 17px;
+        color: var(--ink-soft);
+        max-width: 760px;
+        margin: 14px 0 0;
+      }
+
+      /* the visual walkthrough */
+      .story-step {
+        margin-top: 44px;
+        scroll-margin-top: 24px;
+      }
+      .story-step .cap {
+        margin-bottom: 14px;
+      }
+      .story-step .cap .n {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--tan);
+        font-weight: 600;
+      }
+      .story-step .cap .t {
+        font-family: var(--serif);
+        font-size: clamp(24px, 3.5vw, 30px);
+        line-height: 1.1;
+        margin: 4px 0 6px;
+      }
+      .story-step .cap .d {
+        font-size: 16px;
+        color: var(--ink-soft);
+        max-width: 720px;
+      }
+      .shot {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(28, 25, 23, 0.05);
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .shot.gif {
+        border-color: var(--tan);
+        box-shadow: 0 2px 14px rgba(124, 101, 69, 0.16);
+      }
+      .shot figcaption {
+        padding: 12px 18px;
+        font-size: 13.5px;
+        color: var(--muted-fg);
+        border-top: 1px solid var(--rule);
+      }
+      .livepill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--tan);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .livepill::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--good);
+      }
+
+      /* summary + toc */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 20px;
+        margin-top: 32px;
+      }
+      @media (max-width: 760px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 16px;
+        padding: 24px 26px;
+      }
+      .panel h3 {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted-fg);
+        margin: 0 0 14px;
+      }
+      .panel p {
+        margin: 8px 0;
+        font-size: 15px;
+      }
+      .panel strong {
+        color: var(--ink);
+      }
+      .toc ol {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14.5px;
+      }
+      .toc li {
+        padding: 3px 0;
+      }
+      .toc a {
+        color: var(--ink-soft);
+      }
+      .toc .part {
+        list-style: none;
+        margin: 12px 0 2px -18px;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--tan);
+      }
+      .toc .part:first-child {
+        margin-top: 0;
+      }
+
+      /* sections */
+      .section {
+        margin-top: 52px;
+        scroll-margin-top: 24px;
+      }
+      .section .num {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--tan);
+        font-weight: 600;
+      }
+      .section h3.t {
+        font-family: var(--serif);
+        font-weight: 400;
+        font-size: clamp(26px, 4vw, 36px);
+        letter-spacing: -0.01em;
+        margin: 6px 0 10px;
+      }
+      .section .lede {
+        font-size: 17px;
+        color: var(--ink-soft);
+        max-width: 740px;
+        margin: 0 0 22px;
+      }
+      .section .fine {
+        font-size: 15px;
+        color: var(--ink-soft);
+        max-width: 740px;
+        margin: 18px 0 0;
+      }
+
+      /* evidence (command output) card */
+      .evidence {
+        background: #fbfaf7;
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-top: 4px;
+      }
+      .evidence .cmd {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--ink);
+        margin-bottom: 12px;
+      }
+      .evidence .cmd::before {
+        content: "$ ";
+        color: var(--tan);
+      }
+      .evidence pre {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.65;
+        color: var(--ink-soft);
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .verdict {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 14px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--good);
+      }
+      .verdict::before {
+        content: "✓";
+        font-weight: 700;
+      }
+      .token {
+        color: var(--tan);
+        font-weight: 600;
+      }
+
+      /* feature grid */
+      .features {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-top: 24px;
+      }
+      @media (max-width: 720px) {
+        .features {
+          grid-template-columns: 1fr;
+        }
+      }
+      .feature {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        padding: 20px 22px;
+      }
+      .feature h4 {
+        font-family: var(--serif);
+        font-weight: 400;
+        font-size: 23px;
+        margin: 0 0 4px;
+      }
+      .feature .route {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--tan);
+      }
+      .feature p {
+        font-size: 14.5px;
+        color: var(--ink-soft);
+        margin: 10px 0 0;
+      }
+      .feature .proof {
+        font-size: 12.5px;
+        color: var(--muted-fg);
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--rule);
+        font-family: var(--mono);
+      }
+
+      /* flow diagram */
+      .flow {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 16px;
+        padding: 22px 26px;
+        margin-top: 4px;
+      }
+      .flow-step {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 18px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--rule);
+        align-items: baseline;
+      }
+      .flow-step:last-child {
+        border-bottom: none;
+      }
+      .flow-step .s {
+        font-family: var(--serif);
+        font-size: 20px;
+        color: var(--ink);
+      }
+      .flow-step .d {
+        font-size: 14px;
+        color: var(--ink-soft);
+      }
+      .flow-step .d .file {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--tan);
+      }
+      @media (max-width: 600px) {
+        .flow-step {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+      }
+
+      /* index / table */
+      .idx {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        padding: 4px 4px;
+        margin-top: 16px;
+      }
+      .idx-row {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 16px;
+        padding: 11px 18px;
+        border-bottom: 1px solid var(--rule);
+        font-size: 14px;
+        align-items: baseline;
+      }
+      .idx-row:last-child {
+        border-bottom: none;
+      }
+      .idx-row .k {
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .idx-row .v {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        word-break: break-word;
+      }
+      @media (max-width: 600px) {
+        .idx-row {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+      }
+      .hex {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        background: var(--muted);
+        color: var(--tan);
+        margin-right: 6px;
+      }
+
+      /* two-column lists */
+      .twocol {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      @media (max-width: 600px) {
+        .twocol {
+          grid-template-columns: 1fr;
+        }
+      }
+      .twocol .panel ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14.5px;
+        color: var(--ink-soft);
+      }
+      .twocol .panel li {
+        padding: 5px 0;
+      }
+
+      footer {
+        margin-top: 88px;
+        padding-top: 24px;
+        border-top: 1px solid var(--rule);
+        font-size: 13.5px;
+        color: var(--muted-fg);
+      }
+      footer .tagline {
+        font-size: 18px;
+        display: block;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="eyebrow">⬡ Verified build proof · 0G Galileo testnet · 2026-06-21</div>
+        <h1>See the whole thing<br />in a few minutes.</h1>
+        <p class="lead">
+          No time to run it? You don't have to. Below is the entire Knole flow in real screenshots —
+          land, write, watch the reflection arrive, ask your past, see your patterns, own it
+          on-chain — and then the runnable proof behind every claim. A private journal whose memory
+          understands you, without that understanding costing you ownership.
+        </p>
+        <p class="tagline">Your words. Your key. Nobody else can read it.</p>
+        <div class="hero-links">
+          <a class="btn btn--ink" href="https://knole-app.vercel.app">Open the live demo →</a>
+          <a class="btn btn--ghost" href="#proofs">Skip to the proof</a>
+        </div>
+      </header>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="n">21</div>
+          <div class="l">engine eval suites, all green, CI-enforced</div>
+        </div>
+        <div class="stat">
+          <div class="n">24/24</div>
+          <div class="l">Playwright specs on the live deploy</div>
+        </div>
+        <div class="stat">
+          <div class="n">4</div>
+          <div class="l">independent privacy layers</div>
+        </div>
+        <div class="stat">
+          <div class="n">100</div>
+          <div class="l">Lighthouse a11y · best-practices · SEO</div>
+        </div>
+      </div>
+
+      <!-- ════════ THE FULL FLOW ════════ -->
+      <div class="band">
+        <div class="kicker">THE FULL FLOW · ~90 SECONDS</div>
+        <h2>Watch it work, end to end</h2>
+        <p>
+          Every frame below is a real screenshot from the live deploy — the seeded showcase and the
+          guest onboarding path, captured this session. Read it top to bottom and you've seen the
+          whole product.
+        </p>
+      </div>
+
+      <section class="story-step" id="flow-write">
+        <div class="cap">
+          <div class="n">STEP 01 · THE MAGIC</div>
+          <div class="t">Write one honest line. A reflection arrives.</div>
+          <div class="d">
+            A guest types a single sentence; Knole reflects it back — anonymised before the model,
+            grounded in your own words, in under 90 seconds. No signup to feel it.
+          </div>
+        </div>
+        <figure class="shot gif">
+          <img src="proof-shots/flow.gif" alt="Writing a line and the reflection streaming back" />
+          <figcaption>
+            <span class="livepill">Live recording</span> &nbsp; guest onboarding on
+            knole-app.vercel.app — write → reflection, unedited.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-land">
+        <div class="cap">
+          <div class="n">STEP 02</div>
+          <div class="t">Land — no signup, no wall.</div>
+          <div class="d">
+            You can read, write, and feel the memory before you ever make an account.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="proof-shots/landing.webp" alt="Knole landing page" />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-today">
+        <div class="cap">
+          <div class="n">STEP 03 · TODAY</div>
+          <div class="t">Your journal, with a memory.</div>
+          <div class="d">
+            Each reflection weaves in real past entries, then sends you off to go live the answer —
+            not to keep talking to a bot.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="proof-shots/today.webp" alt="Today — the journal with a streamed reflection" />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-index">
+        <div class="cap">
+          <div class="n">STEP 04 · THE INDEX</div>
+          <div class="t">Everything it remembers, in your own words.</div>
+          <div class="d">
+            Each memory shows its source quote, a recall count, and a ⬡ 0G badge. Editable,
+            forgettable, append-only — a contradiction retires the old memory, never deletes it.
+          </div>
+        </div>
+        <figure class="shot">
+          <img
+            src="proof-shots/memory-index.webp"
+            alt="The Index — memories with source quotes and 0G badges"
+          />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-ask">
+        <div class="cap">
+          <div class="n">STEP 05 · ASK MY LIFE</div>
+          <div class="t">Ask your own past — get receipts.</div>
+          <div class="d">
+            It answers from your real entries, quoting you back by date, never paraphrasing without
+            a source — anonymised before the AI ever saw it.
+          </div>
+        </div>
+        <figure class="shot">
+          <img
+            src="proof-shots/ask-receipts.webp"
+            alt="Ask My Life — a grounded answer with cited receipts"
+          />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-mirror">
+        <div class="cap">
+          <div class="n">STEP 06 · THE MIRROR</div>
+          <div class="t">A day-15 synthesis of your own words.</div>
+          <div class="d">
+            Each pattern cites a real entry; the reveal is withheld until enough days have passed;
+            it offers no advice. Pure reflection, arc-gated.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="proof-shots/mirror.webp" alt="The Mirror — patterns citing real entries" />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-remembered">
+        <div class="cap">
+          <div class="n">STEP 07 · REMEMBERED</div>
+          <div class="t">Your past returns, gently.</div>
+          <div class="d">
+            A past entry resurfaces with a "now" reflection and a chance to answer your past self.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="proof-shots/remembered.webp" alt="Remembered — a resurfaced past entry" />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-chat">
+        <div class="cap">
+          <div class="n">STEP 08 · CHAT</div>
+          <div class="t">A thinking partner that remembers.</div>
+          <div class="d">
+            Every turn is anonymised before the model and grounded in your memory, then
+            de-anonymised in the reply.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="proof-shots/chat.webp" alt="Chat — a thinking partner grounded in memory" />
+        </figure>
+      </section>
+
+      <section class="story-step" id="flow-own">
+        <div class="cap">
+          <div class="n">STEP 09 · OWN IT</div>
+          <div class="t">Recover any entry, live from chain.</div>
+          <div class="d">
+            Postgres is just a cache. In Settings, "Verify recoverable" rebuilds a real entry from
+            its 0G root — <strong>✓ RECOVERED LIVE FROM 0G</strong> — with the on-chain links right
+            there.
+          </div>
+        </div>
+        <figure class="shot">
+          <img
+            src="proof-shots/recover.webp"
+            alt="Settings — RECOVERED LIVE FROM 0G with on-chain links"
+          />
+        </figure>
+      </section>
+
+      <!-- ════════ THE PROOF ════════ -->
+      <div class="band" id="proofs">
+        <div class="kicker">THE PROOF · IT'S ALL REAL</div>
+        <h2>Now the receipts</h2>
+        <p>
+          The flow above isn't a mockup. Each claim below is backed by a command you can re-run, an
+          on-chain root, or an eval the CI enforces — re-verified this session. Skim the headers;
+          dig where you doubt.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <h3>What's proven</h3>
+          <p>
+            <strong>Privacy:</strong> embed locally, anonymise before the model, encrypt under your
+            key on 0G, generate in a TEE — four independent layers, each holds alone.
+          </p>
+          <p>
+            <strong>Ownership:</strong> Postgres is only a cache; every entry rebuilds
+            byte-identically from 0G.
+          </p>
+          <p>
+            <strong>Memory:</strong> a real engine — embed, extract, reconcile (bi-temporal
+            supersede), retrieve (RRF hybrid).
+          </p>
+          <p>
+            <strong>Honesty:</strong> a CI gate polices our own headline numbers; pre-mainnet limits
+            are stated plainly.
+          </p>
+        </div>
+        <nav class="panel toc">
+          <h3>The rest of this deck</h3>
+          <ol>
+            <li class="part">Proofs</li>
+            <li><a href="#anon">01 Anonymised before the model</a></li>
+            <li><a href="#encrypt">02 Encrypted under your key on 0G</a></li>
+            <li><a href="#recover">03 Recoverable from chain</a></li>
+            <li><a href="#isolation">04 Nobody else can read it</a></li>
+            <li><a href="#memory">05 A memory that understands you</a></li>
+            <li><a href="#export">06 Take it with you</a></li>
+            <li class="part">Depth</li>
+            <li><a href="#surfaces">Every surface</a></li>
+            <li><a href="#engine">The memory engine</a></li>
+            <li><a href="#evals">Every eval suite</a></li>
+            <li><a href="#stack">The full stack</a></li>
+            <li><a href="#security">Security posture</a></li>
+            <li><a href="#scope">What it is, and isn't</a></li>
+            <li><a href="#commands">Run every proof</a></li>
+            <li><a href="#onchain">The on-chain roots</a></li>
+          </ol>
+        </nav>
+      </div>
+
+      <!-- 1 -->
+      <section class="section" id="anon">
+        <div class="num">PROOF 01</div>
+        <h3 class="t">Anonymised before the model</h3>
+        <p class="lede">
+          The single most load-bearing claim: the LLM never sees who you are. A local NER model
+          masks every person, place, and organisation to stable tokens before any text leaves the
+          box; a server-side reverse map restores your words in the reply. One gateway — no call
+          site can forget to scrub.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run test:anon</div>
+          <pre>
+WHAT YOU WROTE (encrypts under your key, stored on 0G):
+  "Told Mara the real fear about moving to Berlin — that leaving the job at
+   Google means I was never serious about the writing. Even Dr. Okafor noticed."
+
+WHAT THE MODEL ACTUALLY RECEIVES (anonymised):
+  "Told <span class="token">[PERSON_1]</span> the real fear about moving to <span class="token">[PLACE_1]</span> — that leaving the job at
+   <span class="token">[ORG_1]</span> means I was never serious about the writing. Even Dr. <span class="token">[PERSON_2]</span>or noticed."
+
+RESTORED IN THE REPLY (reverse map, server-side only):
+  [PERSON_1]→Mara   [PLACE_1]→Berlin   [ORG_1]→Google</pre>
+          <div class="verdict">
+            No full identifiable name reaches the model — gated statistically by the privacy-leak
+            eval
+          </div>
+        </div>
+        <p class="fine">
+          The honest worst case is shown deliberately: <code>[PERSON_2]or</code> — the NER tagged
+          only the prefix of "Okafor", leaving a meaningless <code>or</code> fragment. The
+          identifiable name is still gone. NER is probabilistic, so the guarantee is "no full
+          identifiable name reaches the model" (<code>piiScrubRate ≥ 0.85</code>), not "every byte
+          of every name."
+        </p>
+      </section>
+
+      <!-- 2 -->
+      <section class="section" id="encrypt">
+        <div class="num">PROOF 02</div>
+        <h3 class="t">Encrypted under your key on 0G</h3>
+        <p class="lede">
+          Your entry is AES-256-GCM ciphertext before it touches the chain, sealed under a key
+          derived for you alone (HKDF-SHA256, your user id as the domain separator). Fetch the 0G
+          blob with no key and there is nothing to read.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run test:privacy</div>
+          <pre>
+Fetched the raw 0G blob for the latest on-chain entry, no key applied.
+  ciphertext-only ........ a 24-char plaintext probe is ABSENT from the bytes ✓
+  wrong key .............. fails the GCM auth tag (tampered/incorrect) ✓
+  your key ............... recovers the JSON envelope, obj.text === plaintext ✓</pre
+          >
+          <div class="verdict">
+            The 0G blob holds ciphertext only; nothing but your key recovers it
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section class="section" id="recover">
+        <div class="num">PROOF 03</div>
+        <h3 class="t">Recoverable from chain</h3>
+        <p class="lede">
+          You saw "✓ RECOVERED LIVE FROM 0G" in the flow (step 09). Here's the same thing as a test:
+          corrupt the Postgres copy, and Knole rebuilds the entry purely from its 0G root —
+          byte-identical.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run test:restore</div>
+          <pre>
+Wiped the Postgres copy, called restoreEntryFromChain(uid, root):
+  root  0x133bf6960bc64ae60eb061ce10e5b97f3c1b55eb827e6169ac1c46577b6edc23
+  restoredText === original .......................................... ✓</pre
+          >
+          <div class="verdict">
+            0G rebuilt the wiped entry identically — the chain is the backstop
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section class="section" id="isolation">
+        <div class="num">PROOF 04</div>
+        <h3 class="t">Nobody else can read it</h3>
+        <p class="lede">
+          A journal is worthless if another user — or a forged request — can reach your inner life.
+          Three personas with deliberately overlapping feelings run full journeys; every user is
+          then probed with every other user's life.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run test:multiuser</div>
+          <pre>
+  recalled own memory : true  ("You have concerns about your left knee…")
+  recalled own memory : true  ("You're a new parent to a baby named Theo…")
+  recalled own memory : true  ("You've started taking weekly piano lessons…")
+  isolation — retrieval leaks: 0, ask leaks: 0</pre
+          >
+          <div class="verdict">
+            Every user's memory composes; no retrieval or ask ever crosses the user boundary
+          </div>
+        </div>
+        <p class="fine">
+          The engine-level <code>data-isolation</code> eval additionally proves IDOR: user A calling
+          <code>setMemoryStatus</code> / <code>updateMemoryContent</code> on user B's memory id is a
+          no-op.
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section class="section" id="memory">
+        <div class="num">PROOF 05</div>
+        <h3 class="t">A memory that understands you</h3>
+        <p class="lede">
+          The Index you saw (step 04) is backed by a 21-suite engine gate — every suite green
+          required for the release to pass, enforced in CI.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run evals</div>
+          <pre>
+21-suite engine gate, every suite green required for exit 0:
+  retrieval (hit@1 / hit@3 ≥ 0.8) · extraction-coverage · dedup · groundedness
+  reconcile (bi-temporal supersede) · pinned-survival · user-correction-wins
+  provenance · forgetting · confidence-calibration · privacy-leak · crypto · …</pre
+          >
+          <div class="verdict">
+            21/21 suites green — written to the eval_runs table, CI-enforced
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 -->
+      <section class="section" id="export">
+        <div class="num">PROOF 06</div>
+        <h3 class="t">Take it with you</h3>
+        <p class="lede">
+          Ownership means leaving. The Mindfile export is a full, round-trippable JSON of every
+          entry and memory — and forgotten, superseded, or rejected memories are provably excluded.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run test:export</div>
+          <pre>
+Exported the demo Mindfile and re-validated it:
+  entries ......... 12
+  memories ........ 35
+  round-trip ...... valid
+  forgotten / superseded / rejected leaked into the export ......... 0</pre
+          >
+          <div class="verdict">
+            A clean, complete, round-trippable export — your data leaves with you
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ EVERY SURFACE ════════ -->
+      <div class="band">
+        <div class="kicker">DEPTH</div>
+        <h2>Every surface</h2>
+        <p>
+          The whole product, each route mapped to what it proves — swept desktop (1280) + mobile
+          (390) for a non-error status, real content, and zero console errors.
+        </p>
+      </div>
+      <section class="section" id="surfaces" style="margin-top: 28px">
+        <div class="features">
+          <div class="feature">
+            <h4>Today <span class="route">/today</span></h4>
+            <p>
+              Write an entry; a reflection streams back, weaving in real past memories, then sends
+              you to go live the answer.
+            </p>
+            <div class="proof">journal.spec.ts · groundedness eval</div>
+          </div>
+          <div class="feature">
+            <h4>Chat <span class="route">/chat</span></h4>
+            <p>
+              A thinking partner that remembers — every turn anonymised before the model,
+              de-anonymised in the reply.
+            </p>
+            <div class="proof">sealed.ts gateway · test:stream</div>
+          </div>
+          <div class="feature">
+            <h4>Ask My Life <span class="route">/ask</span></h4>
+            <p>
+              RAG with receipts. Quotes you back by date; refuses an empty query without spending an
+              LLM call.
+            </p>
+            <div class="proof">ask.spec.ts · ask-negative.spec.ts</div>
+          </div>
+          <div class="feature">
+            <h4>The Mirror <span class="route">/insights</span></h4>
+            <p>
+              A day-15 synthesis of your own words; each pattern cites a real entry, arc-gated, no
+              advice.
+            </p>
+            <div class="proof">mirror-groundedness eval · mirror.ts</div>
+          </div>
+          <div class="feature">
+            <h4>The Index <span class="route">/the-index</span></h4>
+            <p>
+              Every memory with its source quote, recall count, and ⬡ 0G badge — editable,
+              forgettable, append-only.
+            </p>
+            <div class="proof">provenance eval · memory_history</div>
+          </div>
+          <div class="feature">
+            <h4>Remembered <span class="route">/remembered</span></h4>
+            <p>
+              Resurfacing — a past entry returns with a "now" reflection and a chance to answer your
+              past self.
+            </p>
+            <div class="proof">resurface.ts · /remembered QA pass</div>
+          </div>
+          <div class="feature">
+            <h4>Settings <span class="route">/settings</span></h4>
+            <p>
+              Live decrypt-from-chain ownership proof, the real anchor + tx links, a downward-only
+              consent dial.
+            </p>
+            <div class="proof">restore.ts · ownership summary</div>
+          </div>
+          <div class="feature">
+            <h4>Save / Extension <span class="route">/extension</span></h4>
+            <p>
+              Capture from anywhere — the loadable MV3 Chrome build turns a thought into "just
+              another memory."
+            </p>
+            <div class="proof">extension/ · test:ext-rate</div>
+          </div>
+          <div class="feature">
+            <h4>Onboarding <span class="route">/onboarding</span></h4>
+            <p>
+              No-signup aha: a guest reflects in under 90 seconds, then an honest "sign in to keep
+              it" — never a wall.
+            </p>
+            <div class="proof">first-aha eval · onboarding.spec.ts</div>
+          </div>
+          <div class="feature">
+            <h4>The worker <span class="route">npm run worker</span></h4>
+            <p>
+              Overnight Dreaming consolidates memory; a consent-gated nudge references a real
+              commitment — warm, never surveillant.
+            </p>
+            <div class="proof">dreaming.ts · nudge + creepiness evals</div>
+          </div>
+          <div class="feature">
+            <h4>Upgrade <span class="route">/upgrade</span></h4>
+            <p>
+              A Stripe paywall whose webhook verifies the signature before mutating any plan; a
+              tampered signature is rejected.
+            </p>
+            <div class="proof">billing.ts · test:billing</div>
+          </div>
+          <div class="feature">
+            <h4>Guest gate <span class="route">all routes</span></h4>
+            <p>
+              A guest sees an honest sign-in line; the doomed write-stream fetch is never fired, so
+              no 401 hits the console.
+            </p>
+            <div class="proof">guest-gate.spec.ts (hitStream === false)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ UNDER THE HOOD ════════ -->
+      <div class="band">
+        <div class="kicker">DEPTH</div>
+        <h2>Under the hood</h2>
+        <p>
+          Reflections, chat, Ask, the Mirror, and the nudge all draw on one engine — and one
+          invariant: plaintext is encrypted before it touches the chain, anonymised before it
+          touches the model.
+        </p>
+      </div>
+
+      <section class="section" id="engine" style="margin-top: 28px">
+        <div class="num">THE MEMORY ENGINE</div>
+        <h3 class="t">Embed · extract · reconcile · retrieve</h3>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="s">Embed locally</div>
+            <div class="d">
+              all-MiniLM-L6-v2, 384-dim, no API call. <span class="file">embed.ts</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="s">Extract facts</div>
+            <div class="d">
+              an LLM reads the ANONYMISED text only — people, goals, patterns, commitments, values.
+              <span class="file">engine.ts → sealed.ts</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="s">Reconcile</div>
+            <div class="d">
+              content-hash UPSERT dedup, then a 3-way LLM judge: reinforce a reworded duplicate ·
+              supersede a contradiction (bi-temporal: kept with <code>invalid_at</code>) · keep the
+              independent. <span class="file">engine.ts</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="s">Encrypt + anchor</div>
+            <div class="d">
+              AES-256-GCM under your key → upload to 0G Storage → root anchored on the entry row.
+              <span class="file">og.ts</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="s">Retrieve</div>
+            <div class="d">
+              RRF hybrid: pgvector cosine ⊕ lexical full-text, fused — an exact keyword surfaces
+              even when the vector arm wouldn't. <span class="file">engine.ts</span>
+            </div>
+          </div>
+        </div>
+        <p class="fine">
+          Recall earns importance (retrieving a memory bumps its <code>recall_count</code>); a user
+          edit flips confidence to 1.0 and wins any contradiction; a forgotten memory never surfaces
+          again, yet <code>memory_history</code> still records that it existed.
+        </p>
+      </section>
+
+      <section class="section" id="evals">
+        <div class="num">THE GATE</div>
+        <h3 class="t">Every eval suite</h3>
+        <p class="lede">
+          <code>npm run evals</code> writes one row per suite to <code>eval_runs</code>; the gate
+          passes only when every suite is green. LLM-judged suites retry up to 3× so a stochastic
+          miss doesn't fail the gate while a broken path fails all attempts.
+        </p>
+        <div class="idx">
+          <div class="idx-row">
+            <span class="k">01 · retrieval</span><span class="v">hit@1 ≥ 0.8 and hit@3 ≥ 0.8</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">02 · extraction-coverage</span
+            ><span class="v">durable identity keywords covered ≥ 0.8</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">03 · dedup</span
+            ><span class="v">same content twice → 1 row, recall_count incremented</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">04 · groundedness</span
+            ><span class="v">reflections invent no concrete fact (LLM judge)</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">05 · reflection-form</span
+            ><span class="v">≤ 1 question, never opens with "why"</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">06 · reconcile</span
+            ><span class="v">contradiction supersedes; restatement reinforces, no dup</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">07 · recall</span
+            ><span class="v">retrieval bumps recall_count ≥ 1</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">08 · hybrid (RRF)</span
+            ><span class="v">exact keyword surfaces via the lexical arm</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">09 · forgetting</span
+            ><span class="v">a forgotten memory never surfaces again</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">10 · pinned-survival</span
+            ><span class="v">a pinned memory survives the same contradiction</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">11 · user-correction-wins</span
+            ><span class="v">a user-edited memory survives the contradiction</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">12 · provenance</span
+            ><span class="v">every memory traces to its source entry</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">13 · nudge-grounding</span
+            ><span class="v">a proactive nudge references a real commitment</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">14 · creepiness</span
+            ><span class="v">the nudge tone is warm, never surveillant (LLM judge)</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">15 · data-isolation (+IDOR)</span
+            ><span class="v">no cross-user retrieval; A can't read/mutate B by id</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">16 · mirror-groundedness</span
+            ><span class="v">≥ 3 real themes + a real entry quote; arc-gating holds</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">17 · privacy-leak</span
+            ><span class="v">piiScrubRate ≥ 0.85 (0 PII target to the model)</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">18 · first-aha</span
+            ><span class="v">&lt; 90s to a &gt; 40-char reflection + ≥ 1 memory</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">19 · crypto</span
+            ><span class="v">GCM round-trip + tamper + wrong-key + IV-unique + cipher-only</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">20 · confidence-calibration</span
+            ><span class="v">stated fact outranks tentative inference; a user edit → 1.0</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">21 · key-provider</span
+            ><span class="v"
+              >v1 byte-identical; rotation reads old + new; per-user keys distinct</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="stack">
+        <div class="num">THE STACK</div>
+        <h3 class="t">What it's built on</h3>
+        <div class="idx">
+          <div class="idx-row">
+            <span class="k">Frontend</span
+            ><span class="v"
+              >TanStack Start (Router + Query) · React 19 · Vite · Tailwind v4 · shadcn/ui</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">Embeddings</span
+            ><span class="v">local all-MiniLM-L6-v2 via @xenova/transformers — no API</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Anonymise</span
+            ><span class="v">local bert-base-NER (the enchanted-twin scrub)</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">LLM</span
+            ><span class="v">NVIDIA NIM (llama-3.3-70b, dev) → 0G Sealed Inference (prod)</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Storage / chain</span
+            ><span class="v">0G Galileo testnet — Storage + Private Compute — via ethers</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Database</span
+            ><span class="v">Neon Postgres + pgvector (HNSW) via Drizzle ORM</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Auth</span
+            ><span class="v">Privy (email-OTP → sealed session cookie)</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Crypto</span
+            ><span class="v"
+              >AES-256-GCM + HKDF per-user keys, versioned rotation (keyProvider.ts)</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ TRUST ════════ -->
+      <div class="band">
+        <div class="kicker">TRUST</div>
+        <h2>How it holds up</h2>
+        <p>
+          The clarity is the feature. Pre-mainnet limits are stated plainly — the same discipline a
+          CI <code>check:numbers</code> gate now enforces on our own headline numbers.
+        </p>
+      </div>
+
+      <section class="section" id="security" style="margin-top: 28px">
+        <div class="num">SECURITY POSTURE</div>
+        <h3 class="t">Under attack</h3>
+        <div class="idx">
+          <div class="idx-row">
+            <span class="k">At rest</span
+            ><span class="v"
+              >AES-256-GCM on 0G; wrong key / tampered blob fails the auth tag (crypto eval +
+              test:privacy)</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">In flight to the model</span
+            ><span class="v"
+              >anonymised before any LLM; reverse map server-side only (test:anon +
+              test:stream)</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">Cross-user</span
+            ><span class="v"
+              >per-user keys + engine isolation; UI/API IDOR refused (data-isolation eval +
+              test:multiuser)</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">Auth</span
+            ><span class="v"
+              >Privy email-OTP → sealed session cookie; require-auth on by default</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">Abuse</span
+            ><span class="v"
+              >IP rate limit before token lookup (test:ext-rate: 401 then 429); same-origin
+              CSRF</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">Key custody</span
+            ><span class="v">HKDF per-user keys, versioned rotation, KMS-injectable seam</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Dependencies</span
+            ><span class="v"
+              >43 transitive vulns triaged unreachable + documented; no blind fix that breaks the
+              runtime</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="scope">
+        <div class="num">HONEST SCOPE</div>
+        <h3 class="t">What it is, and what it isn't</h3>
+        <div class="twocol">
+          <div class="panel">
+            <h3>Knole hides</h3>
+            <ul>
+              <li>Your entry text — AES-256-GCM ciphertext on 0G</li>
+              <li>The real names / places / people from the model</li>
+              <li>Your data, from us — sealed under your key</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Knole does not hide</h3>
+            <ul>
+              <li>That an entry exists (the 0G anchor is public)</li>
+              <li>The on-chain root hash</li>
+              <li>That a testnet wallet signs the anchors</li>
+            </ul>
+          </div>
+        </div>
+        <p class="fine">
+          <strong>Pre-mainnet, stated plainly:</strong> the TEE "even we can't read it" path is
+          wired and endpoint-checked but switches on only once the 0G compute ledger is funded —
+          until then it falls back to NVIDIA, and the anonymise scrub protects that fallback too.
+          The rate limiter is in-memory; the logged-in path is proven with Privy test creds, not the
+          default; mainnet waits on an external audit. Full detail in <code>SECURITY.md</code> and
+          <code>docs/PROOF.md</code>.
+        </p>
+      </section>
+
+      <!-- ════════ REPRODUCE ════════ -->
+      <div class="band">
+        <div class="kicker">REPRODUCE</div>
+        <h2>Run every proof yourself</h2>
+        <p>
+          None of this is a screenshot you have to trust. Clone the repo, point it at a Neon DB +
+          the 0G testnet wallet, and re-run each line. The browser sweep runs against the live
+          deploy.
+        </p>
+      </div>
+
+      <section class="section" id="commands" style="margin-top: 28px">
+        <div class="idx">
+          <div class="idx-row">
+            <span class="k">Engine gate (21 suites)</span><span class="v">npm run evals</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Anonymise before the model</span
+            ><span class="v">npm run test:anon</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Ciphertext-only on 0G</span><span class="v">npm run test:privacy</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Byte-identical restore</span><span class="v">npm run test:restore</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Cross-user isolation</span><span class="v">npm run test:multiuser</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Memory recall composes</span
+            ><span class="v">npm run test:remembers</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Streaming privacy</span><span class="v">npm run test:stream</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Mindfile export</span
+            ><span class="v">DB_HTTP=1 npm run test:export</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Browser sweep (live)</span
+            ><span class="v">E2E_BASE_URL=https://knole-app.vercel.app npm run test:e2e</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="onchain">
+        <div class="num">ON-CHAIN · 0G GALILEO</div>
+        <h3 class="t">The roots</h3>
+        <p class="lede">
+          Knole hides your entry text (ciphertext) but never hides that an entry exists — the 0G
+          root is public and reveals nothing. These are real, on the Galileo testnet.
+        </p>
+        <div class="idx">
+          <div class="idx-row">
+            <span class="k"><span class="hex">⬡</span> Entry storage root</span
+            ><span class="v"
+              >0x133bf6960bc64ae60eb061ce10e5b97f3c1b55eb827e6169ac1c46577b6edc23 — test:restore
+              rebuilt the entry from this exact root</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k"><span class="hex">⬡</span> Memory-root anchor</span
+            ><span class="v"
+              >0xc953476d8b48c17d843a2e0cc3eade03f4f010474501052ca2deecc008fd06b3 — the daily
+              on-chain anchor of your memory root</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k">Explorer</span
+            ><span class="v"
+              ><a href="https://chainscan-galileo.0g.ai" target="_blank" rel="noopener"
+                >chainscan-galileo.0g.ai</a
+              >
+              — the live anchor + tx links surface in /settings</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        Generated 2026-06-21 · every screenshot and the GIF captured live from
+        <a href="https://knole-app.vercel.app">knole-app.vercel.app</a> this session · every command
+        re-runnable from the repo · eval gate, on-chain roots, and isolation re-verified.
+        <span class="tagline">We can't read it, can't reset it, can't take it away.</span>
+      </footer>
+    </div>
+  </body>
+</html>

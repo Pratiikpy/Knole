@@ -14,7 +14,7 @@
 
 A private AI that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, and the reflections that read them are designed to run in a TEE so _even we can't read them_.
 
-**Don't take the claims on faith.** [`docs/PROOF.md`](docs/PROOF.md) backs every one with the exact command, eval suite, spec, or recorded result behind it — and states plainly what is pre-mainnet.
+**Don't take the claims on faith.** The [**proof deck**](https://knole-app.vercel.app/proof-deck.html) walks the whole flow in screenshots in a few minutes; [`docs/PROOF.md`](docs/PROOF.md) backs every claim with the exact command, eval, spec, or recorded result — and both state plainly what is pre-mainnet.
 
 ---
 
