@@ -196,6 +196,25 @@ deferred, documented.
 Low-opacity **placeholders** (`text-muted-foreground/60`) across the inputs are **not** flagged (live
 `/ask` a11y 100) — axe treats placeholder text as incidental; only informational text must meet AA.
 
+---
+
+## 2026-06-21 — /extension (the last core screen) + the real extension behind it
+
+Drove `/extension` (live): a polished, on-brand marketing page — the save-doorhanger mockup, honest
+value props ("explicit save only, never silent capture"), console-clean.
+
+**"Get the extension" works and is honest:** clicking it expands accurate early-access instructions
+(load unpacked from the `extension/` folder → generate a token in Settings → right-click "Save to
+Knole") — no fake "install from the Web Store" for an unpublished build.
+
+**The extension is real, not asserted:** `extension/` is a complete, loadable MV3 build —
+`manifest_version: 3`, service worker, popup, icon, README, every manifest-referenced file present.
+Permissions are **minimal and scoped** (`contextMenus` / `storage` / `notifications` + host limited to
+`knole-app.vercel.app`, not `all_urls`). The page's claims match the code.
+
+With this, **every core screen has now been driven like a human** — landing, today, the-index,
+insights, remembered, ask, chat, settings, onboarding, extension, plus the 404 + empty states.
+
 ### Not yet covered — queued for the next passes
 
 - Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
