@@ -29,6 +29,7 @@ Knole's premise is that your inner life is yours alone. This document describes 
 - Every server function resolves the acting user via `currentUserId()` = session → demo, **falling back to the demo user on any error** so a session bug can never break the unauthenticated experience. A forged or invalid token opens no session.
 - **Reads vs writes, secure-by-default.** Reads use `currentUserId()` (session → demo fallback) so the showcase stays explorable. Writes use `requireUserId()`, which is fail-safe: `KNOLE_REQUIRE_AUTH` **defaults to on**, so an anonymous write is rejected (`AUTH_REQUIRED`) unless a deployment _explicitly_ opts into the writable no-signup demo with `=off`. A forgotten env var fails closed, never open.
 - Until you sign in, the app runs as a shared **demo user** so it stays explorable without an account.
+- The **browser-extension token** is a separate credential: 192-bit random, prefixed `knole_ext_`, shown to the user **once** and stored only as its **sha256 hash** (`extensionTokenHash`) — a DB read can never reveal it, and regenerating overwrites the hash, revoking any prior token (one per user). The extension itself takes **no page access**: it reads only the text you right-click (`contexts: ["selection"]`, no content script) and its host permission is scoped to Knole's domain — so "explicit save only, never silent capture" holds in the code, not just the copy.
 
 ## Server-side hardening
 
