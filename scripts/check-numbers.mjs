@@ -16,7 +16,14 @@ if (!N) {
 // the badge "evals-<n>/<n>" must equal N. (These docs use "suite"/"evals"/the badge only for the eval
 // gate.) docs/PROOF.md is excluded by design: it is a point-in-time forensic record that documents the
 // historical 21-vs-22 drift, so it legitimately quotes the old number.
-const docs = ["README.md", "SECURITY.md", "QA_PLAN.md", "QA_LOG.md", "DEPLOYING.md"];
+const docs = [
+  "README.md",
+  "SECURITY.md",
+  "QA_PLAN.md",
+  "QA_LOG.md",
+  "DEPLOYING.md",
+  "public/proof-deck.html",
+];
 const patterns = [
   /(\d+)[\s-]suites?\b/gi, // "21 suites", "21-suite"
   /(\d+)\s+evals\b/gi, // "21 evals"

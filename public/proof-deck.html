@@ -8,13 +8,43 @@
       name="description"
       content="See the whole of Knole in a few minutes — the full flow in screenshots, then the proof behind every claim. A private journal: encrypted under your key on 0G, anonymised before the model, recoverable from chain."
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
     <style>
+      /* self-hosted fonts — no external CDN, works offline */
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/instrument-serif-latin-400-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/instrument-serif-latin-400-italic.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("fonts/inter-latin-400-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url("fonts/inter-latin-500-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url("fonts/inter-latin-600-normal.woff2") format("woff2");
+      }
       :root {
         color-scheme: light;
         --paper: #faf9f6;
@@ -399,7 +429,7 @@
         border-radius: 14px;
         padding: 20px 22px;
       }
-      .feature h4 {
+      .feature h3 {
         font-family: var(--serif);
         font-weight: 400;
         font-size: 23px;
@@ -551,18 +581,19 @@
   <body>
     <div class="page">
       <header class="hero">
-        <div class="eyebrow">⬡ Verified build proof · 0G Galileo testnet · 2026-06-21</div>
+        <div class="eyebrow">
+          <span aria-hidden="true">⬡</span> Verified build proof · 0G Galileo testnet · 2026-06-21
+        </div>
         <h1>See the whole thing<br />in a few minutes.</h1>
         <p class="lead">
-          No time to run it? You don't have to. Below is the entire Knole flow in real screenshots —
-          land, write, watch the reflection arrive, ask your past, see your patterns, own it
-          on-chain — and then the runnable proof behind every claim. A private journal whose memory
-          understands you, without that understanding costing you ownership.
+          No time to run it? You don't have to. Below is the entire Knole flow in real screenshots,
+          then the runnable proof behind every claim — a private journal whose memory understands
+          you, without that understanding costing you ownership.
         </p>
         <p class="tagline">Your words. Your key. Nobody else can read it.</p>
         <div class="hero-links">
           <a class="btn btn--ink" href="https://knole-app.vercel.app">Open the live demo →</a>
-          <a class="btn btn--ghost" href="#proofs">Skip to the proof</a>
+          <a class="btn btn--ghost" href="#proofs">Jump to the receipts</a>
         </div>
       </header>
 
@@ -572,12 +603,17 @@
           <div class="l">engine eval suites, all green, CI-enforced</div>
         </div>
         <div class="stat">
-          <div class="n">24/24</div>
-          <div class="l">Playwright specs on the live deploy</div>
+          <div class="n">26</div>
+          <div class="l">
+            Playwright runs green on the live deploy — 11 routes × 2 viewports, console-clean
+          </div>
         </div>
         <div class="stat">
-          <div class="n">4</div>
-          <div class="l">independent privacy layers</div>
+          <div class="n">3</div>
+          <div class="l">
+            live privacy layers — embed-local · anonymise · encrypt (the 4th, a TEE, is wired
+            pre-mainnet)
+          </div>
         </div>
         <div class="stat">
           <div class="n">100</div>
@@ -602,11 +638,16 @@
           <div class="t">Write one honest line. A reflection arrives.</div>
           <div class="d">
             A guest types a single sentence; Knole reflects it back — anonymised before the model,
-            grounded in your own words, in under 90 seconds. No signup to feel it.
+            grounded in your own words. No signup to feel it.
           </div>
         </div>
         <figure class="shot gif">
-          <img src="proof-shots/flow.gif" alt="Writing a line and the reflection streaming back" />
+          <img
+            src="proof-shots/flow.gif"
+            alt="Screen recording: a guest types one sentence and a reflection arrives, written from their own words"
+            width="560"
+            height="366"
+          />
           <figcaption>
             <span class="livepill">Live recording</span> &nbsp; guest onboarding on
             knole-app.vercel.app — write → reflection, unedited.
@@ -623,21 +664,35 @@
           </div>
         </div>
         <figure class="shot">
-          <img src="proof-shots/landing.webp" alt="Knole landing page" />
+          <img
+            src="proof-shots/landing.webp"
+            alt="Knole landing page"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
+          />
         </figure>
       </section>
 
       <section class="story-step" id="flow-today">
         <div class="cap">
           <div class="n">STEP 03 · TODAY</div>
-          <div class="t">Your journal, with a memory.</div>
+          <div class="t">A calm place to write.</div>
           <div class="d">
-            Each reflection weaves in real past entries, then sends you off to go live the answer —
-            not to keep talking to a bot.
+            Pick a prompt or just start. When you hit Reflect, Knole weaves your real past into what
+            it writes back — then sends you off to go live the answer, not to keep talking to a bot.
           </div>
         </div>
         <figure class="shot">
-          <img src="proof-shots/today.webp" alt="Today — the journal with a streamed reflection" />
+          <img
+            src="proof-shots/today.webp"
+            alt="Today — the journal with a streamed reflection"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
+          />
         </figure>
       </section>
 
@@ -654,6 +709,10 @@
           <img
             src="proof-shots/memory-index.webp"
             alt="The Index — memories with source quotes and 0G badges"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
           />
         </figure>
       </section>
@@ -671,6 +730,10 @@
           <img
             src="proof-shots/ask-receipts.webp"
             alt="Ask My Life — a grounded answer with cited receipts"
+            width="2560"
+            height="3318"
+            loading="lazy"
+            decoding="async"
           />
         </figure>
       </section>
@@ -680,12 +743,20 @@
           <div class="n">STEP 06 · THE MIRROR</div>
           <div class="t">A day-15 synthesis of your own words.</div>
           <div class="d">
-            Each pattern cites a real entry; the reveal is withheld until enough days have passed;
-            it offers no advice. Pure reflection, arc-gated.
+            For your first two weeks the Mirror shows only a quiet streak — missed days don't count
+            against you. On day 15 it reveals a synthesis of your own words: each pattern cites a
+            real entry, and it offers no advice. Anticipation, then reflection.
           </div>
         </div>
         <figure class="shot">
-          <img src="proof-shots/mirror.webp" alt="The Mirror — patterns citing real entries" />
+          <img
+            src="proof-shots/mirror.webp"
+            alt="The Mirror — patterns citing real entries"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
+          />
         </figure>
       </section>
 
@@ -698,21 +769,35 @@
           </div>
         </div>
         <figure class="shot">
-          <img src="proof-shots/remembered.webp" alt="Remembered — a resurfaced past entry" />
+          <img
+            src="proof-shots/remembered.webp"
+            alt="Remembered — a resurfaced past entry"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
+          />
         </figure>
       </section>
 
       <section class="story-step" id="flow-chat">
         <div class="cap">
           <div class="n">STEP 08 · CHAT</div>
-          <div class="t">A thinking partner that remembers.</div>
+          <div class="t">A thinking partner, not a chatbot.</div>
           <div class="d">
-            Every turn is anonymised before the model and grounded in your memory, then
-            de-anonymised in the reply.
+            It opens with one quiet question and takes a single thing at a time — and every turn is
+            anonymised before the model. Encrypted; only you can read it.
           </div>
         </div>
         <figure class="shot">
-          <img src="proof-shots/chat.webp" alt="Chat — a thinking partner grounded in memory" />
+          <img
+            src="proof-shots/chat.webp"
+            alt="Chat — the opening greeting; encrypted, only you can read it"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
+          />
         </figure>
       </section>
 
@@ -730,6 +815,10 @@
           <img
             src="proof-shots/recover.webp"
             alt="Settings — RECOVERED LIVE FROM 0G with on-chain links"
+            width="2560"
+            height="1800"
+            loading="lazy"
+            decoding="async"
           />
         </figure>
       </section>
@@ -810,7 +899,7 @@ WHAT THE MODEL ACTUALLY RECEIVES (anonymised):
    <span class="token">[ORG_1]</span> means I was never serious about the writing. Even Dr. <span class="token">[PERSON_2]</span>or noticed."
 
 RESTORED IN THE REPLY (reverse map, server-side only):
-  [PERSON_1]→Mara   [PLACE_1]→Berlin   [ORG_1]→Google</pre>
+  [PERSON_1]→Mara   [PLACE_1]→Berlin   [ORG_1]→Google   [PERSON_2]→Okaf</pre>
           <div class="verdict">
             No full identifiable name reaches the model — gated statistically by the privacy-leak
             eval
@@ -955,7 +1044,7 @@ Exported the demo Mindfile and re-validated it:
       <section class="section" id="surfaces" style="margin-top: 28px">
         <div class="features">
           <div class="feature">
-            <h4>Today <span class="route">/today</span></h4>
+            <h3>Today <span class="route">/today</span></h3>
             <p>
               Write an entry; a reflection streams back, weaving in real past memories, then sends
               you to go live the answer.
@@ -963,7 +1052,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">journal.spec.ts · groundedness eval</div>
           </div>
           <div class="feature">
-            <h4>Chat <span class="route">/chat</span></h4>
+            <h3>Chat <span class="route">/chat</span></h3>
             <p>
               A thinking partner that remembers — every turn anonymised before the model,
               de-anonymised in the reply.
@@ -971,7 +1060,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">sealed.ts gateway · test:stream</div>
           </div>
           <div class="feature">
-            <h4>Ask My Life <span class="route">/ask</span></h4>
+            <h3>Ask My Life <span class="route">/ask</span></h3>
             <p>
               RAG with receipts. Quotes you back by date; refuses an empty query without spending an
               LLM call.
@@ -979,7 +1068,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">ask.spec.ts · ask-negative.spec.ts</div>
           </div>
           <div class="feature">
-            <h4>The Mirror <span class="route">/insights</span></h4>
+            <h3>The Mirror <span class="route">/insights</span></h3>
             <p>
               A day-15 synthesis of your own words; each pattern cites a real entry, arc-gated, no
               advice.
@@ -987,7 +1076,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">mirror-groundedness eval · mirror.ts</div>
           </div>
           <div class="feature">
-            <h4>The Index <span class="route">/the-index</span></h4>
+            <h3>The Index <span class="route">/the-index</span></h3>
             <p>
               Every memory with its source quote, recall count, and ⬡ 0G badge — editable,
               forgettable, append-only.
@@ -995,7 +1084,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">provenance eval · memory_history</div>
           </div>
           <div class="feature">
-            <h4>Remembered <span class="route">/remembered</span></h4>
+            <h3>Remembered <span class="route">/remembered</span></h3>
             <p>
               Resurfacing — a past entry returns with a "now" reflection and a chance to answer your
               past self.
@@ -1003,15 +1092,16 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">resurface.ts · /remembered QA pass</div>
           </div>
           <div class="feature">
-            <h4>Settings <span class="route">/settings</span></h4>
+            <h3>Settings <span class="route">/settings</span></h3>
             <p>
-              Live decrypt-from-chain ownership proof, the real anchor + tx links, a downward-only
-              consent dial.
+              Live decrypt-from-chain ownership proof and the real anchor + tx links; a
+              downward-only consent dial and four voices; and real data-rights — forget a date
+              range, or delete everything.
             </p>
-            <div class="proof">restore.ts · ownership summary</div>
+            <div class="proof">restore.ts · forgetRangeFn · deleteAccountFn</div>
           </div>
           <div class="feature">
-            <h4>Save / Extension <span class="route">/extension</span></h4>
+            <h3>Save / Extension <span class="route">/extension</span></h3>
             <p>
               Capture from anywhere — the loadable MV3 Chrome build turns a thought into "just
               another memory."
@@ -1019,7 +1109,15 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">extension/ · test:ext-rate</div>
           </div>
           <div class="feature">
-            <h4>Onboarding <span class="route">/onboarding</span></h4>
+            <h3>Bring your data <span class="route">/settings</span></h3>
+            <p>
+              Paste an old journal or an export and Knole imports it as memories — same engine, same
+              encryption. Switching in is one paste; switching out is the Mindfile export.
+            </p>
+            <div class="proof">importHistory · doImport</div>
+          </div>
+          <div class="feature">
+            <h3>Onboarding <span class="route">/onboarding</span></h3>
             <p>
               No-signup aha: a guest reflects in under 90 seconds, then an honest "sign in to keep
               it" — never a wall.
@@ -1027,7 +1125,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">first-aha eval · onboarding.spec.ts</div>
           </div>
           <div class="feature">
-            <h4>The worker <span class="route">npm run worker</span></h4>
+            <h3>The worker <span class="route">npm run worker</span></h3>
             <p>
               Overnight Dreaming consolidates memory; a consent-gated nudge references a real
               commitment — warm, never surveillant.
@@ -1035,7 +1133,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">dreaming.ts · nudge + creepiness evals</div>
           </div>
           <div class="feature">
-            <h4>Upgrade <span class="route">/upgrade</span></h4>
+            <h3>Upgrade <span class="route">/upgrade</span></h3>
             <p>
               A Stripe paywall whose webhook verifies the signature before mutating any plan; a
               tampered signature is rejected.
@@ -1043,7 +1141,7 @@ Exported the demo Mindfile and re-validated it:
             <div class="proof">billing.ts · test:billing</div>
           </div>
           <div class="feature">
-            <h4>Guest gate <span class="route">all routes</span></h4>
+            <h3>Guest gate <span class="route">all routes</span></h3>
             <p>
               A guest sees an honest sign-in line; the doomed write-stream fetch is never fired, so
               no 401 hits the console.
@@ -1224,7 +1322,9 @@ Exported the demo Mindfile and re-validated it:
           </div>
           <div class="idx-row">
             <span class="k">Anonymise</span
-            ><span class="v">local bert-base-NER (the enchanted-twin scrub)</span>
+            ><span class="v"
+              >local bert-base-NER — masks people, places, orgs to stable tokens</span
+            >
           </div>
           <div class="idx-row">
             <span class="k">LLM</span
@@ -1256,8 +1356,8 @@ Exported the demo Mindfile and re-validated it:
         <div class="kicker">TRUST</div>
         <h2>How it holds up</h2>
         <p>
-          The clarity is the feature. Pre-mainnet limits are stated plainly — the same discipline a
-          CI <code>check:numbers</code> gate now enforces on our own headline numbers.
+          Pre-mainnet limits are stated plainly — the same discipline a CI
+          <code>check:numbers</code> gate now enforces on our own headline numbers.
         </p>
       </div>
 
@@ -1306,8 +1406,8 @@ Exported the demo Mindfile and re-validated it:
           <div class="idx-row">
             <span class="k">Dependencies</span
             ><span class="v"
-              >43 transitive vulns triaged unreachable + documented; no blind fix that breaks the
-              runtime</span
+              >All 43 transitive advisories triaged to unreachable code paths and documented; no
+              blind dependency bump that breaks the runtime</span
             >
           </div>
         </div>
@@ -1349,9 +1449,12 @@ Exported the demo Mindfile and re-validated it:
         <div class="kicker">REPRODUCE</div>
         <h2>Run every proof yourself</h2>
         <p>
-          None of this is a screenshot you have to trust. Clone the repo, point it at a Neon DB +
-          the 0G testnet wallet, and re-run each line. The browser sweep runs against the live
-          deploy.
+          None of this is a screenshot you have to trust. Clone the repo, point it at your own Neon
+          DB + 0G testnet wallet + NVIDIA key, and re-run each line — the engine and crypto proofs
+          need that environment, so a bare fork skips them honestly rather than faking green. The
+          browser sweep below runs read-only against the live deploy; the write, onboarding,
+          guest-gate, and 404 flows run against a local build, since the live demo is read-only by
+          design.
         </p>
       </div>
 
@@ -1385,8 +1488,12 @@ Exported the demo Mindfile and re-validated it:
             ><span class="v">DB_HTTP=1 npm run test:export</span>
           </div>
           <div class="idx-row">
-            <span class="k">Browser sweep (live)</span
+            <span class="k">Browser sweep — live, read-only (26 runs)</span
             ><span class="v">E2E_BASE_URL=https://knole-app.vercel.app npm run test:e2e</span>
+          </div>
+          <div class="idx-row">
+            <span class="k">Write / onboarding / 404 — local gated build</span
+            ><span class="v">E2E_BASE_URL=http://localhost:3000 npm run test:e2e</span>
           </div>
         </div>
       </section>
@@ -1400,14 +1507,14 @@ Exported the demo Mindfile and re-validated it:
         </p>
         <div class="idx">
           <div class="idx-row">
-            <span class="k"><span class="hex">⬡</span> Entry storage root</span
+            <span class="k"><span class="hex" aria-hidden="true">⬡</span> Entry storage root</span
             ><span class="v"
               >0x133bf6960bc64ae60eb061ce10e5b97f3c1b55eb827e6169ac1c46577b6edc23 — test:restore
               rebuilt the entry from this exact root</span
             >
           </div>
           <div class="idx-row">
-            <span class="k"><span class="hex">⬡</span> Memory-root anchor</span
+            <span class="k"><span class="hex" aria-hidden="true">⬡</span> Memory-root anchor</span
             ><span class="v"
               >0xc953476d8b48c17d843a2e0cc3eade03f4f010474501052ca2deecc008fd06b3 — the daily
               on-chain anchor of your memory root</span
