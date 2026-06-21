@@ -1,0 +1,5 @@
+# Keep deploys lean — these are dev/test/demo artifacts, not part of the app build.
+scripts/demo-video/
+e2e/
+playwright.config.ts
+test-results/
