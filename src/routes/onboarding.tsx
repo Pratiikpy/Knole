@@ -35,6 +35,9 @@ function Onboarding() {
   const [voice, setVoice] = useState<string>("warm");
   const [thing, setThing] = useState<string>("");
   const [reflection, setReflection] = useState<string | null>(null);
+  // Whether the reflection was saved. A guest gets the aha ephemerally (false) → "sign in to keep it";
+  // a signed-in user persists it (true) → "Knole will remember…".
+  const [persisted, setPersisted] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const begin = async () => {
@@ -49,6 +52,7 @@ function Onboarding() {
         },
       });
       setReflection(res.reflection);
+      setPersisted(res.persisted);
     } catch (e) {
       setReflection(
         isAuthRequired(e)
@@ -256,8 +260,17 @@ function Onboarding() {
                     d="M12 8v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                Knole will remember: <span className="italic">{thing.toLowerCase()}</span> is
-                quietly with you this week.
+                {persisted ? (
+                  <>
+                    Knole will remember: <span className="italic">{thing.toLowerCase()}</span> is
+                    quietly with you this week.
+                  </>
+                ) : (
+                  <>
+                    This reflection is yours. <span className="italic">Sign in to keep it</span> —
+                    Knole starts remembering from here.
+                  </>
+                )}
               </div>
 
               <div className="mt-12 flex items-center justify-between">
@@ -268,10 +281,10 @@ function Onboarding() {
                   ← back
                 </button>
                 <Link
-                  to="/today"
+                  to={persisted ? "/today" : "/settings"}
                   className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[13px] font-medium text-paper"
                 >
-                  Open today
+                  {persisted ? "Open today" : "Sign in to keep this"}
                   <svg
                     viewBox="0 0 24 24"
                     className="size-4"

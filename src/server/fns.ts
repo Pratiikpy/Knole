@@ -304,11 +304,18 @@ export const onboardFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await updateSettings(userId, { voice: data.voice });
+    enforceRate("onboard", 10, 60_000);
     const text = data.thing
       ? `${data.opener}\n(Quietly on my mind this week: ${data.thing})`
       : data.opener;
+    // The magical-first-5 (M6) delivers the first reflection BEFORE signup. A guest (no session) gets
+    // it EPHEMERALLY — reflected on their own words, nothing written — so no auth is required (there's
+    // no write to gate). Once signed in, the same reflection persists (entry + reply + memory + 0G).
+    const userId = await getSessionUserId();
+    if (!userId) {
+      return { reflection: await reflect(text), persisted: false };
+    }
+    await updateSettings(userId, { voice: data.voice });
     const entryRow = await saveEntry(userId, text, undefined, "journal");
     const reflection = await reflect(text);
     await saveReply(entryRow.id, reflection, true);
@@ -317,7 +324,7 @@ export const onboardFn = createServerFn({ method: "POST" })
       storeEntryOn0G(userId, entryRow.id, text),
       `0G store entry=${entryRow.id} user=${userId}`,
     );
-    return { reflection };
+    return { reflection, persisted: true };
   });
 
 export const importFn = createServerFn({ method: "POST" })
