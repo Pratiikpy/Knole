@@ -2,7 +2,7 @@ import "dotenv/config";
 import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
 import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
 import postgres from "postgres";
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
 import * as schema from "./schema";
 
 const url = process.env.DATABASE_URL;
@@ -17,6 +17,26 @@ const pg = () => drizzlePg(postgres(url, { prepare: false }), { schema });
 // scripts) already expects from postgres-js; the query builder (select/insert/...) is identical.
 let db: ReturnType<typeof pg>;
 if (process.env.DB_HTTP === "1") {
+  // The HTTP driver's fetch has no default timeout — a slow or unresponsive Neon edge can hang a query
+  // indefinitely (it has stalled long eval runs locally). Wrap fetch with a per-request timeout +
+  // bounded retry so a transient hang recovers and a sustained one fails fast, instead of blocking
+  // forever. This path is local/eval only; production uses the postgres-js pooler above.
+  const resilientFetch = async (
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1],
+  ): Promise<Response> => {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await fetch(input, { ...init, signal: AbortSignal.timeout(15_000) });
+      } catch (e) {
+        lastErr = e;
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
+    throw lastErr;
+  };
+  neonConfig.fetchFunction = resilientFetch;
   const raw = drizzleHttp(neon(url), { schema });
   const origExecute = raw.execute.bind(raw);
   (raw as { execute: unknown }).execute = async (...args: unknown[]) => {
