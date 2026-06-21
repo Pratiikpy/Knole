@@ -215,7 +215,18 @@ Permissions are **minimal and scoped** (`contextMenus` / `storage` / `notificati
 With this, **every core screen has now been driven like a human** — landing, today, the-index,
 insights, remembered, ask, chat, settings, onboarding, extension, plus the 404 + empty states.
 
+---
+
+## 2026-06-21 — Negative: offline degradation
+
+Drove `/ask` with the network forced **Offline** (DevTools emulation): submitted a query → the
+`/ask/stream` fetch failed and the UI degraded honestly to **"Something interrupted the search — try
+again in a moment."** — no infinite spinner, no crash, no stuck state. The only console entry is the
+browser's expected `ERR_INTERNET_DISCONNECTED` (the genuine network failure), not an app error. The
+"kill the network → honest degradation" bar is met.
+
 ### Not yet covered — queued for the next passes
 
-- Negative / adversarial: offline mid-stream, refresh mid-stream, rejected actions, IDOR via the UI.
+- Negative / adversarial: refresh mid-stream, IDOR via the UI (engine-level data-isolation + restore
+  ownership guard already cover IDOR; a UI-driven version remains).
 - `/upgrade` honest-state — verify after the next deploy (the live deploy predates the billing fix).
