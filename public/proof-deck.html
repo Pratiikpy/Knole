@@ -593,7 +593,7 @@
         <p class="tagline">Your words. Your key. Nobody else can read it.</p>
         <div class="hero-links">
           <a class="btn btn--ink" href="https://knole-app.vercel.app">Open the live demo →</a>
-          <a class="btn btn--ghost" href="#proofs">Jump to the receipts</a>
+          <a class="btn btn--ghost" href="#proofs">Jump to the proof</a>
         </div>
       </header>
 
@@ -605,7 +605,7 @@
         <div class="stat">
           <div class="n">26</div>
           <div class="l">
-            Playwright runs green on the live deploy — 11 routes × 2 viewports, console-clean
+            Playwright runs green on the live deploy — desktop + mobile, console-clean
           </div>
         </div>
         <div class="stat">
@@ -634,7 +634,7 @@
 
       <section class="story-step" id="flow-write">
         <div class="cap">
-          <div class="n">STEP 01 · THE MAGIC</div>
+          <div class="n">STEP 01 · THE FIRST REFLECTION</div>
           <div class="t">Write one honest line. A reflection arrives.</div>
           <div class="d">
             A guest types a single sentence; Knole reflects it back — anonymised before the model,
@@ -839,7 +839,8 @@
           <h3>What's proven</h3>
           <p>
             <strong>Privacy:</strong> embed locally, anonymise before the model, encrypt under your
-            key on 0G, generate in a TEE — four independent layers, each holds alone.
+            key on 0G — three live layers, each holds alone; a fourth, TEE-sealed inference, is
+            wired and switches on once the 0G compute ledger is funded.
           </p>
           <p>
             <strong>Ownership:</strong> Postgres is only a cache; every entry rebuilds
@@ -1038,7 +1039,7 @@ Exported the demo Mindfile and re-validated it:
         <h2>Every surface</h2>
         <p>
           The whole product, each route mapped to what it proves — swept desktop (1280) + mobile
-          (390) for a non-error status, real content, and zero console errors.
+          (412, Pixel 7) for a non-error status, real content, and zero console errors.
         </p>
       </div>
       <section class="section" id="surfaces" style="margin-top: 28px">
@@ -1227,7 +1228,7 @@ Exported the demo Mindfile and re-validated it:
           </div>
           <div class="idx-row">
             <span class="k">03 · dedup</span
-            ><span class="v">same content twice → 1 row, recall_count incremented</span>
+            ><span class="v">same content twice → 1 row, recall_count = 1</span>
           </div>
           <div class="idx-row">
             <span class="k">04 · groundedness</span
@@ -1534,8 +1535,8 @@ Exported the demo Mindfile and re-validated it:
 
       <footer>
         Generated 2026-06-21 · every screenshot and the GIF captured live from
-        <a href="https://knole-app.vercel.app">knole-app.vercel.app</a> this session · every command
-        re-runnable from the repo · eval gate, on-chain roots, and isolation re-verified.
+        <a href="https://knole-app.vercel.app">knole-app.vercel.app</a> · every command re-runnable
+        from the repo · eval gate, on-chain roots, and isolation re-verified.
         <span class="tagline">We can't read it, can't reset it, can't take it away.</span>
       </footer>
     </div>

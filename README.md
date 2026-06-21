@@ -42,7 +42,7 @@ Reflections, chat, Ask My Life, the Mirror, and the proactive nudge all draw on 
 
 ## You own it — on 0G
 
-- **Storage** — each entry is AES-256 encrypted and uploaded to **0G Storage** (Galileo testnet) via in-memory `MemData`; the returned root hash is anchored on the entry row. Encryption key is derived per-user.
+- **Storage** — each entry is AES-256-GCM encrypted and uploaded to **0G Storage** (Galileo testnet) via in-memory `MemData`; the returned root hash is anchored on the entry row. Encryption key is derived per-user.
 - **Restore-from-chain** — the Postgres copy is only a cache. `restoreEntryFromChain` rebuilds any entry's text purely from 0G; the Settings panel does this live so you can watch your data come back from chain.
 - **Sealed Inference** — user-facing generations route through `chatPrivate`, which calls **0G Private Compute (TEE)** when enabled and transparently falls back to NVIDIA so the app never goes dark. (Endpoint + auth are verified against the live 0G gateway; the TEE path activates once the compute ledger is funded — flip `OG_SEALED_INFERENCE=on`.)
 

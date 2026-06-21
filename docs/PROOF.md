@@ -10,7 +10,7 @@ The reconciled, code-true numbers used throughout (verify them yourself):
 
 - **Eval gate: 21 suites.** `grep -c "suite:" src/server/evals.ts` → `21`; `runEvals()` writes 21 rows to `eval_runs`. Every live-claim doc (README, SECURITY.md, QA_PLAN.md, QA_LOG.md, DEPLOYING.md) says 21, and `npm run check:numbers` — a CI gate added this pass — derives the count from `evals.ts` and fails the build on any drift (the earlier SECURITY.md/QA_PLAN.md "22-suite" prose drift is fixed; see §15 / §24).
 - **L0 route sweep: 11 routes × 2 viewports = 22 cells**, codified in `e2e/screens.spec.ts`.
-- **Playwright on the live deploy: 24/24 green** (QA_LOG 2026-06-20; `test-results/.last-run.json` → `"status": "passed"`).
+- **Playwright on the live deploy: 26 green** — the 22-cell route sweep plus the Ask read-flow, across desktop + mobile; the gated write / onboarding / guest-gate / 404 specs skip off-localhost by design (`test-results/.last-run.json` → `"status": "passed"`).
 
 ---
 
@@ -297,7 +297,7 @@ Every line below can be opened or re-run today.
 - [~] **Billing webhook trust boundary** — the webhook verifies the Stripe signature before mutating any plan (`billing.ts`); `npm run test:billing` asserts valid-sig-flips-plan / tampered-sig-rejected / cancel-downgrades **when given a real Stripe test key + a configured price**. Without them it no-ops honestly (`billingConfigured() is false`), so it is _not_ in the default-config proof set above.
 - [x] **Ext-save rate limited before token lookup** — `npm run test:ext-rate` (60 invalid probes → 401, then 429).
 - [x] **Lighthouse landing: a11y / Best-Practices / SEO 100** — QA_LOG 2026-06-21.
-- [x] **24/24 Playwright green on the live deploy** — QA_LOG 2026-06-20; `test-results/.last-run.json` → `"status": "passed", "failedTests": []`.
+- [x] **26 Playwright runs green on the live deploy** — QA_LOG 2026-06-20; `test-results/.last-run.json` → `"status": "passed", "failedTests": []`.
 
 > **Gap to close before this deck "ships":** wire `test:e2e` (Playwright) into CI for a citable run ID, and commit the visual-evidence artifacts. Today CI (`.github/workflows/ci.yml`) gates `evals` + `test:empty` + `test:auth` (the last two skip when `DATABASE_URL` is absent, e.g. on forks), plus lint, `check:voice`, `tsc --noEmit`, and `build`. Playwright is run manually against the live deploy, not yet in CI.
 
@@ -305,7 +305,7 @@ Every line below can be opened or re-run today.
 
 ## 17. Founder / team
 
-The credibility signal for a privacy-first, owned-memory product is the QA discipline itself — applied cryptography, 0G/web3 integration, a warm consumer surface, and rigorous verification, all shipped under pressure without cutting honesty.
+Knole is built solo by **Pratik**. The credibility signal for a privacy-first, owned-memory product is the QA discipline itself — applied cryptography, 0G/web3 integration, a warm consumer surface, and rigorous verification, all shipped under pressure without cutting honesty.
 
 - **Verification rigor as evidence.** `QA_PLAN.md` is written _before_ the run (a matrix, not vibes) with an explicit source-of-truth hierarchy (recomputable crypto/chain > DB read > engine result > server-fn response > rendered UI, lowest). `QA_LOG.md` carries 10+ dated, evidence-backed passes — and records self-found bugs (a hardcoded sample entry in a brand-new user's private journal; a dead `/upgrade` CTA; a 401 console error on guest write) found _and fixed_, not buried.
 - **Why this matters:** the product's hardest demands are exactly cryptography (AES-256-GCM + HKDF custody), 0G integration (Storage + Private Compute + on-chain anchoring), a calm consumer product, and discipline. The track record here is "shipped under pressure with rigor" — the log proves it.
@@ -407,7 +407,7 @@ Run all of them: `npm run evals` (writes one row per suite to `eval_runs`). Sour
 | Module                                            | Role                                                                   |
 | ------------------------------------------------- | ---------------------------------------------------------------------- |
 | `embed.ts`                                        | Local MiniLM 384-dim embeddings                                        |
-| `anonymise.ts`                                    | NER scrub + de-anonymise (the enchanted-twin)                          |
+| `anonymise.ts`                                    | NER scrub + de-anonymise                                               |
 | `sealed.ts`                                       | The single inference gateway — anonymise → TEE/NVIDIA → restore        |
 | `llm.ts`                                          | NVIDIA NIM client (timeouts + bounded retry)                           |
 | `engine.ts`                                       | save / extract / dedup / reconcile / retrieve / memory CRUD / settings |
@@ -422,7 +422,7 @@ Run all of them: `npm run evals` (writes one row per suite to `eval_runs`). Sour
 
 ### Appendix C — routes + viewport matrix
 
-11 routes, swept at desktop (1280×800) and mobile (390px) — `e2e/screens.spec.ts`, each asserting non-error HTTP status + rendered content + zero console errors:
+11 routes, swept at desktop (1280×800) and mobile (412px, Pixel 7) — `e2e/screens.spec.ts`, each asserting non-error HTTP status + rendered content + zero console errors:
 
 ```text
 /  /onboarding  /today  /chat  /ask  /insights  /the-index  /remembered  /settings  /extension  /upgrade
@@ -449,7 +449,7 @@ The skeptic-facing log, organized by phase. Every result is a count or a verifia
 
 - **Command:** `npm run evals` → `src/server/evals.run.ts`.
 - **Result:** 21 suites, each persisted as an `eval_runs` row (`suite`, `passed`, `score`, `details`). Gate passes only when `Object.values(gates).every(Boolean)`.
-- **Notable robustness:** LLM-judged suites (reconcile, nudge, creepiness, confidence) use `retryUntil(check, 3)` so a single stochastic miss doesn't fail the gate while a genuinely broken path fails all attempts. This is harness robustness, not result-fudging — the underlying assertions are deterministic state reads (DB status, recall_count, confidence value).
+- **Why a stochastic miss doesn't fail the gate:** LLM-judged suites (reconcile, nudge, creepiness, confidence) use `retryUntil(check, 3)` so a single stochastic miss doesn't fail the gate while a genuinely broken path fails all attempts. This is harness resilience, not result-fudging — the underlying assertions are deterministic state reads (DB status, recall_count, confidence value).
 
 ### Phase 2 — Crypto / privacy
 
@@ -464,7 +464,7 @@ The skeptic-facing log, organized by phase. Every result is a count or a verifia
 
 ### Phase 4 — L0 UI sweep
 
-- **`e2e/screens.spec.ts`**: 11 routes × {desktop, mobile} → HTTP status <400 + body has content + **zero console errors**. QA_LOG 2026-06-20 records the desktop sweep table (every route ✓, 0 console msgs) and the 390px mobile sweep (no horizontal overflow; 66-char root hashes truncate with ellipsis).
+- **`e2e/screens.spec.ts`**: 11 routes × {desktop, mobile} → HTTP status <400 + body has content + **zero console errors**. QA_LOG 2026-06-20 records the desktop sweep table (every route ✓, 0 console msgs) and the 412px (Pixel 7) mobile sweep (no horizontal overflow; 66-char root hashes truncate with ellipsis).
 
 ### Phase 5 — L2 flows
 
@@ -524,7 +524,7 @@ A domain-by-domain audit with an honest grade and a prioritized fix list, includ
 
 **Route-sweep result:** 11 routes × 2 viewports checked, all render, **0 crash**.
 
-**CI / commit anchor:** `.github/workflows/ci.yml` (lint · check:voice · tsc · build; evals + test:empty + test:auth gated on `DATABASE_URL`). Latest Playwright run on the live deploy: `test-results/.last-run.json` → `"status": "passed", "failedTests": []` (24/24, QA*LOG 2026-06-20). \_Citable CI run ID is pending the `test:e2e`-in-CI wiring (§18).*
+**CI / commit anchor:** `.github/workflows/ci.yml` (lint · check:voice · tsc · build; evals + test:empty + test:auth gated on `DATABASE_URL`). Latest Playwright run on the live deploy: `test-results/.last-run.json` → `"status": "passed", "failedTests": []` (26 green, QA*LOG 2026-06-20). \_Citable CI run ID is pending the `test:e2e`-in-CI wiring (§18).*
 
 **Per-flow proof shape:**
 
