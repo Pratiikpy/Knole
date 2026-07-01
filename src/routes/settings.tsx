@@ -14,9 +14,13 @@ import {
   syncSessionFn,
   clearSessionFn,
   genExtensionTokenFn,
+  clientEncStatusFn,
+  disableClientEncFn,
 } from "@/server/fns";
 import { useState, useEffect } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+import { NotifyButton } from "@/components/knole/NotifyButton";
+import { useClientKey } from "@/lib/useClientKey";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -31,7 +35,11 @@ export const Route = createFileRoute("/settings")({
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 // Chain explorer for anchor tx links — configurable so the testnet→mainnet switch is one env var.
-const OG_EXPLORER_TX = import.meta.env.VITE_OG_EXPLORER_TX ?? "https://chainscan-galileo.0g.ai/tx";
+const OG_EXPLORER_TX =
+  import.meta.env.VITE_OG_EXPLORER_TX ??
+  (import.meta.env.VITE_OG_NETWORK === "mainnet"
+    ? "https://chainscan.0g.ai/tx"
+    : "https://chainscan-galileo.0g.ai/tx");
 
 // Privy is scoped to this route — the only place auth is used — so react-auth (~2MB)
 // code-splits into the settings chunk instead of bloating every page's initial bundle.
@@ -79,6 +87,84 @@ function SettingsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "auth" | "error">(
     "idle",
   );
+
+  // Client-side (wallet) encryption — seal the 0G copy so the server stores only ciphertext.
+  const { enrollClientKey, sweepPending } = useClientKey();
+  const getEncStatus = useServerFn(clientEncStatusFn);
+  const doDisableEnc = useServerFn(disableClientEncFn);
+  const [clientEnc, setClientEnc] = useState<{ enabled: boolean; address: string | null }>({
+    enabled: false,
+    address: null,
+  });
+  const [enrolling, setEnrolling] = useState(false);
+  const [sweeping, setSweeping] = useState(false);
+  const [encMsg, setEncMsg] = useState("");
+  useEffect(() => {
+    let alive = true;
+    getEncStatus()
+      .then((s) => {
+        if (!alive) return;
+        setClientEnc({ enabled: s.enabled, address: s.address });
+        // Drain entries written while enrolled (today/chat leave kv_ref null) under the wallet key.
+        if (s.enabled) {
+          sweepPending()
+            .then((n) => alive && n && setEncMsg(`Sealed ${n} entr${n === 1 ? "y" : "ies"} to 0G.`))
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const doEnroll = async () => {
+    setEnrolling(true);
+    setEncMsg("");
+    try {
+      const r = await enrollClientKey();
+      if (r.ok) {
+        const s = await getEncStatus();
+        setClientEnc({ enabled: s.enabled, address: s.address });
+        const n = await sweepPending().catch(() => 0);
+        setEncMsg(
+          `On — your 0G copy is sealed to your wallet.${n ? ` Sealed ${n} existing.` : ""}`,
+        );
+      } else {
+        setEncMsg(
+          r.reason === "non-deterministic"
+            ? "Your wallet's signature wasn't stable across two tries — encryption stayed OFF so you can't be locked out."
+            : r.reason === "no-embedded-wallet"
+              ? "No embedded wallet found to derive a key from."
+              : "Couldn't turn it on — try again.",
+        );
+      }
+    } catch {
+      setEncMsg("Couldn't turn it on — try again.");
+    } finally {
+      setEnrolling(false);
+    }
+  };
+  const runSweep = async () => {
+    setSweeping(true);
+    try {
+      const n = await sweepPending();
+      setEncMsg(
+        n ? `Sealed ${n} entr${n === 1 ? "y" : "ies"} to 0G.` : "All entries already sealed.",
+      );
+    } catch {
+      setEncMsg("Couldn't reach your wallet — try again.");
+    } finally {
+      setSweeping(false);
+    }
+  };
+  const disableEnc = async () => {
+    await doDisableEnc().catch(() => {});
+    setClientEnc((c) => ({ enabled: false, address: c.address }));
+    setEncMsg(
+      "Turned off. New entries use Knole's key again; your existing sealed copies stay yours.",
+    );
+  };
 
   const persist = (data: Parameters<typeof doUpdate>[0]["data"]) => {
     setSaveStatus("saving");
@@ -295,6 +381,9 @@ function SettingsPage() {
                 Every nudge references a real memory of yours — never a generic ping. If it ever
                 feels like too much, slide it down.
               </p>
+              <div className="mt-4">
+                <NotifyButton />
+              </div>
             </div>
           </Group>
 
@@ -482,8 +571,53 @@ function SettingsPage() {
               )}
 
               <p className="mt-3 text-[11px] text-muted-foreground">
-                Encrypted under your key. Nothing on our servers is readable without it.
+                Stored encrypted on 0G. Seal it to your wallet below and not even Knole can read it.
               </p>
+
+              {/* Client-side (wallet) encryption — the server then stores only ciphertext it can't read. */}
+              <div className="mt-6 border-t border-rule pt-5">
+                <div className="text-[13px] font-medium text-ink">
+                  Seal your 0G copy to your wallet
+                </div>
+                <p className="mt-1 max-w-[60ch] text-[12px] leading-relaxed text-muted-foreground">
+                  Your durable 0G copy gets encrypted under a key only your wallet can derive —
+                  Knole can't read it or reset it, like a password we never hold. (Your live
+                  reflections and the searchable cache still pass through Knole to work; this seals
+                  the recovery copy.)
+                </p>
+                {clientEnc.enabled ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="text-[11px] text-tan">
+                      ● Sealed
+                      {clientEnc.address
+                        ? ` to ${clientEnc.address.slice(0, 6)}…${clientEnc.address.slice(-4)}`
+                        : ""}
+                    </span>
+                    <button
+                      onClick={runSweep}
+                      disabled={sweeping}
+                      className="rounded-full border border-tan/40 px-3 py-1.5 text-[11px] text-tan transition-colors hover:bg-tan/[0.06] disabled:opacity-40"
+                    >
+                      {sweeping ? "Sealing…" : "Seal pending entries"}
+                    </button>
+                    <button
+                      onClick={disableEnc}
+                      className="text-[11px] text-muted-foreground hover:text-ink"
+                    >
+                      turn off
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={doEnroll}
+                    disabled={enrolling}
+                    className="mt-3 rounded-full bg-ink px-4 py-2 text-[12px] text-paper transition-opacity disabled:opacity-40"
+                  >
+                    {enrolling ? "Signing with your wallet…" : "Turn on wallet encryption"}
+                  </button>
+                )}
+                {encMsg && <p className="mt-2 text-[11px] text-muted-foreground">{encMsg}</p>}
+              </div>
             </div>
           </Group>
 
@@ -491,8 +625,8 @@ function SettingsPage() {
           <Group title="Privacy">
             <div className="space-y-3 rounded-xl border border-rule bg-card/50 p-6">
               <Row
-                label="Encrypted on your key"
-                detail="Even we can't read what you write."
+                label="Encrypted at rest"
+                detail="Under a per-account key — and you can seal your 0G copy to your wallet above, so not even we can read it."
                 value="On · always"
               />
               <Row
