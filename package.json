@@ -35,6 +35,8 @@
     "consolidate": "tsx src/server/consolidate.run.ts",
     "clientenc:check": "tsx src/server/clientEnc.run.ts",
     "seed": "tsx src/server/seed.run.ts",
+    "seed:inft": "tsx src/server/seed-inft.run.ts",
+    "record:demo": "node scripts/demo-video/record-demo-v3.mjs && node scripts/demo-video/to-mp4.mjs",
     "worker": "tsx src/server/worker.run.ts"
   },
   "dependencies": {
