@@ -1994,38 +1994,57 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
         <div class="num">ON-CHAIN · 0G GALILEO</div>
         <h3 class="t">The roots</h3>
         <p class="lede">
-          Knole hides your entry text (ciphertext) but never hides that an entry exists — the 0G
-          root is public and reveals nothing. These are real, on the Galileo testnet.
+          Real, on the Galileo testnet — <strong>click any link to verify on the 0G explorer.</strong>
+          Knole hides your entry text (ciphertext) but never hides that an entry exists; the root is
+          public and reveals nothing.
         </p>
         <div class="idx">
           <div class="idx-row">
+            <span class="k"><span class="hex" aria-hidden="true">⬡</span> Memory iNFT contract</span
+            ><span class="v"
+              ><a
+                href="https://chainscan-galileo.0g.ai/address/0xf45C33fa8005734E67F9E99De844D220A18D898E"
+                target="_blank"
+                rel="noopener"
+                >0xf45C33fa8005734E67F9E99De844D220A18D898E</a
+              >
+              — KnoleMemory (ERC-7857), deployed on 0G Galileo; mints to the user's own wallet and
+              reverts every transfer (not for sale)</span
+            >
+          </div>
+          <div class="idx-row">
+            <span class="k"><span class="hex" aria-hidden="true">⬡</span> A real mint (Token #4)</span
+            ><span class="v"
+              ><a
+                href="https://chainscan-galileo.0g.ai/tx/0x0c49d19d4322db34aa3bb8f604334c080d25af03b531830de809cce81abcd5f0"
+                target="_blank"
+                rel="noopener"
+                >0x0c49d19d…abcd5f0</a
+              >
+              — click to verify the on-chain iNFT mint transaction</span
+            >
+          </div>
+          <div class="idx-row">
             <span class="k"><span class="hex" aria-hidden="true">⬡</span> Entry storage root</span
             ><span class="v"
-              >0x133bf6960bc64ae60eb061ce10e5b97f3c1b55eb827e6169ac1c46577b6edc23 — test:restore
-              rebuilt the entry from this exact root</span
+              >0x133bf6960bc64ae60eb061ce10e5b97f3c1b55eb827e6169ac1c46577b6edc23 — the 0G Storage root
+              <code>test:restore</code> rebuilt the entry from, byte-identical</span
             >
           </div>
           <div class="idx-row">
             <span class="k"><span class="hex" aria-hidden="true">⬡</span> Memory-root anchor</span
             ><span class="v"
-              >0xc953476d8b48c17d843a2e0cc3eade03f4f010474501052ca2deecc008fd06b3 — the daily
-              on-chain anchor of your memory root</span
+              >0xc953476d8b48c17d843a2e0cc3eade03f4f010474501052ca2deecc008fd06b3 — the daily on-chain
+              anchor of your memory root</span
             >
           </div>
           <div class="idx-row">
-            <span class="k"><span class="hex" aria-hidden="true">⬡</span> Memory iNFT contract</span
+            <span class="k">Try it live</span
             ><span class="v"
-              >0xf45C33fa8005734E67F9E99De844D220A18D898E — KnoleMemory (ERC-7857); mints your memory
-              snapshot to your own wallet, and reverts every transfer (not for sale)</span
-            >
-          </div>
-          <div class="idx-row">
-            <span class="k">Explorer</span
-            ><span class="v"
-              ><a href="https://chainscan-galileo.0g.ai" target="_blank" rel="noopener"
-                >chainscan-galileo.0g.ai</a
+              >open <a href="https://knole-app.vercel.app/settings" target="_blank" rel="noopener"
+                >/settings</a
               >
-              — the live anchor + tx links surface in /settings</span
+              → "Verify recoverable" rebuilds a real entry from 0G in front of you</span
             >
           </div>
         </div>
