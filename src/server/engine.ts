@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { sql, eq, and } from "drizzle-orm";
+import { sql, eq, and, isNull } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
 import { chat } from "./llm";
@@ -48,9 +48,31 @@ export async function saveEntry(
   text: string,
   vec?: number[],
   type: "journal" | "chat" | "saved" = "journal",
+  meta?: {
+    title?: string | null;
+    tags?: string[] | null;
+    mood?: string | null;
+    valence?: number | null;
+    valenceLabel?: string | null;
+  },
 ) {
   const v = vec ?? (await embed(text));
-  const [row] = await db.insert(entries).values({ userId, text, type, embedding: v }).returning();
+  const [row] = await db
+    .insert(entries)
+    .values({
+      userId,
+      text,
+      type,
+      embedding: v,
+      title: meta?.title ?? null,
+      tags: meta?.tags ?? null,
+      // The quick check-in carries a user-SELECTED mood/valence (no LLM scoring needed) so the mood
+      // graph + trend are accurate from a one-tap entry.
+      mood: meta?.mood ?? null,
+      valence: meta?.valence ?? null,
+      valenceLabel: meta?.valenceLabel ?? null,
+    })
+    .returning();
   return row;
 }
 
@@ -318,6 +340,59 @@ export function userKeyCandidates(userId: string): Uint8Array[] {
   return keyProvider.userKeyCandidates(userId);
 }
 
+/** Stamp the first Mirror reveal (no-op if already stamped) — gates the one-time reveal ceremony. */
+export async function markMirrorRevealed(userId: string): Promise<void> {
+  await db
+    .update(users)
+    .set({ mirrorRevealedAt: new Date() })
+    .where(and(eq(users.id, userId), isNull(users.mirrorRevealedAt)));
+}
+
+/**
+ * The stable "who you are becoming" identity portrait — a deterministic, embedding-free pull of the
+ * durable identity memories (values, commitments, patterns, relationships, preferences), ranked by
+ * earned importance + recall. Powers the Future-Self persona; constant across a conversation's turns.
+ */
+export async function retrieveIdentityMemories(
+  userId: string,
+  k = 10,
+): Promise<{ id: string; content: string; type: string; sourceQuote: string | null }[]> {
+  const rows = (await db.execute(sql`
+    SELECT id, content, type, source_quote
+    FROM memories
+    WHERE user_id = ${userId}
+      AND status IN ('active', 'pinned')
+      AND type IN ('value', 'commitment', 'pattern', 'relationship', 'preference')
+    ORDER BY importance DESC NULLS LAST, recall_count DESC, created_at DESC
+    LIMIT ${k}
+  `)) as unknown as Record<string, unknown>[];
+  return rows.map((r) => ({
+    id: String(r.id),
+    content: String(r.content),
+    type: String(r.type),
+    sourceQuote: r.source_quote ? String(r.source_quote) : null,
+  }));
+}
+
+/** Counts that gate the Future-Self simulation — a thin Index can't ground an honest future self. */
+export async function futureSelfReadiness(
+  userId: string,
+): Promise<{ memoryCount: number; entryCount: number }> {
+  const mRows = (await db.execute(sql`
+    SELECT count(*) AS c FROM memories
+    WHERE user_id = ${userId}
+      AND status IN ('active', 'pinned')
+      AND type IN ('value', 'commitment', 'pattern', 'relationship', 'preference')
+  `)) as unknown as Record<string, unknown>[];
+  const eRows = (await db.execute(sql`
+    SELECT count(*) AS c FROM entries WHERE user_id = ${userId}
+  `)) as unknown as Record<string, unknown>[];
+  return {
+    memoryCount: Number(mRows[0]?.c ?? 0),
+    entryCount: Number(eRows[0]?.c ?? 0),
+  };
+}
+
 export async function storeEntryOn0G(
   userId: string,
   entryId: string,
@@ -326,7 +401,10 @@ export async function storeEntryOn0G(
   const key = keyForUser(userId);
   const payload = JSON.stringify({ entryId, text, savedAt: new Date().toISOString() });
   const { rootHash } = await putData(payload, { key });
-  await db.update(entries).set({ kvRef: rootHash }).where(eq(entries.id, entryId));
+  await db
+    .update(entries)
+    .set({ kvRef: rootHash, encScheme: "server" })
+    .where(eq(entries.id, entryId));
   return rootHash;
 }
 
@@ -420,10 +498,16 @@ export async function getSettings(userId: string) {
       voice: users.voice,
       timezone: users.timezone,
       proactivityPaused: users.proactivityPaused,
+      ageAffirmedAt: users.ageAffirmedAt,
     })
     .from(users)
     .where(eq(users.id, userId));
   return u;
+}
+
+/** SB243 self-attestation — stamp that the user affirmed they're 18 or older. */
+export async function setAgeAffirmed(userId: string): Promise<void> {
+  await db.update(users).set({ ageAffirmedAt: new Date() }).where(eq(users.id, userId));
 }
 
 export async function updateSettings(

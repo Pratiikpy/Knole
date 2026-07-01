@@ -9,6 +9,11 @@ const { reflectionArtifacts } = schema;
 // been REVEAL_DAY days since the first entry — the reveal unlocks (3 proven patterns + a
 // contradiction + the avoided thing). Before that, the page shows the anticipation, no LLM call.
 const REVEAL_DAY = 14;
+// An imported corpus (the refugee wedge) reveals the Mirror early: importHistory stamps every entry
+// created_at=now(), so daysSinceFirst stays 0 and the normal arc would trap the user in "building"
+// for 14 days — the headliner would deliver nothing on day one. Organic writers keep the full
+// day-15 payoff; this only fires when a completed import exists.
+const IMPORT_REVEAL_MIN = 8;
 
 const MIRROR_SYS = `You are Knole, writing a short, private "Pattern Mirror" for the user from their own recent journal entries and the things you remember about them. Honest, warm, specific — never flattering, never generic, never therapy-speak. Ground every line in what they actually wrote; if something isn't supported, leave it empty.
 
@@ -24,7 +29,7 @@ Return ONLY a JSON object:
   "avoided": "<1-2 sentences: the thing they keep circling but not facing — or empty>",
   "themes": [{"name":"<short lowercase theme>","weight":<1-5>}]
 }
-Exactly 3 patterns, each citing a real entry number. Up to 5 themes, most prominent first. No prose outside the JSON.`;
+Exactly 3 patterns, each citing a real entry number — and at least ONE of them must name a genuine strength or bright thread (what's quietly working), not only struggles, so the mirror never reads as all hard. Up to 5 themes, most prominent first. No prose outside the JSON.`;
 
 export type MirrorPattern = { text: string; quote: string; date: string };
 export type MirrorPhase = "empty" | "building" | "revealed";
@@ -41,6 +46,7 @@ export type Mirror = {
   avoided: string;
   themes: { name: string; weight: number }[];
   dream: Dream | null;
+  firstReveal: boolean; // true only on the very first day-15 reveal — gates the one-time ceremony
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -71,6 +77,18 @@ async function cachedMirror(userId: string, entryCount: number): Promise<Composi
     return rows[0].content as Composition;
   } catch {
     return null;
+  }
+}
+
+/** Whether the user has a completed history import — gates the early Mirror reveal. */
+async function userHasImport(userId: string): Promise<boolean> {
+  try {
+    const rows = (await db.execute(sql`
+      SELECT count(*) AS c FROM imports WHERE user_id = ${userId} AND status = 'done'
+    `)) as unknown as Record<string, unknown>[];
+    return Number(rows[0]?.c ?? 0) > 0;
+  } catch {
+    return false;
   }
 }
 
@@ -117,6 +135,7 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     avoided: "",
     themes: [],
     dream,
+    firstReveal: false,
   });
   const reveal = (c: Composition): Mirror => ({
     phase: "revealed",
@@ -126,11 +145,23 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     entryCount,
     ...c,
     dream,
+    firstReveal,
   });
 
   if (entries.length < 2) return base("empty");
-  // The arc: hold the reveal until the user has been writing for ~2 weeks (the day-15 payoff).
-  if (daysSinceFirst < REVEAL_DAY) return base("building");
+  // Hold the reveal until ~2 weeks in (the day-15 payoff) — UNLESS the corpus was imported, in which
+  // case reveal early so the headliner delivers on day one.
+  const hasImport = await userHasImport(userId);
+  if (daysSinceFirst < REVEAL_DAY && !(hasImport && entryCount >= IMPORT_REVEAL_MIN)) {
+    return base("building");
+  }
+
+  // First-ever reveal? Gates the one-time ceremony. Pure read — stamping is deferred to
+  // markMirrorRevealed (called by the client on ceremony completion), so loaders never mutate.
+  const revealedRows = (await db.execute(sql`
+    SELECT mirror_revealed_at FROM users WHERE id = ${userId}
+  `)) as unknown as Record<string, unknown>[];
+  const firstReveal = !revealedRows[0]?.mirror_revealed_at;
 
   const cached = await cachedMirror(userId, entryCount);
   if (cached) return reveal(cached);
@@ -211,4 +242,39 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     /* best-effort cache write */
   }
   return reveal(composition);
+}
+
+export type MirrorStatus = Pick<
+  Mirror,
+  "phase" | "daysSinceFirst" | "daysToReveal" | "dayCount" | "entryCount"
+>;
+
+/**
+ * The cheap streak/phase for the Today progress strip — day counts + phase only, no LLM compose.
+ * buildMirror() does a ~15s composition once revealed; the strip just needs how far along the arc is,
+ * so it stays a single stat query and is safe to call on every Today load.
+ */
+export async function mirrorStatus(userId: string): Promise<MirrorStatus> {
+  const stat = (await db.execute(sql`
+    SELECT count(DISTINCT date_trunc('day', created_at)) AS d, count(*) AS c,
+           (now()::date - min(created_at)::date) AS since
+    FROM entries WHERE user_id = ${userId}
+  `)) as unknown as Record<string, unknown>[];
+  const dayCount = Number(stat[0]?.d ?? 0);
+  const entryCount = Number(stat[0]?.c ?? 0);
+  const daysSinceFirst = Math.max(0, Number(stat[0]?.since ?? 0));
+  const earlyReveal = (await userHasImport(userId)) && entryCount >= IMPORT_REVEAL_MIN;
+  const phase: MirrorPhase =
+    entryCount < 2
+      ? "empty"
+      : daysSinceFirst < REVEAL_DAY && !earlyReveal
+        ? "building"
+        : "revealed";
+  return {
+    phase,
+    daysSinceFirst,
+    daysToReveal: Math.max(0, REVEAL_DAY - daysSinceFirst),
+    dayCount,
+    entryCount,
+  };
 }
