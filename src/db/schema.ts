@@ -56,7 +56,9 @@ export const feedbackAction = pgEnum("feedback_action", [
 export const artifactType = pgEnum("artifact_type", [
   "daily_mirror",
   "weekly_mirror",
+  "weekly_essence",
   "monthly_essence",
+  "yearly_essence",
   "open_loop",
   "pattern",
   "commitment",
@@ -84,6 +86,18 @@ export const users = pgTable("users", {
   // Stripe billing — written only by verified webhooks. `plan` ("free" | "deep") is the entitlement.
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  // The day-15 Mirror reveal ceremony fires once — stamped here (belt-and-suspenders with a
+  // localStorage guard, so a storage clear can't replay it across devices).
+  mirrorRevealedAt: timestamp("mirror_revealed_at"),
+  // SB243 self-attestation age gate — stamped when the user affirms they're 18 or older.
+  ageAffirmedAt: timestamp("age_affirmed_at"),
+  // Client-side encryption: when enrolled, the 0G owned-copy is sealed under a wallet-derived key the
+  // server never sees. The canary (a blob the user can decrypt) proves they can still derive a working
+  // key each session; the address binds the key so a different wallet can't silently take over.
+  clientEncEnabled: boolean("client_enc_enabled").default(false),
+  clientEncEnrolledAt: timestamp("client_enc_enrolled_at"),
+  clientKeyCanary: text("client_key_canary"),
+  clientKeyAddr: text("client_key_addr"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -98,14 +112,51 @@ export const entries = pgTable(
     type: entryType("type").default("journal").notNull(),
     text: text("text").notNull(),
     mood: text("mood"),
+    // Mood trajectory: a per-entry emotional valence (-1..1) + one-word label, scored in the
+    // background (null until scored, backfilled by the worker). Only a float + a word — nothing
+    // new leaves the row.
+    valence: real("valence"),
+    valenceLabel: text("valence_label"),
+    // Conversational capture: a composed "Daily Chat" entry carries an evocative title + topical
+    // tags (also ride the 0G payload + a future timeline). Null for ordinary journal entries.
+    title: text("title"),
+    tags: jsonb("tags").$type<string[]>(),
     embedding: vector("embedding", { dimensions: EMBED_DIM }),
     kvRef: text("kv_ref"), // 0G KV pointer (source of truth)
+    encScheme: text("enc_scheme"), // 'server' | 'client' — who holds the 0G blob's key (null = legacy)
     anchoredRoot: text("anchored_root"), // on-chain memory-root anchor
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
     index("entries_user_idx").on(t.userId),
+    index("entries_user_created_idx").on(t.userId, t.createdAt), // cheap mood-trend range scan
     index("entries_emb_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);
+
+// ── per-entry signals (powers the Omission Radar's absence statistic) ──
+// One row per entry, populated incrementally at write time. Topics/valence/flatness let a real
+// binomial zero-occurrence test name what the user has STOPPED mentioning — no re-tagging of history.
+export const entrySignals = pgTable(
+  "entry_signals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => entries.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topics: jsonb("topics").$type<string[]>().notNull(), // normalized lowercase life-domain labels
+    valence: real("valence"), // -1..1
+    arousal: real("arousal"), // 0..1
+    flat: boolean("flat").default(false), // affectively muted/numb read
+    entryAt: timestamp("entry_at").notNull(), // copied from entries.created_at — no join for date math
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("entry_signals_entry_uniq").on(t.entryId),
+    index("entry_signals_user_at_idx").on(t.userId, t.entryAt),
   ],
 );
 
@@ -195,10 +246,16 @@ export const reflectionArtifacts = pgTable(
     threadKey: text("thread_key"),
     content: jsonb("content").notNull(),
     sources: jsonb("sources"),
+    // Hierarchical consolidation: period-start (YYYY-MM-DD) + supersede-not-delete bookkeeping so a
+    // re-roll keeps the old essence as immutable history (and its on-chain anchor stays valid).
+    period: text("period"),
+    supersededAt: timestamp("superseded_at"),
+    supersededBy: uuid("superseded_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => ({
     userThreadIdx: index("reflection_artifacts_user_thread_idx").on(t.userId, t.threadKey),
+    periodIdx: index("reflection_artifacts_period_idx").on(t.userId, t.threadKey, t.period),
   }),
 );
 
@@ -224,6 +281,22 @@ export const imports = pgTable("imports", {
   rawRef: text("raw_ref"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ── web-push subscriptions (the outbound retention channel) ──
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(), // client public key (for payload encryption)
+    auth: text("auth").notNull(), // client auth secret
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("push_subscriptions_endpoint_uniq").on(t.endpoint)],
+);
 
 // ── eval runs (release gate) ─────────────────────────────
 export const evalRuns = pgTable("eval_runs", {
