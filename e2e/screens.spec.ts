@@ -16,6 +16,10 @@ const ROUTES = [
   "/settings",
   "/extension",
   "/upgrade",
+  "/future",
+  "/on-this-day",
+  "/wrapped",
+  "/year",
 ];
 
 for (const route of ROUTES) {

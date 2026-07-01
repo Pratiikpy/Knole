@@ -18,6 +18,8 @@ test("onboarding delivers the no-signup aha to a guest", async ({ page }) => {
   const opener = page.getByPlaceholder(/something small or something heavy/i);
   await opener.click();
   await opener.pressSequentially("I keep putting off the things that matter to me.", { delay: 8 });
+  // SB243 self-attested age gate: tick "I'm 18 or older" — Continue stays disabled until affirmed.
+  await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: /^continue$/i }).click();
   await page.getByRole("button", { name: /structural & clear/i }).click();
   await page.getByRole("button", { name: /^continue$/i }).click();
