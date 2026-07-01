@@ -564,6 +564,41 @@
         padding: 5px 0;
       }
 
+      /* new-since-submission showcase */
+      .showcase {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 28px;
+      }
+      @media (max-width: 760px) {
+        .showcase {
+          grid-template-columns: 1fr;
+        }
+      }
+      .showcase figure {
+        margin: 0;
+      }
+      .showcase .wide {
+        grid-column: 1 / -1;
+      }
+      .showcase figcaption strong {
+        color: var(--ink);
+      }
+      .newbadge {
+        display: inline-block;
+        margin-left: 10px;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: var(--tan);
+        color: var(--paper);
+        vertical-align: middle;
+      }
+
       footer {
         margin-top: 88px;
         padding-top: 24px;
@@ -582,7 +617,7 @@
     <div class="page">
       <header class="hero">
         <div class="eyebrow">
-          <span aria-hidden="true">⬡</span> Verified build proof · 0G Galileo testnet · 2026-06-21
+          <span aria-hidden="true">⬡</span> Verified build proof · 0G Galileo testnet · 2026-07-01
         </div>
         <h1>See the whole thing<br />in a few minutes.</h1>
         <p class="lead">
@@ -603,16 +638,15 @@
           <div class="l">engine eval suites, all green, CI-enforced</div>
         </div>
         <div class="stat">
-          <div class="n">26</div>
+          <div class="n">4</div>
           <div class="l">
-            Playwright runs green on the live deploy — desktop + mobile, console-clean
+            live privacy layers — embed-local · anonymise · encrypt · TEE-sealed inference (now on)
           </div>
         </div>
         <div class="stat">
-          <div class="n">3</div>
+          <div class="n">iNFT</div>
           <div class="l">
-            live privacy layers — embed-local · anonymise · encrypt (the 4th, a TEE, is wired
-            pre-mainnet)
+            your memory, minted to your own wallet on 0G — and never for sale
           </div>
         </div>
         <div class="stat">
@@ -823,6 +857,180 @@
         </figure>
       </section>
 
+      <!-- ════════ NEW SINCE SUBMISSION ════════ -->
+      <div class="band" id="new">
+        <div class="kicker">NEW SINCE SUBMISSION</div>
+        <h2>What shipped after the write-up</h2>
+        <p>
+          Three things the submission called pre-mainnet — sealed inference off, no logged-in
+          end-to-end run, no ownership layer — are now done, alongside a deeper product. Every frame
+          below is a real screenshot, captured this pass. The receipts follow.
+        </p>
+      </div>
+      <section class="section showcase" id="new-shots" style="margin-top: 28px">
+        <figure class="shot wide">
+          <img
+            src="proof-shots/inft-card.webp"
+            width="1280"
+            height="194"
+            loading="lazy"
+            decoding="async"
+            alt="The Index — a minted memory iNFT card: not for sale, Token #3, view on 0G explorer"
+          />
+          <figcaption>
+            <strong>Own it as a token.</strong> Your evolving memory mints as an ERC-7857 iNFT to
+            your own wallet — encrypted on 0G, and <em>not for sale</em> (the contract reverts every
+            transfer). Here: Token #3, linked to the 0G explorer.
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <img
+            src="proof-shots/client-enc.webp"
+            width="1280"
+            height="800"
+            loading="lazy"
+            decoding="async"
+            alt="Settings — Seal your 0G copy to your wallet, sealed to 0x0e7d…1bab"
+          />
+          <figcaption>
+            <strong>Seal your 0G copy to your wallet.</strong> The durable copy is re-encrypted
+            under a key only your wallet can derive — sealed to <code>0x0e7d…1bab</code>, a key Knole
+            never holds.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/privy-auth.webp"
+            width="1280"
+            height="800"
+            loading="lazy"
+            decoding="async"
+            alt="Settings — signed in via a real disposable inbox, with Mindfile export and Sign out"
+          />
+          <figcaption>
+            <strong>A real, logged-in session.</strong> Signed in through a real disposable inbox via
+            Privy email-OTP — the authenticated end-to-end run, done headlessly. Mindfile export and
+            Sign out, all live.
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <img
+            src="proof-shots/crisis.webp"
+            width="1280"
+            height="1260"
+            loading="lazy"
+            decoding="async"
+            alt="Chat — a crisis-safety response with 988, 741741, and 911 resources"
+          />
+          <figcaption>
+            <strong>When the words turn heavy.</strong> An entry about self-harm pauses the
+            reflection and surfaces real help — 988, text HOME to 741741, 911 — never a chatbot
+            pretending to be a therapist (SB243).
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/sealed.webp"
+            width="1280"
+            height="1045"
+            loading="lazy"
+            decoding="async"
+            alt="The Mirror before day 15 — arc-gating, emotional weather, and the AI-disclosure line"
+          />
+          <figcaption>
+            <strong>It tells you it's an AI.</strong> The Mirror holds back until day 15 — missed days
+            don't count — and every surface discloses that Knole is a reflection, not a person.
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <img
+            src="proof-shots/future-self.webp"
+            width="1280"
+            height="967"
+            loading="lazy"
+            decoding="async"
+            alt="Future-Self — a grounded letter from who your entries point toward"
+          />
+          <figcaption>
+            <strong>Future-Self.</strong> A letter from the person your own entries are pointing
+            toward — grounded in real commitments, not generic advice.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/wrapped-card.webp"
+            width="1280"
+            height="1032"
+            loading="lazy"
+            decoding="async"
+            alt="A private Wrapped — a shareable card of the shape of your year, never the words"
+          />
+          <figcaption>
+            <strong>A private Wrapped.</strong> A shareable card of the <em>shape</em> of your year —
+            never the words.
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <img
+            src="proof-shots/year.webp"
+            width="1280"
+            height="800"
+            loading="lazy"
+            decoding="async"
+            alt="Your year in one page"
+          />
+          <figcaption>
+            <strong>Your year in one page.</strong> The arc of what you wrote, at a glance.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/on-this-day.webp"
+            width="1280"
+            height="800"
+            loading="lazy"
+            decoding="async"
+            alt="On this day — what you were carrying a year ago"
+          />
+          <figcaption>
+            <strong>On this day.</strong> What you were carrying a year ago, back to answer your past
+            self.
+          </figcaption>
+        </figure>
+
+        <figure class="shot">
+          <img
+            src="proof-shots/lenses.webp"
+            width="1280"
+            height="1456"
+            loading="lazy"
+            decoding="async"
+            alt="Four reflection lenses — Gentle Mirror, Pattern Finder, Blunt Friend, Decision Coach"
+          />
+          <figcaption>
+            <strong>Four lenses.</strong> Read the same entry as a Gentle Mirror, Pattern Finder,
+            Blunt Friend, or Decision Coach — an anti-sycophancy engine that won't just flatter you.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/night.webp"
+            width="1280"
+            height="1045"
+            loading="lazy"
+            decoding="async"
+            alt="Night — a full dark theme across every surface"
+          />
+          <figcaption>
+            <strong>Night.</strong> A full dark theme across every surface, with no flash on load.
+          </figcaption>
+        </figure>
+      </section>
+
       <!-- ════════ THE PROOF ════════ -->
       <div class="band" id="proofs">
         <div class="kicker">THE PROOF · IT'S ALL REAL</div>
@@ -839,12 +1047,13 @@
           <h3>What's proven</h3>
           <p>
             <strong>Privacy:</strong> embed locally, anonymise before the model, encrypt under your
-            key on 0G — three live layers, each holds alone; a fourth, TEE-sealed inference, is
-            wired and switches on once the 0G compute ledger is funded.
+            key on 0G — and now a fourth live layer: TEE-sealed inference on 0G Private Computer
+            (glm-5.1), so even the operator can't read what the model writes back.
           </p>
           <p>
             <strong>Ownership:</strong> Postgres is only a cache; every entry rebuilds
-            byte-identically from 0G.
+            byte-identically from 0G — and your memory mints as an iNFT to your own wallet, un-sellable
+            by construction.
           </p>
           <p>
             <strong>Memory:</strong> a real engine — embed, extract, reconcile (bi-temporal
@@ -858,6 +1067,8 @@
         <nav class="panel toc">
           <h3>The rest of this deck</h3>
           <ol>
+            <li class="part">New since submission</li>
+            <li><a href="#new">What shipped after the write-up</a></li>
             <li class="part">Proofs</li>
             <li><a href="#anon">01 Anonymised before the model</a></li>
             <li><a href="#encrypt">02 Encrypted under your key on 0G</a></li>
@@ -865,6 +1076,9 @@
             <li><a href="#isolation">04 Nobody else can read it</a></li>
             <li><a href="#memory">05 A memory that understands you</a></li>
             <li><a href="#export">06 Take it with you</a></li>
+            <li><a href="#sealed">07 Sealed inference is on</a></li>
+            <li><a href="#own">08 You own it, as a token</a></li>
+            <li><a href="#e2e">09 Logged in, end to end</a></li>
             <li class="part">Depth</li>
             <li><a href="#surfaces">Every surface</a></li>
             <li><a href="#engine">The memory engine</a></li>
@@ -1033,6 +1247,86 @@ Exported the demo Mindfile and re-validated it:
         </div>
       </section>
 
+      <!-- 7 -->
+      <section class="section" id="sealed">
+        <div class="num">PROOF 07 <span class="newbadge">new</span></div>
+        <h3 class="t">Sealed inference is on</h3>
+        <p class="lede">
+          The fourth privacy layer, now live. Reflection runs inside a 0G TEE — 0G Private Computer,
+          model <code>glm-5.1</code> — so even the operator can't read what the model writes back. A
+          stalled enclave falls back to NVIDIA within 15s, and the name-scrub protects that fallback
+          too, so the app never goes dark and the guarantee never weakens.
+        </p>
+        <div class="evidence">
+          <div class="cmd">chatSealed("…a hard day", { maxTokens: 1200 }) · 0G Private Computer</div>
+          <pre>
+POST router-api.0g.ai/v1/chat/completions   (stream: false)
+  sealed .... <span class="token">true</span>          ← served by the 0G TEE, not the NVIDIA fallback
+  model ..... glm-5.1
+  reply ..... "After such a heavy day, I hope you find a soft place to rest tonight."</pre>
+          <div class="verdict">
+            The reflection came back from the 0G enclave — sealed = true, model = glm-5.1
+          </div>
+        </div>
+        <p class="fine">
+          <code>sealedActive()</code> gates the on-Mirror attestation badge, so the "composed where
+          even we can't read it" claim only ever appears when the inference genuinely ran in the
+          enclave — never on the fallback.
+        </p>
+      </section>
+
+      <!-- 8 -->
+      <section class="section" id="own">
+        <div class="num">PROOF 08 <span class="newbadge">new</span></div>
+        <h3 class="t">You own it, as a token</h3>
+        <p class="lede">
+          Your memory isn't only yours to read — it's yours to hold. The Memory iNFT (ERC-7857) mints
+          an encrypted snapshot of who you are to your own wallet; the token records only the 0G
+          storage root and a hash. And it can never be taken from you or sold: every transfer path
+          reverts in the contract.
+        </p>
+        <div class="evidence">
+          <div class="cmd">KnoleMemory (ERC-7857) · 0G Galileo</div>
+          <pre>
+  contract ............... 0xf45C33fa8005734E67F9E99De844D220A18D898E
+  mint(to = your wallet) . Token #3 · encryptedURI = 0g://&lt;root&gt; · metadataHash set
+  approve() .............. <span class="token">revert</span> — not for sale
+  setApprovalForAll() .... <span class="token">revert</span> — not for sale</pre>
+          <div class="verdict">
+            Minted to the user's own wallet on 0G; transfer is impossible by construction
+          </div>
+        </div>
+        <p class="fine">
+          Mint and self-custody need no oracle (the ERC-7857 oracle only re-encrypts on a sale, which
+          Knole deliberately never does). <code>evolve()</code> re-anchors a fresh snapshot as your
+          memory grows, keeping the same token.
+        </p>
+      </section>
+
+      <!-- 9 -->
+      <section class="section" id="e2e">
+        <div class="num">PROOF 09 <span class="newbadge">new</span></div>
+        <h3 class="t">Logged in, end to end, for real</h3>
+        <p class="lede">
+          The roadmap's open item — a full authenticated run — is done, and headlessly. A real
+          disposable inbox receives a real Privy OTP; the embedded wallet really signs to derive the
+          client-side key; two entries are written; then a real on-chain iNFT mint through the UI.
+        </p>
+        <div class="evidence">
+          <div class="cmd">npm run test:e2e — wallet-connect.spec.ts (local, auth-on)</div>
+          <pre>
+  INBOX ............ knoleqa…@web-library.net        (real disposable inbox, mail.tm)
+  OTP .............. ●●●●●●  read from the real email  (Privy email-OTP)
+  GUEST 0 · SIGNOUT 1 .......................... authenticated
+  AGE_AFFIRMED ................................. SB243 gate cleared
+  CLIENT_ENC_ENROLLED .......................... wallet signed → 0G copy sealed to the wallet key
+  INFT_MINTED .................................. on-chain mint via the UI</pre>
+          <div class="verdict">
+            Real inbox → Privy OTP → wallet signature → on-chain mint — headless, no shortcuts
+          </div>
+        </div>
+      </section>
+
       <!-- ════════ EVERY SURFACE ════════ -->
       <div class="band">
         <div class="kicker">DEPTH</div>
@@ -1148,6 +1442,54 @@ Exported the demo Mindfile and re-validated it:
               no 401 hits the console.
             </p>
             <div class="proof">guest-gate.spec.ts (hitStream === false)</div>
+          </div>
+          <div class="feature">
+            <h3>Own your memory <span class="route">/the-index</span></h3>
+            <p>
+              Mint your evolving memory as an ERC-7857 iNFT to your own wallet — encrypted on 0G, and
+              un-sellable: the contract reverts every transfer.
+            </p>
+            <div class="proof">inft.ts · KnoleMemory.sol · wallet-connect.spec.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Seal to your wallet <span class="route">/settings</span></h3>
+            <p>
+              Re-encrypt your 0G copy under a key only your wallet can derive — a password Knole
+              never holds, so not even we can read that copy.
+            </p>
+            <div class="proof">clientEnc.ts · clientCrypto.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Future-Self <span class="route">/future</span></h3>
+            <p>
+              A letter from the person your own entries point toward — grounded in real commitments,
+              not generic advice.
+            </p>
+            <div class="proof">futureself.ts · futureStream.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Wrapped · Year · On-This-Day <span class="route">/wrapped</span></h3>
+            <p>
+              A shareable card of the shape of your year (never the words), the whole arc on one
+              page, and what you carried a year ago.
+            </p>
+            <div class="proof">wrapped.tsx · year.tsx · onThisDay.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Reflection lenses <span class="route">/today</span></h3>
+            <p>
+              Read the same entry four ways — Gentle Mirror, Pattern Finder, Blunt Friend, Decision
+              Coach — through an anti-sycophancy engine that won't just flatter you.
+            </p>
+            <div class="proof">reflect.ts · deep.spec.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Crisis safety + disclosure <span class="route">all surfaces</span></h3>
+            <p>
+              An entry about self-harm pauses the reflection and surfaces real help (988 · 741741 ·
+              911); every surface discloses Knole is an AI, not a person (SB243).
+            </p>
+            <div class="proof">crisis.ts · safety.ts · gaps.spec.ts</div>
           </div>
         </div>
       </section>
@@ -1436,11 +1778,11 @@ Exported the demo Mindfile and re-validated it:
           </div>
         </div>
         <p class="fine">
-          <strong>Pre-mainnet, stated plainly:</strong> the TEE "even we can't read it" path is
-          wired and endpoint-checked but switches on only once the 0G compute ledger is funded —
-          until then it falls back to NVIDIA, and the anonymise scrub protects that fallback too.
-          The rate limiter is in-memory; the logged-in path is proven with Privy test creds, not the
-          default; mainnet waits on an external audit. Full detail in <code>SECURITY.md</code> and
+          <strong>Pre-mainnet, stated plainly:</strong> the TEE "even we can't read it" path is on
+          (0G Private Computer, <code>glm-5.1</code>); a stalled enclave falls back to NVIDIA within
+          15s, and the anonymise scrub protects that fallback too. The logged-in run is proven
+          headlessly with a real inbox + Privy OTP. The rate limiter is in-memory; mainnet waits on
+          an external audit and KMS-backed key custody. Full detail in <code>SECURITY.md</code> and
           <code>docs/PROOF.md</code>.
         </p>
       </section>
@@ -1522,6 +1864,13 @@ Exported the demo Mindfile and re-validated it:
             >
           </div>
           <div class="idx-row">
+            <span class="k"><span class="hex" aria-hidden="true">⬡</span> Memory iNFT contract</span
+            ><span class="v"
+              >0xf45C33fa8005734E67F9E99De844D220A18D898E — KnoleMemory (ERC-7857); mints your memory
+              snapshot to your own wallet, and reverts every transfer (not for sale)</span
+            >
+          </div>
+          <div class="idx-row">
             <span class="k">Explorer</span
             ><span class="v"
               ><a href="https://chainscan-galileo.0g.ai" target="_blank" rel="noopener"
@@ -1534,9 +1883,9 @@ Exported the demo Mindfile and re-validated it:
       </section>
 
       <footer>
-        Generated 2026-06-21 · every screenshot and the GIF captured live from
-        <a href="https://knole-app.vercel.app">knole-app.vercel.app</a> · every command re-runnable
-        from the repo · eval gate, on-chain roots, and isolation re-verified.
+        Generated 2026-07-01 · every screenshot captured live from
+        <a href="https://knole-app.vercel.app">knole-app.vercel.app</a> · sealed inference, the iNFT
+        mint, and the real-wallet run re-verified this pass · every command re-runnable from the repo.
         <span class="tagline">We can't read it, can't reset it, can't take it away.</span>
       </footer>
     </div>
