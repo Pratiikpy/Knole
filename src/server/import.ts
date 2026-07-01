@@ -2,23 +2,13 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed } from "./embed";
 import { extractMemories } from "./engine";
+import { splitHistory } from "../lib/splitHistory";
+
+// Re-exported for back-compat; the pure splitter now lives in lib so onboarding can import it
+// client-side (for a live passage count) without pulling the server import pipeline into the bundle.
+export { splitHistory };
 
 const { entries, imports } = schema;
-
-/** Split pasted history into the user's own substantive passages. */
-export function splitHistory(text: string): string[] {
-  const cleaned = text.replace(/\r/g, "");
-
-  // ChatGPT-style export: keep only the user's turns.
-  const parts = cleaned.split(/^(You said:|ChatGPT said:|Assistant:|User:)\s*/im);
-  const userTurns: string[] = [];
-  for (let i = 1; i < parts.length; i += 2) {
-    if (/^(You said:|User:)/i.test(parts[i])) userTurns.push((parts[i + 1] ?? "").trim());
-  }
-
-  const chunks = userTurns.length ? userTurns : cleaned.split(/\n\s*\n/).map((s) => s.trim());
-  return chunks.filter((s) => s.length >= 40).slice(0, 60);
-}
 
 /**
  * The "refugee wedge": import a user's existing AI/journal history so Knole starts

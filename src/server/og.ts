@@ -3,11 +3,35 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { MemData, Indexer } from "@0gfoundation/0g-ts-sdk";
 import { ethers } from "ethers";
 
-// 0G Galileo testnet is the storage transport. We do our own AES-256-GCM
-// (authenticated) encryption before upload, so a tampered blob fails to decrypt
-// loudly — the SDK's built-in AES is confidentiality-only, with no integrity.
-const RPC = process.env.OG_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
-const INDEXER_RPC = process.env.OG_STORAGE_INDEXER ?? "https://indexer-storage-testnet-turbo.0g.ai";
+// 0G is the storage transport. We do our own AES-256-GCM (authenticated) encryption before upload,
+// so a tampered blob fails to decrypt loudly — the SDK's built-in AES is confidentiality-only.
+//
+// Network is one switch: OG_NETWORK=mainnet selects the Aristotle mainnet config (verified values),
+// else the Galileo testnet (the safe default). Any single endpoint can still be overridden by its own
+// env var. Chain IDs are NOT hardcoded into calls — verifyChain() reads eth_chainId at runtime and
+// warns on mismatch (the testnet has shown 16601/16602 in different docs).
+const NETWORKS = {
+  mainnet: {
+    rpc: "https://evmrpc.0g.ai",
+    indexer: "https://indexer-storage-turbo.0g.ai",
+    chainId: 16661,
+    flow: "0x62D4144dB0F0a6fBBaeb6296c785C71B3D57C526",
+  },
+  testnet: {
+    rpc: "https://evmrpc-testnet.0g.ai",
+    indexer: "https://indexer-storage-testnet-turbo.0g.ai",
+    chainId: 16602, // Galileo — updated after the testnet reset (was 16601)
+    flow: "",
+  },
+} as const;
+
+export const OG_NET =
+  (process.env.OG_NETWORK ?? "testnet").toLowerCase() === "mainnet"
+    ? NETWORKS.mainnet
+    : NETWORKS.testnet;
+
+const RPC = process.env.OG_RPC_URL ?? OG_NET.rpc;
+const INDEXER_RPC = process.env.OG_STORAGE_INDEXER ?? OG_NET.indexer;
 const PK = process.env.EVM_PRIVATE_KEY ?? "";
 
 function signer(): ethers.Wallet {
@@ -15,6 +39,29 @@ function signer(): ethers.Wallet {
   return new ethers.Wallet(PK, new ethers.JsonRpcProvider(RPC));
 }
 const indexer = () => new Indexer(INDEXER_RPC);
+
+// Verify, once, that the RPC actually serves the network we think it does — a misconfigured RPC
+// (a testnet endpoint with OG_NETWORK=mainnet, or vice-versa) would silently write to the wrong
+// chain. Warn rather than throw, so a transient RPC hiccup can't take the app down.
+let chainChecked = false;
+export async function verifyChain(): Promise<{ ok: boolean; chainId: number } | null> {
+  if (chainChecked) return null;
+  chainChecked = true;
+  try {
+    const net = await new ethers.JsonRpcProvider(RPC).getNetwork();
+    const id = Number(net.chainId);
+    if (id !== OG_NET.chainId) {
+      console.warn(
+        `0G chain mismatch: RPC ${RPC} reports chainId ${id}, expected ${OG_NET.chainId}. Check OG_NETWORK / OG_RPC_URL.`,
+      );
+      return { ok: false, chainId: id };
+    }
+    return { ok: true, chainId: id };
+  } catch (e) {
+    console.warn("0G chain verify skipped:", (e as Error).message);
+    return null;
+  }
+}
 
 // Bound a 0G SDK call so a hung indexer/RPC can't stall the request forever.
 // (The SDK exposes no AbortSignal, so we race it against a timeout.)
@@ -75,6 +122,7 @@ export async function putData(
   data: string | Uint8Array,
   opts?: { key?: Uint8Array },
 ): Promise<PutResult> {
+  void verifyChain(); // once-guarded, non-blocking: warn early if the RPC is on the wrong chain
   const plain = typeof data === "string" ? new TextEncoder().encode(data) : data;
   const bytes = opts?.key ? gcmEncrypt(opts.key, plain) : plain;
   const mem = new MemData(bytes);

@@ -27,20 +27,31 @@ export async function restoreEntryFromChain(userId: string, kvRef: string): Prom
  * Rebuild every on-chain entry's text purely from 0G — the proof that the
  * Postgres copy is only a cache. Returns counts; restores text in place.
  */
-export async function restoreAllFromChain(
-  userId: string,
-): Promise<{ total: number; restored: number; matched: number; failed: number }> {
+export async function restoreAllFromChain(userId: string): Promise<{
+  total: number;
+  restored: number;
+  matched: number;
+  failed: number;
+  clientEncrypted: number;
+}> {
   const rows = (await db.execute(sql`
-    SELECT id, kv_ref, text FROM entries WHERE user_id = ${userId} AND kv_ref IS NOT NULL
+    SELECT id, kv_ref, text, enc_scheme FROM entries WHERE user_id = ${userId} AND kv_ref IS NOT NULL
   `)) as unknown as Record<string, unknown>[];
 
   let restored = 0;
   let matched = 0;
   let failed = 0;
+  let clientEncrypted = 0;
   for (const r of rows) {
     const id = String(r.id);
     const kvRef = String(r.kv_ref);
     const before = String(r.text);
+    // Client-encrypted blobs are sealed to the user's wallet — the server can't (and shouldn't) read
+    // them here. Count as recoverable-by-you, not as a failure of the proof.
+    if (r.enc_scheme === "client") {
+      clientEncrypted++;
+      continue;
+    }
     try {
       const payload = await restoreEntryFromChain(userId, kvRef);
       await db.update(entries).set({ text: payload.text }).where(eq(entries.id, id));
@@ -57,7 +68,7 @@ export async function restoreAllFromChain(
       );
     }
   }
-  return { total: rows.length, restored, matched, failed };
+  return { total: rows.length, restored, matched, failed, clientEncrypted };
 }
 
 /** Read-only ownership summary for the UI: how much of the user's life is on 0G. */

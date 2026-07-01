@@ -3,6 +3,11 @@ import { db } from "../db";
 import { runDreaming } from "./dreaming";
 import { storeEntryOn0G } from "./engine";
 import { anchorDue } from "./anchor";
+import { runWeeklyDigests } from "./digest";
+import { runProactiveNudges } from "./proactivity";
+import { scoreEntryValence } from "./valence";
+import { backfillSignals, computeOmissionRadar, usersDueForRadar } from "./omission";
+import { consolidateDue } from "./consolidate";
 
 let ticking = false;
 
@@ -16,6 +21,12 @@ export async function tick(): Promise<{
   pruned?: number;
   backfilled?: number;
   anchored?: number;
+  digested?: number;
+  nudged?: number;
+  valenced?: number;
+  signalsBackfilled?: number;
+  radared?: number;
+  consolidated?: number;
   skipped?: boolean;
 }> {
   if (ticking) return { users: 0, dreamed: 0, skipped: true };
@@ -76,7 +87,82 @@ export async function tick(): Promise<{
     } catch (e) {
       console.error("anchor step failed:", (e as Error).message);
     }
-    return { users: rows.length, dreamed, pruned, backfilled, anchored };
+
+    // Hierarchical consolidation — roll up the most-recent completed week/month/year per due user.
+    let consolidated = 0;
+    try {
+      consolidated =
+        (await consolidateDue("weekly", { start, budgetMs })) +
+        (await consolidateDue("monthly", { start, budgetMs })) +
+        (await consolidateDue("yearly", { start, budgetMs }));
+    } catch (e) {
+      console.error("consolidation step failed:", (e as Error).message);
+    }
+
+    // The outbound retention channel: deliver any due weekly digests (email + push). A no-op until a
+    // transport (RESEND_API_KEY / VAPID keys) is configured; idempotent + quiet-hours-aware, so it's
+    // safe to run every tick and self-paces to ~weekly per user.
+    let digested = 0;
+    try {
+      digested = (await runWeeklyDigests({ start, budgetMs })).sent;
+    } catch (e) {
+      console.error("weekly digest step failed:", (e as Error).message);
+    }
+
+    // Proactive memory-grounded push nudges — the Inner-Thoughts cadence gate decides who's due.
+    let nudged = 0;
+    try {
+      nudged = (await runProactiveNudges({ start, budgetMs })).sent;
+    } catch (e) {
+      console.error("proactive nudge step failed:", (e as Error).message);
+    }
+
+    // Score any entry without a mood valence yet — bounded + self-healing like the 0G backfill, so
+    // historical + imported entries all get a score over a few nights.
+    let valenced = 0;
+    try {
+      valenced = await backfillValence({ start, budgetMs });
+    } catch (e) {
+      console.error("valence backfill failed:", (e as Error).message);
+    }
+
+    // Tag any entry without per-entry signals yet — feeds the Omission Radar's absence statistic.
+    let signalsBackfilled = 0;
+    try {
+      signalsBackfilled = await backfillSignals({ start, budgetMs });
+    } catch (e) {
+      console.error("signals backfill failed:", (e as Error).message);
+    }
+
+    // The Omission Radar — one absence read per due user (history-gated, idempotent once/day/user).
+    let radared = 0;
+    try {
+      const due = await usersDueForRadar();
+      for (const userId of due) {
+        if (Date.now() - start > budgetMs) break;
+        try {
+          const radar = await computeOmissionRadar(userId);
+          if (radar) radared++;
+        } catch (e) {
+          console.error("omission radar failed for", userId, (e as Error).message);
+        }
+      }
+    } catch (e) {
+      console.error("omission radar step failed:", (e as Error).message);
+    }
+    return {
+      users: rows.length,
+      dreamed,
+      pruned,
+      backfilled,
+      anchored,
+      digested,
+      nudged,
+      valenced,
+      signalsBackfilled,
+      radared,
+      consolidated,
+    };
   } finally {
     ticking = false;
   }
@@ -114,6 +200,34 @@ export async function backfill0G(
 }
 
 /**
+ * Score the valence of any entry without one yet (a path missed it, or it predates the mood feature /
+ * arrived via import). Bounded by the time budget like backfill0G, so it self-heals over ticks;
+ * per-entry errors are isolated. Returns how many were scored.
+ */
+export async function backfillValence(
+  opts: { start?: number; budgetMs?: number; limit?: number } = {},
+): Promise<number> {
+  const { start = Date.now(), budgetMs = Infinity, limit = 100 } = opts;
+  const rows = (await db.execute(sql`
+    SELECT id, user_id, text FROM entries
+    WHERE valence IS NULL
+    ORDER BY created_at ASC
+    LIMIT ${limit}
+  `)) as unknown as Record<string, unknown>[];
+  let scored = 0;
+  for (const r of rows) {
+    if (Date.now() - start > budgetMs) break;
+    try {
+      await scoreEntryValence(String(r.user_id), String(r.id), String(r.text));
+      scored++;
+    } catch (e) {
+      console.error(`backfillValence: entry=${r.id} failed:`, (e as Error).message);
+    }
+  }
+  return scored;
+}
+
+/**
  * Drop superseded cache artifacts (mirror / nudge / resurface) — only the latest per
  * user+thread is ever read, so the rest are dead weight. Dreams are kept as a history.
  * Returns the number removed.
@@ -121,11 +235,11 @@ export async function backfill0G(
 export async function pruneStaleCaches(): Promise<number> {
   const removed = (await db.execute(sql`
     DELETE FROM reflection_artifacts
-    WHERE thread_key IN ('mirror', 'nudge', 'resurface')
+    WHERE thread_key IN ('mirror', 'nudge', 'resurface', 'omission')
       AND id NOT IN (
         SELECT DISTINCT ON (user_id, thread_key) id
         FROM reflection_artifacts
-        WHERE thread_key IN ('mirror', 'nudge', 'resurface')
+        WHERE thread_key IN ('mirror', 'nudge', 'resurface', 'omission')
         ORDER BY user_id, thread_key, created_at DESC
       )
     RETURNING id

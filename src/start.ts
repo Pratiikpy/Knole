@@ -6,6 +6,8 @@ import { handleExtensionSave } from "./server/extensionSave";
 import { handleJournalStream } from "./server/journalStream";
 import { handleChatStream } from "./server/chatStream";
 import { handleAskStream } from "./server/askStream";
+import { handleFutureStream } from "./server/futureStream";
+import { handleChatReflectStream } from "./server/chatReflectStream";
 import { handleStripeWebhookRequest } from "./server/stripeWebhook";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
@@ -100,7 +102,11 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
         ? handleChatStream
         : path === "/ask/stream"
           ? handleAskStream
-          : null;
+          : path === "/future/stream"
+            ? handleFutureStream
+            : path === "/chat/reflect-stream"
+              ? handleChatReflectStream
+              : null;
   if (!handler) return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
   return handler(request);

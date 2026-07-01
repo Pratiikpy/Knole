@@ -1,4 +1,7 @@
 import { saveEntry, saveReply, extractMemories, storeEntryOn0G } from "./engine";
+import { scoreEntryValence } from "./valence";
+import { storeSignals } from "./omission";
+import { clientEncEnabledFor } from "./clientEnc";
 import { requireUserId } from "./session";
 import { background } from "./background";
 import { enforceRate } from "./rateLimit";
@@ -9,6 +12,7 @@ export type StreamPrepared = {
   qVec: number[];
   gen: AsyncGenerator<string, unknown, void>; // de-anonymised reply deltas
   headers?: Record<string, string>; // extra response headers (e.g. recalled memories)
+  skipExtract?: boolean; // crisis intercept: save the entry, but never derive recallable data from it
 };
 
 type Prepare = (
@@ -58,23 +62,29 @@ export async function handleStreamingReply(
 
   let prepared: StreamPrepared;
   let entryId: string;
+  let clientEnc = false;
   try {
     const p = await prepare(userId, rawBody);
     if ("error" in p) return txt(p.error, p.msg);
     prepared = p;
     const row = await saveEntry(userId, prepared.entryText, prepared.qVec, prepared.entryKind);
     entryId = row.id;
-    // Persist the canonical entry on 0G in the background — don't block the reply.
-    background(
-      storeEntryOn0G(userId, entryId, prepared.entryText),
-      `0G store entry=${entryId} user=${userId}`,
-    );
+    // When client-side encryption is on, the SERVER must not encrypt the 0G copy — the client uploads
+    // an already-encrypted blob (keyed to its wallet) via the sweep. Otherwise persist on 0G in the
+    // background — don't block the reply.
+    clientEnc = await clientEncEnabledFor(userId);
+    if (!clientEnc) {
+      background(
+        storeEntryOn0G(userId, entryId, prepared.entryText),
+        `0G store entry=${entryId} user=${userId}`,
+      );
+    }
   } catch (e) {
     console.error(`${rateKey}-stream setup failed:`, (e as Error).message);
     return txt(500, "couldn't start");
   }
 
-  const { entryText, gen, headers } = prepared;
+  const { entryText, gen, headers, skipExtract } = prepared;
   const enc = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -88,7 +98,14 @@ export async function handleStreamingReply(
         // through the write; extraction itself rides background()/waitUntil.
         if (full) {
           await saveReply(entryId, full, true);
-          background(extractMemories(userId, entryId, entryText), "extractMemories");
+          // Crisis intercept: the entry is saved (it's the user's private journal, and theirs), but a
+          // self-harm disclosure must NEVER become derived data that could resurface — no recallable
+          // memory, no mood-graph "representative entry", no signal topics.
+          if (!skipExtract) {
+            background(extractMemories(userId, entryId, entryText), "extractMemories");
+            background(scoreEntryValence(userId, entryId, entryText), "scoreValence");
+            background(storeSignals(userId, entryId, entryText, new Date()), "storeSignals");
+          }
         }
       } catch (e) {
         console.error(`${rateKey}-stream reply failed:`, (e as Error).message);
@@ -106,6 +123,8 @@ export async function handleStreamingReply(
       "content-type": "text/plain; charset=utf-8",
       "cache-control": "no-cache, no-transform",
       "x-content-type-options": "nosniff",
+      "x-knole-entry-id": entryId,
+      "x-knole-og": clientEnc ? "client" : "server",
       ...(headers ?? {}),
     },
   });

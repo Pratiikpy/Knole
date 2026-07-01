@@ -14,6 +14,9 @@ import {
   getSettings,
   updateSettings,
   getMemoryProvenance,
+  markMirrorRevealed,
+  futureSelfReadiness,
+  setAgeAffirmed,
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
 import { warmNER } from "./anonymise";
@@ -28,11 +31,28 @@ import {
 import { enforceRate } from "./rateLimit";
 import { background } from "./background";
 import { askMyLife } from "./ask";
-import { chatReply } from "./chat";
-import { buildMirror } from "./mirror";
+import { chatReply, composeEntry } from "./chat";
+import { buildMirror, mirrorStatus } from "./mirror";
+import { sealedActive } from "./sealed";
+import { pushConfigured, vapidPublicKey } from "./notify";
+import { savePushSubscription } from "./digest";
+import { moodTrajectory } from "./valence";
+import { onThisDay } from "./onThisDay";
+import { inftConfigured, inftStatus, mintMemoryINFT } from "./inft";
+import { storeSignals, latestRadar } from "./omission";
+import { buildYearInOnePage } from "./consolidate";
+import { detectCrisis, CRISIS_REPLY } from "./safety";
+import {
+  enrollClientEnc,
+  disableClientEnc,
+  clientEncStatus,
+  storeEncryptedOn0G,
+  listPendingOg,
+  fetchEncryptedBlob,
+} from "./clientEnc";
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { latestAnchor } from "./anchor";
-import { generateNudge } from "./proactivity";
+import { generateNudge, hourInTz } from "./proactivity";
 import { resurface } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -193,6 +213,142 @@ export const mirrorFn = createServerFn({ method: "GET" }).handler(async () => {
   return buildMirror(userId);
 });
 
+export const mirrorStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return mirrorStatus(userId);
+});
+
+export const markMirrorSeenFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await currentUserId();
+  await markMirrorRevealed(userId);
+  return { ok: true };
+});
+
+export const futureReadyFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  const r = await futureSelfReadiness(userId);
+  return { ...r, minMemories: 5, minEntries: 7, ready: r.memoryCount >= 5 || r.entryCount >= 7 };
+});
+
+// Conversational capture: compose a whole chat thread into ONE journal entry — the single save
+// (one entry, one extraction). requireUserId so demo guests 401 into the sign-in line.
+export const composeEntryFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      history: z
+        .array(
+          z.object({
+            role: z.enum(["user", "assistant"]),
+            content: z.string().max(4000),
+          }),
+        )
+        .min(1)
+        .max(40),
+    }),
+  )
+  .handler(async ({ data }) => {
+    enforceRate("compose", 20, 60_000);
+    const userId = await requireUserId();
+    const c = await composeEntry(data.history);
+    const qVec = await embed(c.body);
+    const row = await saveEntry(userId, c.body, qVec, "journal", { title: c.title, tags: c.tags });
+    background(extractMemories(userId, row.id, c.body), "extractMemories");
+    background(storeSignals(userId, row.id, c.body, row.createdAt), "storeSignals");
+    background(storeEntryOn0G(userId, row.id, c.body), `0G store entry=${row.id}`);
+    return { entryId: row.id, title: c.title, body: c.body, tags: c.tags, mood: c.mood };
+  });
+
+export const omissionRadarFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return latestRadar(userId);
+});
+
+export const yearInOnePageFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return buildYearInOnePage(userId);
+});
+
+// The friction floor (retention #1): a one-tap nightly check-in keeps users alive long enough to
+// reach the 14-day reveal. Saves a short entry with a user-SELECTED mood, feeds the patterns in the
+// background, and shows NO blocking reflection — the mirror runs on its own cadence, never a gauntlet.
+const CHECKIN_MOODS = {
+  heavy: { v: -0.8, label: "heavy" },
+  low: { v: -0.4, label: "low" },
+  okay: { v: 0, label: "okay" },
+  good: { v: 0.45, label: "good" },
+  bright: { v: 0.85, label: "bright" },
+} as const;
+
+export const quickCheckInFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      mood: z.enum(["heavy", "low", "okay", "good", "bright"]),
+      note: z.string().max(280).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    enforceRate("checkin", 30, 60_000);
+    const userId = await requireUserId();
+    const m = CHECKIN_MOODS[data.mood];
+    const note = (data.note ?? "").trim();
+    const text = note || `Checked in — feeling ${m.label} today.`;
+    const qVec = await embed(text);
+    const row = await saveEntry(userId, text, qVec, "journal", {
+      mood: m.label,
+      valence: m.v,
+      valenceLabel: m.label,
+    });
+    background(extractMemories(userId, row.id, text), "extractMemories");
+    background(storeSignals(userId, row.id, text, row.createdAt), "storeSignals");
+    background(storeEntryOn0G(userId, row.id, text), `0G store entry=${row.id}`);
+    return { ok: true, mood: m.label };
+  });
+
+// The iNFT ownership layer — mint your evolving memory as a token you own (encrypted on 0G, not for
+// sale). Configured reports whether a KnoleMemory contract is deployed; token is the user's mint if any.
+export const inftStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  const token = userId ? await inftStatus(userId) : null;
+  return { configured: inftConfigured(), token };
+});
+
+export const mintMemoryINFTFn = createServerFn({ method: "POST" }).handler(async () => {
+  enforceRate("inft-mint", 5, 60_000);
+  const userId = await requireUserId();
+  return mintMemoryINFT(userId);
+});
+
+export const moodTrajectoryFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return moodTrajectory(userId);
+});
+
+// Whether 0G Sealed Inference (TEE) is actually serving inference — drives the honest "sealed" badge,
+// which therefore never appears unless the enclave path is live (false until the ledger is funded).
+export const sealedStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  return { active: sealedActive() };
+});
+
+// Web-push enrollment: the client needs the VAPID public key to create a subscription, and whether
+// push is even configured (so Settings can hide the control until the VAPID keys are supplied).
+export const pushConfigFn = createServerFn({ method: "GET" }).handler(async () => {
+  return { configured: pushConfigured(), publicKey: vapidPublicKey() };
+});
+
+export const savePushSubscriptionFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      endpoint: z.string().min(1).max(2000),
+      p256dh: z.string().min(1).max(500),
+      auth: z.string().min(1).max(500),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    await savePushSubscription(userId, data);
+    return { ok: true };
+  });
+
 export const ownershipFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
   return { ...(await ownershipSummary(userId)), anchor: await latestAnchor(userId) };
@@ -249,19 +405,6 @@ export const saveFn = createServerFn({ method: "POST" })
     return { ok: true, entryId: entryRow.id };
   });
 
-function hourInTz(tz: string): number {
-  try {
-    const h = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour: "numeric",
-      hour12: false,
-    }).format(new Date());
-    return parseInt(h, 10) % 24;
-  } catch {
-    return new Date().getUTCHours();
-  }
-}
-
 export const nudgeFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
   const settings = await getSettings(userId);
@@ -272,6 +415,11 @@ export const nudgeFn = createServerFn({ method: "GET" }).handler(async () => {
 export const resurfaceFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
   return resurface(userId);
+});
+
+export const onThisDayFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return onThisDay(userId);
 });
 
 export const respondFn = createServerFn({ method: "POST" })
@@ -308,23 +456,78 @@ export const onboardFn = createServerFn({ method: "POST" })
     const text = data.thing
       ? `${data.opener}\n(Quietly on my mind this week: ${data.thing})`
       : data.opener;
+    const crisis = detectCrisis(text).crisis;
     // The magical-first-5 (M6) delivers the first reflection BEFORE signup. A guest (no session) gets
     // it EPHEMERALLY — reflected on their own words, nothing written — so no auth is required (there's
     // no write to gate). Once signed in, the same reflection persists (entry + reply + memory + 0G).
     const userId = await getSessionUserId();
     if (!userId) {
-      return { reflection: await reflect(text), persisted: false };
+      // SB243: a crisis disclosure gets the referral, never a mirror.
+      return crisis
+        ? { reflection: CRISIS_REPLY, persisted: false, crisis: true }
+        : { reflection: await reflect(text), persisted: false, crisis: false };
     }
     await updateSettings(userId, { voice: data.voice });
     const entryRow = await saveEntry(userId, text, undefined, "journal");
-    const reflection = await reflect(text);
+    const reflection = crisis ? CRISIS_REPLY : await reflect(text);
     await saveReply(entryRow.id, reflection, true);
-    background(extractMemories(userId, entryRow.id, text), "extractMemories");
+    // The entry is saved + pushed to 0G (it's theirs), but a crisis disclosure never becomes a memory.
+    if (!crisis) background(extractMemories(userId, entryRow.id, text), "extractMemories");
     background(
       storeEntryOn0G(userId, entryRow.id, text),
       `0G store entry=${entryRow.id} user=${userId}`,
     );
-    return { reflection, persisted: true };
+    return { reflection, persisted: true, crisis };
+  });
+
+export const affirmAgeFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  await setAgeAffirmed(userId);
+  return { ok: true };
+});
+
+// ── Client-side encryption: the server stores only ciphertext it cannot decrypt (forward-only). ──
+export const clientEncStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return clientEncStatus(userId);
+});
+
+export const enrollClientEncFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      address: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+      canaryB64: z.string().max(2000),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    await enrollClientEnc(userId, data.address, data.canaryB64);
+    return { ok: true };
+  });
+
+export const disableClientEncFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  await disableClientEnc(userId);
+  return { ok: true };
+});
+
+export const storeEncryptedOn0GFn = createServerFn({ method: "POST" })
+  .validator(z.object({ entryId: z.string().uuid(), blobB64: z.string().max(2_000_000) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    return storeEncryptedOn0G(userId, data.entryId, data.blobB64);
+  });
+
+export const listPendingOgFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return listPendingOg(userId);
+});
+
+export const fetchEncryptedBlobFn = createServerFn({ method: "POST" })
+  .validator(z.object({ root: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }))
+  .handler(async ({ data }) => {
+    const userId = await currentUserId();
+    return fetchEncryptedBlob(userId, data.root);
   });
 
 export const importFn = createServerFn({ method: "POST" })

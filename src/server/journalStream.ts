@@ -1,7 +1,8 @@
-import { reflectStream } from "./reflect";
+import { reflectStream, LENSES, type Lens } from "./reflect";
 import { embed } from "./embed";
 import { retrieveMemories } from "./engine";
 import { handleStreamingReply } from "./streamReply";
+import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
 
 /**
  * Streaming journal endpoint (POST /journal/stream). Mirrors journalFn but streams the reflection
@@ -14,17 +15,35 @@ export function handleJournalStream(request: Request): Promise<Response> {
     if (entry.length < 1 || entry.length > 20000) {
       return { error: 400, msg: "entry must be 1–20000 chars" };
     }
+    // SB243 crisis intercept — before any reflection. Save the entry (it's theirs) but hand off to
+    // real help instead of mirroring, and never derive recallable data from it (skipExtract).
+    if (detectCrisis(entry).crisis) {
+      return {
+        entryText: entry,
+        entryKind: "journal" as const,
+        qVec: await embed(entry),
+        gen: oneShot(CRISIS_REPLY),
+        skipExtract: true,
+        headers: { "x-knole-crisis": "1" } as Record<string, string>,
+      };
+    }
+    const lensRaw = String((body as { lens?: string }).lens ?? "gentle");
+    const lens: Lens = lensRaw in LENSES ? (lensRaw as Lens) : "gentle";
     const qVec = await embed(entry);
     const recalled = await retrieveMemories(userId, qVec, 6, entry);
     return {
       entryText: entry,
       entryKind: "journal" as const,
       qVec,
-      gen: reflectStream(entry, recalled),
+      gen: reflectStream(entry, recalled, lens),
       headers: {
         "x-knole-recalled": encodeURIComponent(
           JSON.stringify(
-            recalled.map((r) => ({ content: r.content, quote: r.sourceQuote ?? null })),
+            recalled.map((r) => ({
+              content: r.content,
+              quote: r.sourceQuote ?? null,
+              when: r.createdAt,
+            })),
           ),
         ),
       },
