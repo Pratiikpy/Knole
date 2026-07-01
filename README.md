@@ -1,142 +1,131 @@
 <div align="center">
 
-<img src="public/og.png" alt="Knole — a private AI that actually understands you" width="680" />
+<img src="public/og.png" alt="Knole — a mirror, not an assistant" width="820" />
 
-<p><em>A mirror, not an assistant. You write; it reflects, remembers, and — only as much as you allow — reaches back.</em></p>
+<h3>A private AI journal that acts as a mirror, not an assistant</h3>
 
-[![Live demo](https://img.shields.io/badge/Live_demo-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole-app.vercel.app) [![Watch the demo](https://img.shields.io/badge/Watch_the_demo-2_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/rqOQbSuONPg) [![Proof deck](https://img.shields.io/badge/Proof_deck-see_every_claim-7c6545?style=for-the-badge)](https://knole-app.vercel.app/proof-deck.html) [![Project overview](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
+<p><em>Anonymized before inference · read inside a 0G TEE · encrypted under your key · recoverable from 0G · minted to your wallet</em></p>
 
-<sub>explore the seeded demo · or sign in to start your own</sub>
+[![Live demo](https://img.shields.io/badge/Live-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole-app.vercel.app) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/rqOQbSuONPg) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole-app.vercel.app/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
 
-![Evals](https://img.shields.io/badge/evals-21%2F21%20passing-2ea043?style=flat-square) ![Sealed inference](https://img.shields.io/badge/sealed%20inference-on%20(0G%20TEE)-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT%20(ERC--7857)-7c6f5b?style=flat-square) ![0G](https://img.shields.io/badge/0G-Galileo%20testnet-7c6f5b?style=flat-square) ![Encryption](https://img.shields.io/badge/at%20rest-AES--256--GCM-7c6f5b?style=flat-square) ![React](https://img.shields.io/badge/React-19-7c6f5b?style=flat-square) ![TanStack Start](https://img.shields.io/badge/TanStack-Start-7c6f5b?style=flat-square)
+![0G](https://img.shields.io/badge/0G-Galileo_testnet-7c6f5b?style=flat-square) ![Sealed inference](https://img.shields.io/badge/sealed_inference-on_(0G_TEE)-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT_ERC--7857-7c6f5b?style=flat-square) ![Evals](https://img.shields.io/badge/evals-21%2F21-2ea043?style=flat-square) [![CI](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml/badge.svg)](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml) ![License](https://img.shields.io/badge/license-MIT-7c6f5b?style=flat-square)
 
 </div>
 
-A private AI that **remembers your life**, helps you **see your own patterns**, and that **you own**: your entries live encrypted on [0G](https://0g.ai) under your key, the reflections that read them run in a **TEE so even we can't read them**, and your evolving memory mints as an **iNFT to your own wallet** — never for sale.
-
-**See the whole product in two minutes** — [watch the demo](https://youtu.be/rqOQbSuONPg). Then don't take the claims on faith: the [**proof deck**](https://knole-app.vercel.app/proof-deck.html) walks the flow in screenshots and [`docs/PROOF.md`](docs/PROOF.md) backs every claim with the exact command, eval, spec, or recorded result — both state plainly what is pre-mainnet.
+> **📖 Start here → [the full product overview on Notion](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)** — the complete story: visuals, architecture, PMF research, the privacy model, and the build journey. **If you open one link, make it this one.** Everything below is a summary.
 
 <div align="center">
 
-|  |  |  |
-| :---: | :---: | :---: |
-| <img src="public/proof-shots/today.webp" width="260" /><br/><sub>**Today** — a reflection, from your own past</sub> | <img src="public/proof-shots/mirror.webp" width="260" /><br/><sub>**The Mirror** — a day-15 synthesis</sub> | <img src="public/proof-shots/crisis.webp" width="260" /><br/><sub>**Crisis-safe** — real help, not a chatbot</sub> |
-| <img src="public/proof-shots/inft-card.webp" width="260" /><br/><sub>**Own it** — minted to your wallet, not for sale</sub> | <img src="public/proof-shots/wrapped-card.webp" width="260" /><br/><sub>**Private Wrapped** — the shape, never the words</sub> | <img src="public/proof-shots/night.webp" width="260" /><br/><sub>**Night** — a full dark theme</sub> |
+| | | |
+|:---:|:---:|:---:|
+| <img src="public/proof-shots/today.webp" width="260"/><br/><sub>**Today** — a reflection from your past</sub> | <img src="public/proof-shots/mirror.webp" width="260"/><br/><sub>**The 14-Day Mirror** — patterns, dated</sub> | <img src="public/proof-shots/ask-receipts.webp" width="260"/><br/><sub>**Ask My Life** — quoted with receipts</sub> |
+| <img src="public/proof-shots/memory-index.webp" width="260"/><br/><sub>**The Index** — editable, ⬡ 0G-stamped</sub> | <img src="public/proof-shots/crisis.webp" width="260"/><br/><sub>**Crisis-safe** — real help, not a bot</sub> | <img src="public/proof-shots/night.webp" width="260"/><br/><sub>**Night** — a full dark theme</sub> |
 
 </div>
 
-## What it does
+---
 
-- **Today** — a daily journaling loop. Write an entry, get a real reflection that quietly weaves in something you said before — through one of four **lenses** (Gentle Mirror / Pattern Finder / Blunt Friend / Decision Coach) and an anti-sycophancy engine that won't just flatter you. A one-tap **check-in** keeps the streak on the days you can't write.
-- **Chat** — think out loud; it holds the conversation and your history, and can turn a thread into a real entry.
-- **Ask My Life** — ask a question about your own past; it answers grounded in your entries and quotes you back to yourself (RAG, with receipts).
-- **The Mirror** _(the flagship)_ — a private letter from yourself. For your first two weeks it quietly builds — a streak and a countdown; then on **day 15 it reveals**: patterns that each quote a real entry by date, the contradiction you live in, the thing you keep avoiding. Pure synthesis of your own words — no advice, no judgement.
-- **Future-Self** — a letter from the person your own entries are pointing toward, grounded in real commitments.
-- **The Index** — every memory Knole holds, with its source quote and a `⬡ 0G` badge when it's anchored on-chain. Pin, edit, or forget any of it; every change is logged append-only. **Mint it as an iNFT** to your own wallet.
-- **Remembered · On-This-Day** — Knole resurfaces an earlier entry "at the moment it matters," and you can answer your past self.
-- **Wrapped · Year** — a shareable card of the _shape_ of your year (never the words), and the whole arc on one page.
-- **Settings** — the consent contract: a downward-only proactivity dial, quiet hours, and Knole's voice. A live **"Your data on 0G"** panel that decrypts an entry straight from chain, and a **"seal to your wallet"** toggle for client-side encryption.
-- **Safety** — an entry about self-harm pauses the reflection and surfaces real help (988 · 741741 · 911); every surface discloses Knole is an AI, not a person (SB243).
+## The Problem
 
-## Four privacy layers
+AI has quietly become where people process their decisions, relationships, and emotions. Yet every AI journal asks you to trust a company with your most private writing — and that trust is a **policy, not a mechanism.** A court recently forced OpenAI to produce 20M "deleted" ChatGPT logs.
 
-Privacy and a memory that understands you are usually opposed — to remember you, a model has to read you. Knole splits the layers so no single one ever holds both your plaintext and your name.
+The demand is already proven — people upload years of journals into LLMs hunting for patterns, and venture-backed apps have validated the market (**Rosebud** $6M/~10k payers · **Mindsera** 80k users · **PIN AI** $10M from a16z). The missing piece isn't demand. It's **privacy, trust, and true ownership.** That is Knole.
 
-| Layer | What lives here | Who can see it |
-| --- | --- | --- |
-| **Local** (never leaves the machine) | embeddings (`all-MiniLM-L6-v2`) + the name-scrub (`bert-base-NER`), via `@xenova/transformers` | only your machine |
-| **Anonymised** (what the model sees) | your text with names replaced by stable tokens, through one gateway (`sealed.ts`) | the model — never your real names |
-| **Sealed inference** (where it's read) | reflection runs inside a **0G TEE** (0G Private Computer, `glm-5.1`) | the enclave — not even the operator |
-| **Encrypted** (what 0G holds) | AES-256-GCM ciphertext under an HKDF per-user key — or a **key only your wallet can derive** | only your key |
+## What Knole Does
 
-## You own it — on 0G
+- **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter.
+- **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
+- **Ask My Life** — answers drawn only from your journal, quoting the original entries back with receipts.
+- **The Index** — every memory with source quotes, edit/forget controls, append-only history, and a `⬡ 0G` badge.
+- **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Mood Timeline · Chrome Capture · ChatGPT/journal import · Omission Radar · Crisis Safety (SB243).
 
-- **Storage** — each entry is AES-256-GCM encrypted and uploaded to **0G Storage** (Galileo testnet); the returned root hash is anchored on the entry row. The key is derived per-user — or, if you enable it, derived from a **wallet signature that never reaches the server**, so not even we can read that copy.
-- **Restore-from-chain** — the Postgres copy is only a cache. `restoreEntryFromChain` rebuilds any entry's text purely from 0G; the Settings panel does this live so you can watch your data come back from chain.
-- **Sealed Inference (on)** — user-facing generations route through `chatPrivate`, which calls **0G Private Compute (TEE)** on `glm-5.1`. A stalled enclave falls back to NVIDIA within 15s so the app never goes dark, and the name-scrub protects that fallback too. The on-Mirror attestation badge only shows when the inference genuinely ran in the enclave.
-- **Memory iNFT** — mint your evolving identity snapshot as an **ERC-7857** token to your own wallet ([`contracts/KnoleMemory.sol`](contracts/KnoleMemory.sol), live on Galileo at `0xf45C33fa8005734E67F9E99De844D220A18D898E`). It's encrypted under your key on 0G; the token records only the root + a hash. Mint and self-custody need no oracle, and every transfer path reverts — **it can never be sold out from under you.**
+## Privacy by Architecture
 
-## The memory engine
+Trust is minimized at every layer:
 
-Every entry flows through one pipeline:
+1. Local **MiniLM** embeddings — the vectors never leave the machine
+2. Local **anonymization** before any prompt
+3. Reflection inside a **0G TEE** (sealed inference)
+4. **AES-256-GCM** encryption under user-controlled keys
+5. Encrypted storage on **0G Storage**
+6. Memory roots anchored on **0G Chain**
+7. Deterministic **restore from 0G**
+8. **ERC-7857 Memory iNFT** — owned by the user's wallet, un-sellable
 
-1. **Embed** locally with `all-MiniLM-L6-v2` (via `transformers.js`) — 384-dim, private, no API call.
-2. **Extract** durable, long-term facts with an LLM (people, goals, patterns, commitments, values) from the anonymised copy only.
-3. **Reconcile**: a content-hash `UPSERT` reinforces exact duplicates, then an LLM judge resolves each near-match three ways (mem0-style) — reinforce a reworded duplicate, supersede a contradiction (bi-temporal — kept with `invalid_at`, never deleted), or keep a genuinely independent fact.
-4. **Retrieve** with **RRF hybrid** search — pgvector cosine fused with lexical full-text — and each surfaced memory earns importance by being recalled.
+> Even if the enclave were compromised, the model would still only ever see **anonymized text.**
 
-Reflections, chat, Ask My Life, the Mirror, Future-Self, and the proactive nudge all draw on this engine, with an overnight **Dreaming** worker consolidating it hierarchically. A `npm run evals` gate measures it across **21 suites** — retrieval, extraction coverage, dedup, groundedness (no invented facts), contradiction/supersede, pinned-survival, user-correction-wins, provenance, forgetting, confidence-calibration, privacy-leak (0 PII to the model), crypto, and first-aha (<90s), among others — scored into the `eval_runs` table. Every suite must be green for the gate to pass.
+## Why 0G
 
-## Proven end to end
-
-Don't trust the screenshots — re-run them. The privacy, ownership, and isolation claims are commands; the whole authenticated journey is a headless test.
-
-| Claim | Check it |
+| Layer | How Knole uses it |
 | --- | --- |
-| The memory works | `npm run evals` — 21 suites, all green |
-| Your name never reaches the model | `npm run test:anon` |
-| Ciphertext at rest on 0G | `npm run test:privacy` |
-| Recoverable byte-identical from chain | `npm run test:restore` |
-| Nobody else can read it | `npm run test:multiuser` |
-| Leave with everything | `DB_HTTP=1 npm run test:export` |
-| **Logged in, end to end, for real** | `npm run test:e2e` — [`wallet-connect.spec.ts`](e2e/wallet-connect.spec.ts): real inbox → Privy OTP → wallet-signed encryption → **on-chain iNFT mint**, headless |
+| **0G Compute** | Sealed AI inference inside a TEE |
+| **0G Storage** | Encrypted journal entries |
+| **0G Chain** | Integrity roots + memory ownership (iNFT) |
 
-## Stack
+If the external model is ever unavailable, Knole **falls back to the 0G TEE** — an outage costs latency, never capability or privacy.
 
-| Layer      | Choice                                                            |
-| ---------- | ---------------------------------------------------------------- |
-| Framework  | TanStack Start (Router + Query) · React 19 · Vite                |
-| UI         | Tailwind CSS v4 · shadcn/ui (Radix) · Instrument Serif + Inter · a full Night theme |
-| Server     | TanStack Start server functions                                  |
-| Database   | Neon Postgres + `pgvector` (HNSW) via Drizzle ORM                |
-| Embeddings | `@xenova/transformers` — all-MiniLM-L6-v2 (local)                |
-| LLM        | **0G Sealed Inference** (`glm-5.1`, TEE) → NVIDIA NIM fallback   |
-| Chain      | 0G Galileo testnet — Storage · Private Compute · ERC-7857 iNFT · `ethers` |
-| Auth       | Privy (email-OTP · wallet · social → sealed session)             |
+## Proof, Not Promises
 
-## Quickstart
+Every major claim is verifiable — and here's the on-chain proof, live on the 0G explorer:
 
-```bash
-npm install
-cp .env.example .env          # fill in the values (see comments in the file)
+<div align="center">
+<img src="public/proof-shots/onchain-mint.webp" width="640" alt="0G ChainScan — Mint 1 of Knole Memory, Success, ERC-721, TokenID 4" />
+<br/><sub><b>A real ERC-7857 mint on 0G Galileo</b> — <a href="https://chainscan-galileo.0g.ai/tx/0x0c49d19d4322db34aa3bb8f604334c080d25af03b531830de809cce81abcd5f0">verify the transaction ↗</a> · <a href="https://chainscan-galileo.0g.ai/address/0xf45C33fa8005734E67F9E99De844D220A18D898E">the contract ↗</a></sub>
+</div>
 
-npx drizzle-kit migrate       # apply migrations to your Neon database
+- **21 automated evaluation suites** in CI — retrieval, groundedness, privacy-leak, crypto, isolation
+- **Restore-from-chain** verification with real Galileo roots
+- A **headless real-wallet end-to-end run** — inbox → Privy OTP → wallet-signed encryption → on-chain mint
+- A public **[Proof Deck](https://knole-app.vercel.app/proof-deck.html)** documenting every feature with screenshots and commands
 
-# full-text indexes for RRF hybrid retrieval (run once):
-#   CREATE INDEX IF NOT EXISTS memories_content_fts ON memories USING gin (to_tsvector('english', content));
-#   CREATE INDEX IF NOT EXISTS entries_text_fts    ON entries  USING gin (to_tsvector('english', text));
+Built entirely by a **solo developer** — every commit public.
 
-npm run dev                   # http://localhost:3000
-npm run evals                 # run the memory-engine eval gate
-```
+## Built With
 
-You'll need: a Neon Postgres URL (with the `vector` extension enabled via `CREATE EXTENSION IF NOT EXISTS vector;`), an NVIDIA NIM API key, and — for the on-chain features — a funded 0G Galileo testnet wallet. To enable the TEE, set `OG_SEALED_INFERENCE=on` with a [pc.0g.ai](https://pc.0g.ai) key (`ZG_SERVICE_URL`, `ZG_API_SECRET`, `ZG_MODEL=glm-5.1`) — no KYC, no funded ledger. To enable minting, deploy the iNFT (`node scripts/deploy-inft.mjs`) and set `KNOLE_NFT_ADDRESS`.
-
-## Production
-
-```bash
-npm run build                 # → dist/ (client assets + dist/server/server.js SSR handler)
-npm run preview               # serve the production build locally to verify
-```
-
-`npm run build` emits a static client bundle (`dist/client`) and an SSR handler (`dist/server/server.js`); deploy both behind a Node host (or your platform's adapter). The same server-side env vars are required at runtime (`DATABASE_URL`, `NVIDIA_API_KEY`, `EVM_PRIVATE_KEY`, `KNOLE_KDF_SECRET`, the `ZG_*` sealed-inference keys, `KNOLE_NFT_ADDRESS`, …). Set `VITE_SITE_URL` to your deployed origin so social-share tags resolve, and run the Dreaming worker (`npm run worker`) on a scheduler. Rotate every secret before any non-testnet use.
-
-## Scripts
-
-| Command          | Purpose                                                       |
-| ---------------- | ------------------------------------------------------------- |
-| `npm run dev`    | Dev server                                                    |
-| `npm run build`  | Production build (client + SSR)                               |
-| `npm run evals`  | Memory-engine release gate → `eval_runs`                      |
-| `npm run test:e2e` | Playwright — the full-product sweep + real-wallet journey    |
-| `npm run dream`  | Dreaming consolidation → `reflection_artifacts`               |
-| `npm run worker` | Scheduler — runs Dreaming per user (`-- --once` for one tick) |
-
-## Status
-
-Phase 1 (testnet) — the full experience runs on the real engine and 0G: Privy auth with per-user encryption and multi-user isolation, streaming reflections, the memory engine, Ask My Life, the 14-Day Mirror, Future-Self, consent-respecting proactivity, the overnight Dreaming consolidation, refugee import, the Chrome extension, authenticated at-rest encryption, **sealed inference in the 0G TEE**, **client-side wallet encryption**, the **memory iNFT**, SB243 crisis-safety, and a 21-suite eval gate — with a headless real-wallet end-to-end test covering the whole authenticated path. What's left: subscription billing (Stripe + 0G Pay), a hosted cron for the worker, and the Phase-2 hardening pass — KDF secret → KMS/enclave, key rotation, and a security audit — before the 0G Aristotle mainnet flip.
+TanStack Start · React 19 · Neon Postgres + pgvector · Drizzle · local `all-MiniLM` embeddings · `transformers.js` NER · **0G Sealed Inference (`glm-5.1`, TEE) → NVIDIA fallback** · AES-256-GCM + wallet-derived keys · ERC-7857 iNFT · Privy · 0G Galileo via `ethers`
 
 ---
 
-_Private by design. Encrypted under your key, sealed to your wallet, read inside a TEE, minted to you. We can't read it, can't reset it, can't take it away._
-</content>
+<details>
+<summary><b>Run it locally</b></summary>
+
+```bash
+npm install
+cp .env.example .env          # fill in the values (comments in the file)
+npx drizzle-kit migrate       # apply migrations to your Neon database
+npm run dev                    # http://localhost:3000
+npm run evals                  # the 21-suite memory gate
+```
+
+You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and — for the on-chain features — a funded 0G Galileo wallet. Enable the TEE with `OG_SEALED_INFERENCE=on` + a [pc.0g.ai](https://pc.0g.ai) key; enable minting by deploying the iNFT (`node scripts/deploy-inft.mjs`) and setting `KNOLE_NFT_ADDRESS`.
+
+</details>
+
+<details>
+<summary><b>Scripts & structure</b></summary>
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` / `npm run build` | dev server / production build (client + SSR) |
+| `npm run evals` | memory-engine release gate → `eval_runs` |
+| `npm run test:e2e` | Playwright — full-product sweep + real-wallet journey |
+| `npm run worker` | overnight Dreaming consolidation |
+
+`src/routes` file-based routes · `src/components/knole` app shell · `src/server` the engine (embed · anonymise · sealed inference · 0G storage · restore · reflect · mirror · ask · iNFT) · `src/db` Drizzle schema + pgvector · `contracts/KnoleMemory.sol` the ERC-7857 iNFT.
+
+</details>
+
+## Current Status
+
+**Live on 0G Galileo testnet:** 0G TEE inference · local anonymization · encrypted storage · restore from 0G · the memory engine · 14-Day Mirror · Ask My Life · the Index · wallet encryption · Memory iNFT · retention loop · Crisis Safety — with full 0G fallback if the external model is down.
+
+**Mainnet:** pending an external security audit and KMS-backed key custody, then the move to 0G Aristotle.
+
+---
+
+<div align="center">
+
+**A journal should belong to the person who wrote it.**
+**Knole makes that a technical guarantee, not a legal promise.**
+
+</div>
