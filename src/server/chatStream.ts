@@ -2,6 +2,7 @@ import { chatReplyStream, type Turn } from "./chat";
 import { embed } from "./embed";
 import { retrieveMemories } from "./engine";
 import { handleStreamingReply } from "./streamReply";
+import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
 
 /**
  * Streaming chat endpoint (POST /chat/stream). Mirrors chatFn but streams Knole's reply
@@ -13,6 +14,16 @@ export function handleChatStream(request: Request): Promise<Response> {
     const message = String(b.message ?? "").trim();
     if (message.length < 1 || message.length > 4000) {
       return { error: 400, msg: "message must be 1–4000 chars" };
+    }
+    if (detectCrisis(message).crisis) {
+      return {
+        entryText: message,
+        entryKind: "chat" as const,
+        qVec: await embed(message),
+        gen: oneShot(CRISIS_REPLY),
+        skipExtract: true,
+        headers: { "x-knole-crisis": "1" } as Record<string, string>,
+      };
     }
     // Validate the conversation history defensively (it comes from the client).
     const raw: unknown[] = Array.isArray(b.history) ? b.history.slice(-40) : [];
@@ -33,6 +44,19 @@ export function handleChatStream(request: Request): Promise<Response> {
       entryKind: "chat" as const,
       qVec,
       gen: chatReplyStream(history, message, memories),
+      // Recalled memories ride in a header (mirrors journalStream) so the body stays pure reply text
+      // and the client can show the "it remembered" receipts.
+      headers: {
+        "x-knole-recalled": encodeURIComponent(
+          JSON.stringify(
+            memories.map((r) => ({
+              content: r.content,
+              quote: r.sourceQuote ?? null,
+              when: r.createdAt,
+            })),
+          ),
+        ),
+      },
     };
   });
 }

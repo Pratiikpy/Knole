@@ -51,3 +51,63 @@ export function chatReplyStream(history: Turn[], message: string, memories: { co
     maxTokens: 500,
   });
 }
+
+const COMPOSE_SYS = `You are Knole. Read this conversation between the user and Knole, then write it back as ONE journal entry in the user's own first-person voice — what THEY would write, not a summary about them. Never write "the user" or "you"; write as "I". Keep their tone and their words where you can.
+Return ONLY JSON, nothing around it:
+{"title": "<=8 words, evocative not generic>", "body": "<the entry, first person, 1-4 short paragraphs>", "tags": ["<1-5 lowercase topical tags>"], "mood": "<one lowercase word, or null>"}`;
+
+/**
+ * Compose a whole chat thread into ONE first-person journal entry (the "turn this into an entry"
+ * action). chatPrivate anonymises the full transcript before the model and restores names after, so
+ * the privacy guarantee holds. Parses JSON defensively (extractMemories-style) with a deterministic
+ * fallback so compose never fails silently.
+ */
+export async function composeEntry(
+  history: Turn[],
+): Promise<{ title: string; body: string; tags: string[]; mood: string | null }> {
+  const transcript = history
+    .map((t) => `${t.role === "user" ? "You" : "Knole"}: ${t.content}`)
+    .join("\n");
+  const fallbackBody = history
+    .filter((t) => t.role === "user")
+    .map((t) => t.content)
+    .join("\n\n");
+  const fallbackTitle = (history.find((t) => t.role === "user")?.content ?? "A conversation")
+    .slice(0, 48)
+    .trim();
+  try {
+    const r = await chatPrivate(
+      [
+        { role: "system", content: COMPOSE_SYS },
+        { role: "user", content: transcript },
+      ],
+      { temperature: 0.4, maxTokens: 700 },
+    );
+    const m = r.content.match(/\{[\s\S]*\}/);
+    if (!m) return { title: fallbackTitle, body: fallbackBody, tags: [], mood: null };
+    const parsed = JSON.parse(m[0]) as {
+      title?: unknown;
+      body?: unknown;
+      tags?: unknown;
+      mood?: unknown;
+    };
+    const body =
+      typeof parsed.body === "string" && parsed.body.trim() ? parsed.body.trim() : fallbackBody;
+    const title =
+      typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : fallbackTitle;
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags
+          .filter((x): x is string => typeof x === "string")
+          .map((s) => s.toLowerCase().trim())
+          .filter(Boolean)
+          .slice(0, 5)
+      : [];
+    const mood =
+      typeof parsed.mood === "string" && parsed.mood.trim()
+        ? parsed.mood.toLowerCase().trim()
+        : null;
+    return { title, body, tags, mood };
+  } catch {
+    return { title: fallbackTitle, body: fallbackBody, tags: [], mood: null };
+  }
+}
