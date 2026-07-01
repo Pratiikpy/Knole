@@ -1,6 +1,5 @@
 import { useState, useId } from "react";
-
-type Receipt = { date: string; quote: string };
+import type { Receipt } from "./recall";
 
 export function MemoryPill({ label, receipts }: { label: string; receipts: Receipt[] }) {
   const [open, setOpen] = useState(false);

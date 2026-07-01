@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Write to it like a journal. It writes back like someone who gets you. Encrypted under your key — only you can read it.",
+          "A journal that reflects your patterns back — honestly, not to flatter you. Your name is stripped before any AI reads a word, and your words stay encrypted as your own.",
       },
       {
         property: "og:title",
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:description",
-        content: "Not an assistant. A mirror. Remembers your whole life. Unreadable even by us.",
+        content:
+          "Not an assistant — a mirror that won't flatter you. It remembers your whole life and names the patterns you can't see. Your name is stripped before any AI sees a word.",
       },
     ],
   }),
@@ -61,7 +62,7 @@ function LandingPage() {
         <div className="mx-auto max-w-[58ch]">
           <div className="mb-8 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             <span className="size-1 rounded-full bg-tan" />
-            Encrypted · only you can read it
+            Anonymised before any AI sees a word
           </div>
 
           <h1 className="font-display text-balance text-[60px] leading-[0.96] tracking-tight md:text-[88px]">
@@ -72,8 +73,8 @@ function LandingPage() {
 
           <p className="mt-8 max-w-[46ch] text-pretty text-[17px] leading-relaxed text-muted-foreground">
             You write to it like a journal. It writes back like someone who gets you — remembers
-            your whole life, notices the patterns you can't see in yourself, and helps you
-            understand who you are.
+            your whole life, notices the patterns you can't see in yourself, and tells you the truth
+            honestly, never just to make you feel good.
             <br />
             <span className="text-ink-soft">Not an assistant. A mirror.</span>
           </p>
@@ -209,17 +210,18 @@ function LandingPage() {
               <rect x="4" y="11" width="16" height="9" rx="2" />
               <path d="M8 11V8a4 4 0 018 0v3" />
             </svg>
-            Verified private
+            Private by architecture
           </div>
           <p className="font-display text-balance text-[34px] italic leading-[1.1]">
-            Encrypted under your key.
+            Your name never reaches the AI.
             <br />
-            Unreadable even by us.
+            Your words stay yours.
           </p>
-          <p className="mx-auto mt-5 max-w-[40ch] text-[13px] leading-relaxed text-muted-foreground">
-            No tracking. No audience. Your memory is encrypted under your key and stored on 0G —
-            recoverable even if Knole vanished. Export it anytime, and walk away with your whole
-            mind.
+          <p className="mx-auto mt-5 max-w-[44ch] text-[13px] leading-relaxed text-muted-foreground">
+            Names and places are stripped out by a model on your device before any AI reads a word.
+            Your entries are encrypted and stored on 0G — recoverable even if Knole vanished, and
+            sealable to your own wallet so not even we can read that copy. No tracking, no audience.
+            Export it anytime and walk away with your whole mind.
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Link

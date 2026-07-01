@@ -59,10 +59,24 @@
 
   --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* The signature curve becomes the default for every transition utility (retunes ~20 hovers with no
+     className churn), plus an explicit `ease-knole` utility. Duration stays snappy at --motion-fast. */
+  --ease-knole: var(--ease-signature);
+  --default-transition-timing-function: var(--ease-signature);
+  --default-transition-duration: var(--motion-fast);
 }
 
 :root {
   --radius: 0.75rem;
+
+  /* Motion language — one signature easing, a duration scale, a stagger step. */
+  --ease-signature: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 200ms;
+  --motion-base: 400ms;
+  --motion-slow: 600ms;
+  --motion-breathe: 3.4s;
+  --motion-stagger: 70ms;
 
   /* Knole palette */
   --paper: #faf9f6;
@@ -89,6 +103,38 @@
   --accent-foreground: var(--paper);
   --destructive: #a83232;
   --destructive-foreground: var(--paper);
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: var(--tan);
+}
+
+/* "Night" — candlelit warm near-black. The same semantic tokens flip, so app code (bg-paper / bg-card
+   / text-ink / text-tan) goes dark with zero `dark:` sprawl. The class lives on <html>; defined after
+   :root so it wins by source order. The one hardcoded --card:#ffffff above MUST be overridden here. */
+.dark {
+  --paper: #1a1714;
+  --ink: #ece5d8;
+  --ink-soft: #b6ab9a;
+  --tan: #c9a878;
+  --tan-soft: #8a7556;
+  --rule: rgba(236, 229, 216, 0.1);
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #211c18;
+  --card-foreground: var(--ink);
+  --popover: #211c18;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: #2a241d;
+  --secondary-foreground: var(--ink);
+  --muted: #262019;
+  --muted-foreground: #8f8576;
+  --accent: var(--tan);
+  --accent-foreground: #1a1714;
+  --destructive: #d4756b;
+  --destructive-foreground: #1a1714;
   --border: var(--rule);
   --input: var(--rule);
   --ring: var(--tan);
@@ -141,6 +187,12 @@
   }
 }
 
+/* On Night, multiply darkens to nothing — soft-light keeps a faint warm tooth instead. */
+.dark .grain::after {
+  mix-blend-mode: soft-light;
+  opacity: 0.03;
+}
+
 @keyframes knole-fade-up {
   from {
     opacity: 0;
@@ -174,14 +226,42 @@
 }
 
 @utility animate-fade-up {
-  animation: knole-fade-up 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: knole-fade-up var(--motion-slow) var(--ease-signature) both;
 }
 @utility animate-thread {
   stroke-dasharray: 240;
-  animation: knole-thread-draw 1400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: knole-thread-draw 1400ms var(--ease-signature) both;
 }
 @utility animate-breathe {
-  animation: knole-breathe 3.4s ease-in-out infinite;
+  animation: knole-breathe var(--motion-breathe) ease-in-out infinite;
+}
+
+/* Staggered first-paint — indexed form for async/conditional cards (set --i per item). */
+@utility rise {
+  animation: knole-fade-up var(--motion-slow) var(--ease-signature) both;
+  animation-delay: calc(var(--motion-stagger) * var(--i, 0));
+}
+
+/* Auto-staggered first-paint for STATIC stacks (never wrap reorderable lists — they'd re-strobe). */
+@layer components {
+  .knole-stagger > * {
+    animation: knole-fade-up var(--motion-slow) var(--ease-signature) both;
+  }
+  .knole-stagger > *:nth-child(2) {
+    animation-delay: calc(var(--motion-stagger) * 1);
+  }
+  .knole-stagger > *:nth-child(3) {
+    animation-delay: calc(var(--motion-stagger) * 2);
+  }
+  .knole-stagger > *:nth-child(4) {
+    animation-delay: calc(var(--motion-stagger) * 3);
+  }
+  .knole-stagger > *:nth-child(5) {
+    animation-delay: calc(var(--motion-stagger) * 4);
+  }
+  .knole-stagger > *:nth-child(6) {
+    animation-delay: calc(var(--motion-stagger) * 5);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

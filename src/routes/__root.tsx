@@ -98,7 +98,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: OG_ALT },
       {
         name: "twitter:description",
-        content: "Not an assistant. A mirror. Remembers your whole life. Unreadable even by us.",
+        content:
+          "Not an assistant — a mirror that won't flatter you. Your name is stripped before any AI sees a word.",
       },
     ],
 
@@ -117,9 +118,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the no-flash script below intentionally sets .dark + colorScheme on
+    // <html> before hydration, so the SSR attributes legitimately differ from the client DOM.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* No-flash theme: set the .dark class + colorScheme + theme-color BEFORE paint/hydration,
+            so the first paint is correct and React never mutates the html class during render. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var s=localStorage.getItem('knole-theme');var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;var e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light';var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',d?'#1a1714':'#faf9f6');}catch(_){}})();",
+          }}
+        />
       </head>
       <body>
         {children}
