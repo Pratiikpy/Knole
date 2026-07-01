@@ -1271,7 +1271,10 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
         <p class="fine">
           <code>sealedActive()</code> gates the on-Mirror attestation badge, so the "composed where
           even we can't read it" claim only ever appears when the inference genuinely ran in the
-          enclave — never on the fallback.
+          enclave — never on the fallback. And the fallback runs both ways: reflection, memory
+          extraction, the reconcile judge, and streaming all fail over to the 0G TEE if NVIDIA is ever
+          unreachable — so the whole product runs on 0G alone. An outage costs latency, never
+          capability (the entire demo was rebuilt through 0G with NVIDIA disabled).
         </p>
       </section>
 
@@ -1490,6 +1493,22 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
               911); every surface discloses Knole is an AI, not a person (SB243).
             </p>
             <div class="proof">crisis.ts · safety.ts · gaps.spec.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Mood + Omission Radar <span class="route">/insights</span></h3>
+            <p>
+              A mood-trajectory graph traces your emotional weather over time; an omission radar names
+              what you've quietly stopped mentioning — a real zero-occurrence test, not a guess.
+            </p>
+            <div class="proof">valence.ts · omission.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Retention loop <span class="route">/today · worker</span></h3>
+            <p>
+              A one-tap daily check-in keeps the streak without a full entry; a digest email and a
+              consent-gated web push reach back only when there's a real, earned thing to say.
+            </p>
+            <div class="proof">digest.ts · notify.ts · proactivity.ts</div>
           </div>
         </div>
       </section>
