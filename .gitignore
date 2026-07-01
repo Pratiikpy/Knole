@@ -46,3 +46,7 @@ playwright/.cache/
 
 .vercel
 scripts/demo-video/out/
+qa-shots/
+
+# internal working docs — never public
+WHAT_WE_DID.md
