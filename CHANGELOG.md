@@ -15,12 +15,12 @@ public repo; each entry is tagged with its commit.
 
 **New surfaces**
 - Future-Self, Wrapped, Year, and On-This-Day. `8779d7e`
-- Four reflection lenses (Gentle Mirror, Pattern Finder, Blunt Friend, Decision Coach), an anti-sycophancy engine, an omission radar, and hierarchical memory consolidation. `740d768`
+- Four reflection lenses (Gentle Mirror, Pattern Finder, Blunt Friend, Decision Coach), an anti-sycophancy engine, a rumination guard that surfaces what's going right, an omission radar, and hierarchical memory consolidation. `740d768`
 - A mood-trajectory graph and the day-15 Mirror-reveal ceremony. `8779d7e`
 - Conversational capture: chat that composes a real entry. `25fde97`
 
 **Retention**
-- A 30-second daily check-in, a digest email, and consent-gated web push. `73ec913`
+- A 30-second daily check-in, a digest email, consent-gated web push, and a proactive "quiet noticing" that reaches back only when there's something real to say. `73ec913`
 
 **Safety (SB243)**
 - Crisis-safety detection with real resources (988, text 741741, 911), an age gate, and an AI disclosure on every surface. `5ac5641`
@@ -30,12 +30,12 @@ public repo; each entry is tagged with its commit.
 
 **Proof and QA**
 - A headless real-wallet end-to-end run: real inbox, Privy OTP, wallet-signed encryption, and an on-chain iNFT mint. `e3fc8c0`
+- One-click on-chain verification — the deployed KnoleMemory contract and a real mint (TokenID 4) shown on the 0G explorer, in the deck and the README. `983cc0c`
 - The proof deck now holds 28 screenshots covering every surface. `79a2491`
 - A three-minute demo video of the full product.
 
 **Fixes**
 - Eight bugs fixed during QA, including an iNFT mint that failed for every real user and a crisis-classifier false negative.
-- CI restored to green (a prettier error in the sealed-inference check). `d17052f`
 
 ## 1.0 — Submission · 21 June 2026
 
