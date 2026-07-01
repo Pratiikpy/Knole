@@ -1,7 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useEffect } from "react";
 import { Shell } from "@/components/knole/Shell";
 import { Composing } from "@/components/knole/Composing";
-import { mirrorFn } from "@/server/fns";
+import { Pulse } from "@/components/knole/Pulse";
+import { MoodWeather } from "@/components/knole/MoodWeather";
+import { MirrorCeremony } from "@/components/knole/MirrorCeremony";
+import { SealedBadge } from "@/components/knole/SealedBadge";
+import { mirrorFn, moodTrajectoryFn, markMirrorSeenFn } from "@/server/fns";
 
 export const Route = createFileRoute("/insights")({
   head: () => ({
@@ -14,7 +20,7 @@ export const Route = createFileRoute("/insights")({
       },
     ],
   }),
-  loader: async () => await mirrorFn(),
+  loader: async () => ({ mirror: await mirrorFn(), mood: await moodTrajectoryFn() }),
   component: InsightsPage,
   pendingComponent: () => <Composing label="Composing your mirror…" />,
 });
@@ -47,21 +53,53 @@ function Streak({ dayCount, entryCount }: { dayCount: number; entryCount: number
 }
 
 function InsightsPage() {
-  const m = Route.useLoaderData();
+  const { mirror: m, mood } = Route.useLoaderData();
   const maxWeight = Math.max(1, ...m.themes.map((t) => t.weight));
+  const markMirrorSeen = useServerFn(markMirrorSeenFn);
+  const [play, setPlay] = useState(false);
+  useEffect(() => {
+    if (
+      m.phase === "revealed" &&
+      m.firstReveal &&
+      typeof window !== "undefined" &&
+      !localStorage.getItem("knole.mirror.ceremony.v1") &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setPlay(true);
+    }
+  }, [m.phase, m.firstReveal]);
 
   return (
     <Shell>
       <section className="px-6 pb-28 pt-12">
         <div className="mx-auto max-w-[60ch]">
-          <p className="mb-3 text-[11px] uppercase tracking-[0.22em] text-tan">Pattern Mirror</p>
-          <h1 className="font-display text-[44px] italic leading-[1.02]">
-            Here's what was on your mind.
-          </h1>
-          <p className="mt-3 max-w-[42ch] text-[13px] text-muted-foreground">
-            A short, private letter from Knole — written from your own words. No one else will ever
-            see this.
-          </p>
+          <div className="knole-stagger">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.22em] text-tan">Pattern Mirror</p>
+            <h1 className="font-display text-[44px] italic leading-[1.02]">
+              Here's what was on your mind.
+            </h1>
+            <p className="mt-3 max-w-[42ch] text-[13px] text-muted-foreground">
+              A short, private letter from Knole — written from your own words. No one else will
+              ever see this.
+            </p>
+
+            {m.phase !== "empty" && (
+              <Link
+                to="/wrapped"
+                className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-tan hover:text-ink"
+              >
+                Make a shareable card — the shape, never the words →
+              </Link>
+            )}
+            {m.phase !== "empty" && (
+              <Link
+                to="/year"
+                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-tan hover:text-ink"
+              >
+                See your year in one page →
+              </Link>
+            )}
+          </div>
 
           {m.phase === "empty" ? (
             <div className="mt-12 rounded-2xl border border-rule bg-card/50 p-8">
@@ -73,6 +111,7 @@ function InsightsPage() {
           ) : m.phase === "building" ? (
             <>
               <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
+              <MoodWeather data={mood} />
 
               {/* The anticipation — the day-15 arc building toward the reveal */}
               <div className="mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-7">
@@ -99,6 +138,7 @@ function InsightsPage() {
             <>
               {/* Streak — real */}
               <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
+              <MoodWeather data={mood} />
 
               {/* The throughline — the opening */}
               <div className="mt-8 rounded-2xl border border-rule bg-card/50 p-7">
@@ -169,7 +209,7 @@ function InsightsPage() {
               {m.dream ? (
                 <div className="mt-12 rounded-2xl border border-tan/30 bg-tan/[0.04] p-7">
                   <div className="mb-2 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-tan">
-                    <span className="size-1.5 animate-breathe rounded-full bg-tan" />
+                    <Pulse />
                     Dreaming · last night Knole noticed
                   </div>
                   <p className="font-display text-[20px] italic leading-snug text-ink-soft">
@@ -205,12 +245,15 @@ function InsightsPage() {
                   <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeLinecap="round" />
                 </svg>
                 <div>
-                  <div className="text-[13px] text-ink">Only you can read this</div>
+                  <div className="text-[13px] text-ink">Anonymised before any AI saw it</div>
                   <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-                    Built from your own words and nothing else — names and places anonymised before
-                    any AI saw them. Your entries live encrypted under your key; no one but you can
-                    read them, not even us.
+                    Built from your own words and nothing else — names and places stripped out
+                    before any AI read them. Your entries are encrypted and stored on 0G; seal them
+                    to your wallet and not even we can read that copy.
                   </p>
+                  <div className="mt-3">
+                    <SealedBadge />
+                  </div>
                 </div>
               </div>
 
@@ -221,6 +264,21 @@ function InsightsPage() {
           )}
         </div>
       </section>
+      {play && (
+        <MirrorCeremony
+          throughline={m.throughline}
+          patterns={m.patterns}
+          onDone={() => {
+            setPlay(false);
+            try {
+              localStorage.setItem("knole.mirror.ceremony.v1", "1");
+            } catch {
+              /* ignore */
+            }
+            void markMirrorSeen().catch(() => {});
+          }}
+        />
+      )}
     </Shell>
   );
 }
