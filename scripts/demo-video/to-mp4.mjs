@@ -9,6 +9,9 @@ import path from "node:path";
 
 const OUT = "scripts/demo-video/out";
 const VID = `${OUT}/vid`;
+// Optional global speed-up applied to the whole (already dead-span-ramped) cut, so the final lands
+// at a target runtime without rushing only the payoffs. SPEED=1 = native; SPEED=1.77 ≈ a 3-min cut.
+const SPEED = Number(process.env.SPEED ?? 1);
 const webms = readdirSync(VID)
   .filter((f) => f.endsWith(".webm"))
   .map((f) => path.join(VID, f));
@@ -71,7 +74,7 @@ let r = spawnSync(
     "-i",
     src,
     "-filter_complex",
-    `${rampFilter};[rmp]format=yuv420p[out]`,
+    `${rampFilter};[rmp]setpts=PTS/${SPEED},format=yuv420p[out]`,
     "-map",
     "[out]",
     "-r",

@@ -22,8 +22,13 @@ import {
   naturalType,
   smoothScroll,
   parkCursor,
-  sleep,
+  sleep as rawSleep,
 } from "./demo-lib.mjs";
+
+// Scale every beat HOLD (not the motion, which stays native) so the whole cut lands near 3 minutes
+// without speeding up captions or cursor. HOLD=1 is the long cut; 0.5 ≈ 3 min.
+const HOLD = Number(process.env.HOLD ?? 0.5);
+const sleep = (ms) => rawSleep(ms * HOLD);
 
 const BASE = process.env.DEMO_BASE_URL ?? "http://localhost:3000";
 const DECK =
@@ -200,16 +205,16 @@ try {
     await page.keyboard.press("Enter");
     const w = markStart("ask");
     await page
-      .getByText(/receipts|throughline/i)
+      .getByText(/The throughline/i)
       .first()
       .waitFor({ timeout: 60_000 })
       .catch(() => {});
     markEnd(w);
-    await sleep(1400);
-    await scrollElTo(page, page.getByText(/your own words|anonymised/i).first(), 0.34, 2600).catch(
+    await sleep(1600);
+    await scrollElTo(page, page.getByText(/receipts · your own words/i).first(), 0.34, 2600).catch(
       () => {},
     );
-    await sleep(3000);
+    await sleep(3200);
     await parkCursor(page);
     await cap("");
   });
@@ -233,30 +238,36 @@ try {
     await cap("");
   });
 
-  // ── BEAT 7 · when it matters — crisis safety ──
+  // ── BEAT 7 · when it matters — crisis safety (on Today; chat is demo-gated, journal isn't) ──
   await beat("beat 7 — crisis safety", async () => {
-    await gotoBeat(page, `${BASE}/chat`);
-    await sleep(800);
-    const box = page.getByPlaceholder(/say the small true|what's on your mind|type/i).first();
+    await gotoBeat(page, `${BASE}/today`);
+    await sleep(1000);
+    const ta = page.getByPlaceholder(/write what's true|something small/i).first();
+    await ta.click();
+    await ta.press("ControlOrMeta+a");
+    await ta.press("Delete");
     await naturalType(
       page,
-      box,
+      ta,
       "I don't want to be alive anymore and I've been thinking about ending it.",
     );
     await sleep(300);
-    await page.keyboard.press("Enter");
     await cap("When the words turn heavy, it stops being a mirror —");
+    await naturalClick(page, page.getByRole("button", { name: /^reflect$/i }));
     await page
       .getByText(/988|741741|reach out|real person|call or text/i)
       .first()
       .waitFor({ timeout: 30_000 })
       .catch(() => {});
-    await sleep(2200);
+    await sleep(2000);
     await cap("— and points you to real help.");
-    await scrollElTo(page, page.getByText(/988|741741|Emergency/i).first(), 0.4, 2000).catch(
-      () => {},
-    );
-    await sleep(3200);
+    await scrollElTo(
+      page,
+      page.getByText(/988|741741|Emergency|Lifeline/i).first(),
+      0.4,
+      2000,
+    ).catch(() => {});
+    await sleep(3400);
     await parkCursor(page);
     await cap("");
   });

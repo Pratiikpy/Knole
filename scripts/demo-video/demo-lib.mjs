@@ -24,7 +24,7 @@ export const OVERLAY_INIT = `(() => {
     document.head.appendChild(st);
     // full-bleed ink cover — starts opaque so every freshly-loaded page paints covered (no white flash)
     const cov = document.createElement('div'); cov.id='__cover';
-    cov.style.cssText='position:fixed;left:-300px;top:-300px;width:6000px;height:6000px;z-index:2147483647;pointer-events:none;background:#1c1917;opacity:1;transition:opacity .45s ease';
+    cov.style.cssText='position:fixed;left:-300px;top:-300px;width:6000px;height:6000px;z-index:2147483647;pointer-events:none;background:#1c1917;opacity:1;transition:opacity .28s ease';
     document.body.appendChild(cov);
     // cursor (inside zoomed html → position is clientX/__zoom)
     const c = document.createElement('div'); c.id='__cur';
@@ -69,14 +69,14 @@ let _started = false;
 export async function gotoBeat(page, url) {
   if (_started) {
     await cover(page, 1);
-    await sleep(400);
+    await sleep(170); // brief ink dip — long enough to hide the nav, short enough to never read as black
   }
   await page.goto(url, { waitUntil: "domcontentloaded" }).catch(() => {});
   await applyZoom(page);
   await page.evaluate(() => (document.fonts ? document.fonts.ready : null)).catch(() => {});
-  await sleep(1100); // fixed render+hydrate settle (the app never goes network-idle)
+  await sleep(650); // render+hydrate settle (the app never goes network-idle), painted under the ink
   await cover(page, 0);
-  await sleep(420);
+  await sleep(260);
   _started = true;
 }
 
