@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
+import { INFTCard } from "@/components/knole/INFTCard";
 import { isAuthRequired } from "@/lib/authError";
 import {
   listMemoriesFn,
@@ -17,7 +18,8 @@ export const Route = createFileRoute("/the-index")({
       { title: "The Index — what Knole knows about you" },
       {
         name: "description",
-        content: "Every memory Knole holds. Editable, pinnable, forgettable. Only you can read it.",
+        content:
+          "Every memory Knole holds — editable, pinnable, forgettable, and yours to keep or erase.",
       },
     ],
   }),
@@ -203,34 +205,36 @@ function TheIndex() {
     <Shell>
       <section className="px-6 pb-28 pt-12">
         <div className="mx-auto max-w-[58ch]">
-          <div className="flex items-baseline justify-between">
-            <h1 className="font-display text-[44px] italic leading-none">The Index</h1>
-            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {facts.length} {facts.length === 1 ? "memory" : "memories"}
-            </span>
-          </div>
-          <p className="mt-4 max-w-[44ch] text-[14px] leading-relaxed text-muted-foreground">
-            Everything Knole remembers about you, in your own words. Edit anything. Pin what
-            matters. Forget what doesn't.
-          </p>
-          {mutMsg && (
-            <p aria-live="polite" className="mt-3 text-[12px] text-destructive">
-              {mutMsg}
+          <div className="knole-stagger">
+            <div className="flex items-baseline justify-between">
+              <h1 className="font-display text-[44px] italic leading-none">The Index</h1>
+              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                {facts.length} {facts.length === 1 ? "memory" : "memories"}
+              </span>
+            </div>
+            <p className="mt-4 max-w-[44ch] text-[14px] leading-relaxed text-muted-foreground">
+              Everything Knole remembers about you, in your own words. Edit anything. Pin what
+              matters. Forget what doesn't.
             </p>
-          )}
+            {mutMsg && (
+              <p aria-live="polite" className="mt-3 text-[12px] text-destructive">
+                {mutMsg}
+              </p>
+            )}
 
-          <div className="mt-8 flex w-fit items-center gap-1 rounded-full border border-rule p-1">
-            {(["you", "knole"] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setTab(k)}
-                className={`rounded-full px-4 py-1.5 text-[12px] transition-colors ${
-                  tab === k ? "bg-ink text-paper" : "text-muted-foreground hover:text-ink"
-                }`}
-              >
-                {k === "you" ? "About you" : "About Knole"}
-              </button>
-            ))}
+            <div className="mt-8 flex w-fit items-center gap-1 rounded-full border border-rule p-1">
+              {(["you", "knole"] as const).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={`rounded-full px-4 py-1.5 text-[12px] transition-colors ${
+                    tab === k ? "bg-ink text-paper" : "text-muted-foreground hover:text-ink"
+                  }`}
+                >
+                  {k === "you" ? "About you" : "About Knole"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {tab === "you" && facts.length === 0 && (
@@ -400,17 +404,19 @@ function TheIndex() {
           <div className="mt-14 flex items-center gap-4">
             <div className="h-px flex-1 bg-rule" />
             <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              Only you can read this
+              Yours to keep, edit, or erase
             </span>
             <div className="h-px flex-1 bg-rule" />
           </div>
 
           <p className="mt-6 text-center text-[12px] leading-relaxed text-muted-foreground">
-            Encrypted on your own key, stored on 0G. We can't read it, can't reset it, can't take it
-            away.
+            Encrypted and stored on 0G — recoverable even if Knole vanished, and sealable to your
+            own wallet so not even we can read that copy.
             <br />
-            Export anything, anytime.
+            Export anything, anytime, and walk away with your whole mind.
           </p>
+
+          <INFTCard />
         </div>
       </section>
     </Shell>
