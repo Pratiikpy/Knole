@@ -9,18 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as YearRouteImport } from './routes/year'
+import { Route as WrappedRouteImport } from './routes/wrapped'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as TodayRouteImport } from './routes/today'
 import { Route as TheIndexRouteImport } from './routes/the-index'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RememberedRouteImport } from './routes/remembered'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as OnThisDayRouteImport } from './routes/on-this-day'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as FutureRouteImport } from './routes/future'
 import { Route as ExtensionRouteImport } from './routes/extension'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as IndexRouteImport } from './routes/index'
 
+const YearRoute = YearRouteImport.update({
+  id: '/year',
+  path: '/year',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WrappedRoute = WrappedRouteImport.update({
+  id: '/wrapped',
+  path: '/wrapped',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UpgradeRoute = UpgradeRouteImport.update({
   id: '/upgrade',
   path: '/upgrade',
@@ -51,9 +65,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnThisDayRoute = OnThisDayRouteImport.update({
+  id: '/on-this-day',
+  path: '/on-this-day',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InsightsRoute = InsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FutureRoute = FutureRouteImport.update({
+  id: '/future',
+  path: '/future',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExtensionRoute = ExtensionRouteImport.update({
@@ -82,26 +106,34 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AskRoute
   '/chat': typeof ChatRoute
   '/extension': typeof ExtensionRoute
+  '/future': typeof FutureRoute
   '/insights': typeof InsightsRoute
+  '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
   '/remembered': typeof RememberedRoute
   '/settings': typeof SettingsRoute
   '/the-index': typeof TheIndexRoute
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
+  '/wrapped': typeof WrappedRoute
+  '/year': typeof YearRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
   '/chat': typeof ChatRoute
   '/extension': typeof ExtensionRoute
+  '/future': typeof FutureRoute
   '/insights': typeof InsightsRoute
+  '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
   '/remembered': typeof RememberedRoute
   '/settings': typeof SettingsRoute
   '/the-index': typeof TheIndexRoute
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
+  '/wrapped': typeof WrappedRoute
+  '/year': typeof YearRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,13 +141,17 @@ export interface FileRoutesById {
   '/ask': typeof AskRoute
   '/chat': typeof ChatRoute
   '/extension': typeof ExtensionRoute
+  '/future': typeof FutureRoute
   '/insights': typeof InsightsRoute
+  '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
   '/remembered': typeof RememberedRoute
   '/settings': typeof SettingsRoute
   '/the-index': typeof TheIndexRoute
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
+  '/wrapped': typeof WrappedRoute
+  '/year': typeof YearRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,39 +160,51 @@ export interface FileRouteTypes {
     | '/ask'
     | '/chat'
     | '/extension'
+    | '/future'
     | '/insights'
+    | '/on-this-day'
     | '/onboarding'
     | '/remembered'
     | '/settings'
     | '/the-index'
     | '/today'
     | '/upgrade'
+    | '/wrapped'
+    | '/year'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ask'
     | '/chat'
     | '/extension'
+    | '/future'
     | '/insights'
+    | '/on-this-day'
     | '/onboarding'
     | '/remembered'
     | '/settings'
     | '/the-index'
     | '/today'
     | '/upgrade'
+    | '/wrapped'
+    | '/year'
   id:
     | '__root__'
     | '/'
     | '/ask'
     | '/chat'
     | '/extension'
+    | '/future'
     | '/insights'
+    | '/on-this-day'
     | '/onboarding'
     | '/remembered'
     | '/settings'
     | '/the-index'
     | '/today'
     | '/upgrade'
+    | '/wrapped'
+    | '/year'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -164,17 +212,35 @@ export interface RootRouteChildren {
   AskRoute: typeof AskRoute
   ChatRoute: typeof ChatRoute
   ExtensionRoute: typeof ExtensionRoute
+  FutureRoute: typeof FutureRoute
   InsightsRoute: typeof InsightsRoute
+  OnThisDayRoute: typeof OnThisDayRoute
   OnboardingRoute: typeof OnboardingRoute
   RememberedRoute: typeof RememberedRoute
   SettingsRoute: typeof SettingsRoute
   TheIndexRoute: typeof TheIndexRoute
   TodayRoute: typeof TodayRoute
   UpgradeRoute: typeof UpgradeRoute
+  WrappedRoute: typeof WrappedRoute
+  YearRoute: typeof YearRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/year': {
+      id: '/year'
+      path: '/year'
+      fullPath: '/year'
+      preLoaderRoute: typeof YearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wrapped': {
+      id: '/wrapped'
+      path: '/wrapped'
+      fullPath: '/wrapped'
+      preLoaderRoute: typeof WrappedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/upgrade': {
       id: '/upgrade'
       path: '/upgrade'
@@ -217,11 +283,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/on-this-day': {
+      id: '/on-this-day'
+      path: '/on-this-day'
+      fullPath: '/on-this-day'
+      preLoaderRoute: typeof OnThisDayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/insights': {
       id: '/insights'
       path: '/insights'
       fullPath: '/insights'
       preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/future': {
+      id: '/future'
+      path: '/future'
+      fullPath: '/future'
+      preLoaderRoute: typeof FutureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/extension': {
@@ -260,13 +340,17 @@ const rootRouteChildren: RootRouteChildren = {
   AskRoute: AskRoute,
   ChatRoute: ChatRoute,
   ExtensionRoute: ExtensionRoute,
+  FutureRoute: FutureRoute,
   InsightsRoute: InsightsRoute,
+  OnThisDayRoute: OnThisDayRoute,
   OnboardingRoute: OnboardingRoute,
   RememberedRoute: RememberedRoute,
   SettingsRoute: SettingsRoute,
   TheIndexRoute: TheIndexRoute,
   TodayRoute: TodayRoute,
   UpgradeRoute: UpgradeRoute,
+  WrappedRoute: WrappedRoute,
+  YearRoute: YearRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
