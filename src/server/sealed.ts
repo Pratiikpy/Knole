@@ -236,29 +236,47 @@ export async function* chatPrivateStream(
   const { messages: anon, map, ok } = await anonymiseMessages(messages);
   let acc = "";
   let emitted = "";
-  const src = rawInferenceStream(anon, opts);
-  let step = await src.next();
-  while (!step.done) {
-    acc += step.value;
-    const cut = Math.max(acc.lastIndexOf(" "), acc.lastIndexOf("\n"));
-    if (cut > 0) {
-      const deanon = deAnonymise(acc.slice(0, cut), map);
-      if (deanon.length > emitted.length && deanon.startsWith(emitted)) {
-        yield deanon.slice(emitted.length);
-        emitted = deanon;
+  let sealed = false;
+  let chatID: string | null = null;
+  try {
+    const src = rawInferenceStream(anon, opts);
+    let step = await src.next();
+    while (!step.done) {
+      acc += step.value;
+      const cut = Math.max(acc.lastIndexOf(" "), acc.lastIndexOf("\n"));
+      if (cut > 0) {
+        const deanon = deAnonymise(acc.slice(0, cut), map);
+        if (deanon.length > emitted.length && deanon.startsWith(emitted)) {
+          yield deanon.slice(emitted.length);
+          emitted = deanon;
+        }
       }
+      step = await src.next();
     }
-    step = await src.next();
+    ({ sealed, chatID } = step.value);
+  } catch (e) {
+    // Both stream paths failed before completing (e.g. NVIDIA unreachable and the sealed stream stalled).
+    // Fall through to a non-streaming completion below rather than leaving the surface blank.
+    console.error("stream path failed, falling back to non-stream:", (e as Error).message);
   }
-  const { sealed, chatID } = step.value;
-  // Final flush: de-anonymise the whole reply (incl. the held-back tail) and emit the remainder.
-  const finalText = deAnonymise(acc, map);
-  if (finalText.startsWith(emitted)) {
-    if (finalText.length > emitted.length) yield finalText.slice(emitted.length);
+
+  if (acc) {
+    // The stream produced content — final flush of the de-anonymised remainder.
+    const finalText = deAnonymise(acc, map);
+    if (finalText.startsWith(emitted)) {
+      if (finalText.length > emitted.length) yield finalText.slice(emitted.length);
+    } else {
+      // Should not happen with stable placeholders; correct to the authoritative text if it ever does.
+      console.warn("chatPrivateStream: de-anonymised prefix diverged from final; correcting tail");
+      yield finalText.slice(Math.min(emitted.length, finalText.length));
+    }
   } else {
-    // Should not happen with stable placeholders; correct to the authoritative text if it ever does.
-    console.warn("chatPrivateStream: de-anonymised prefix diverged from final; correcting tail");
-    yield finalText.slice(Math.min(emitted.length, finalText.length));
+    // Nothing streamed — fall back to a NON-streaming completion so the reflection never goes blank.
+    // rawInference prefers the 0G TEE, so this keeps working when NVIDIA's streaming path is down.
+    const r = await rawInference(anon, opts);
+    sealed = r.sealed;
+    const text = deAnonymise(r.content, map);
+    if (text) yield text;
   }
   return { sealed, anonymised: ok, chatID };
 }
