@@ -6,7 +6,7 @@
 
 <p><em>Anonymized before inference · read inside a 0G TEE · encrypted under your key · recoverable from 0G · minted to your wallet</em></p>
 
-[![Live demo](https://img.shields.io/badge/Live-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole-app.vercel.app) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/rqOQbSuONPg) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole-app.vercel.app/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
+[![Live demo](https://img.shields.io/badge/Live-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole.me) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/rqOQbSuONPg) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole.me/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
 
 ![0G](https://img.shields.io/badge/0G-Aristotle_mainnet-7c6f5b?style=flat-square) ![Sealed inference](https://img.shields.io/badge/sealed_inference-on_(0G_TEE)-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT_ERC--7857-7c6f5b?style=flat-square) ![Evals](https://img.shields.io/badge/evals-21%2F21-2ea043?style=flat-square) [![CI](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml/badge.svg)](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml) ![License](https://img.shields.io/badge/license-MIT-7c6f5b?style=flat-square)
 
@@ -76,7 +76,7 @@ Every major claim is verifiable — and here's the on-chain proof, live on the 0
 - **21 automated evaluation suites** in CI — retrieval, groundedness, privacy-leak, crypto, isolation
 - **Restore-from-chain** verification with real mainnet roots
 - A **headless real-wallet end-to-end run** — inbox → Privy OTP → wallet-signed encryption → on-chain mint
-- A public **[Proof Deck](https://knole-app.vercel.app/proof-deck.html)** documenting every feature with screenshots and commands
+- A public **[Proof Deck](https://knole.me/proof-deck.html)** documenting every feature with screenshots and commands
 
 Built entirely by a **solo developer** — every commit public.
 
@@ -117,7 +117,7 @@ You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and �
 
 ## Current Status
 
-**Live on 0G Aristotle mainnet** — [knole-app.vercel.app](https://knole-app.vercel.app): 0G TEE sealed inference · local anonymization · encrypted storage · restore from 0G · the memory engine · 14-Day Mirror · reflection lenses · Ask My Life · private web research · voice journaling · the Index · wallet encryption · Memory iNFT · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · **Auditable AI** (published training data + on-chain model provenance) — all served fully on 0G.
+**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): 0G TEE sealed inference · local anonymization · encrypted storage · restore from 0G · the memory engine · 14-Day Mirror · reflection lenses · Ask My Life · private web research · voice journaling · the Index · wallet encryption · Memory iNFT · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · **Auditable AI** (published training data + on-chain model provenance) — all served fully on 0G.
 
 **Before high-volume production:** an external security audit and KMS-backed key custody are recommended (the signing-key seam and rotation runbook are in place — see `HUMAN.md`).
 
