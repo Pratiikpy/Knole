@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { recordReceipt } from "./receipts";
 
 const { reflectionArtifacts } = schema;
 
@@ -50,7 +51,9 @@ export async function runDreaming(userId: string): Promise<{ observation: string
       { role: "system", content: DREAM_SYS },
       { role: "user", content: context },
     ],
-    { temperature: 0.65, maxTokens: 200 },
+    // Headroom for the 0G thinking model — a tight cap starves it into empty content; the observation
+    // stays short because the prompt says so, not because of the cap.
+    { temperature: 0.65, maxTokens: 1024 },
   );
   const observation = r.content.trim();
   if (!observation) return null;
@@ -62,6 +65,13 @@ export async function runDreaming(userId: string): Promise<{ observation: string
     content: { observation },
     sources: { entryCount: entries.length },
   });
+  // Dreaming-in-TEE (#13): the overnight analysis ran inside the 0G enclave — commit a receipt so that
+  // sealed computation is on-chain verifiable too (anchored by the worker's receipt step, like #8).
+  try {
+    await recordReceipt(userId, { input: context, output: observation });
+  } catch (e) {
+    console.error("dream receipt failed:", (e as Error).message);
+  }
   return { observation };
 }
 

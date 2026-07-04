@@ -64,7 +64,10 @@ export async function reflect(
 ): Promise<string> {
   const r = await chatPrivate(buildMessages(entry, memories, lens), {
     temperature: 0.7,
-    maxTokens: 400,
+    // glm-5.1 is a thinking model — it spends tokens reasoning before the reply, so a low ceiling
+    // (400) starved it into EMPTY content and forced every reflection down the slow fallback chain.
+    // The headroom lets the sealed model serve directly; the prose is still short (the prompt caps it).
+    maxTokens: 1200,
   });
   return r.content;
 }
@@ -73,6 +76,6 @@ export async function reflect(
 export function reflectStream(entry: string, memories: MemoryHint[] = [], lens: Lens = "gentle") {
   return chatPrivateStream(buildMessages(entry, memories, lens), {
     temperature: 0.7,
-    maxTokens: 400,
+    maxTokens: 1200,
   });
 }

@@ -47,6 +47,7 @@ export type Mirror = {
   themes: { name: string; weight: number }[];
   dream: Dream | null;
   firstReveal: boolean; // true only on the very first day-15 reveal — gates the one-time ceremony
+  composing: boolean; // reveal phase but not yet composed — the client calls composeMirror() to fill it
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -92,19 +93,19 @@ async function userHasImport(userId: string): Promise<boolean> {
   }
 }
 
-export async function buildMirror(userId: string): Promise<Mirror> {
+export async function buildMirror(userId: string, opts?: { compose?: boolean }): Promise<Mirror> {
   const entryRows = (await db.execute(sql`
-    SELECT text, created_at FROM entries WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 30
+    SELECT text, created_at FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 14
   `)) as unknown as Record<string, unknown>[];
   const memRows = (await db.execute(sql`
     SELECT content, type FROM memories
     WHERE user_id = ${userId} AND status IN ('active', 'pinned')
-    ORDER BY created_at DESC LIMIT 30
+    ORDER BY created_at DESC LIMIT 18
   `)) as unknown as Record<string, unknown>[];
   const stat = (await db.execute(sql`
     SELECT count(DISTINCT date_trunc('day', created_at)) AS d, count(*) AS c,
            (now()::date - min(created_at)::date) AS since
-    FROM entries WHERE user_id = ${userId}
+    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
   `)) as unknown as Record<string, unknown>[];
 
   const dayCount = Number(stat[0]?.d ?? 0);
@@ -136,8 +137,9 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     themes: [],
     dream,
     firstReveal: false,
+    composing: false,
   });
-  const reveal = (c: Composition): Mirror => ({
+  const reveal = (c: Composition, composing = false): Mirror => ({
     phase: "revealed",
     daysSinceFirst,
     daysToReveal: 0,
@@ -146,7 +148,15 @@ export async function buildMirror(userId: string): Promise<Mirror> {
     ...c,
     dream,
     firstReveal,
+    composing,
   });
+  const EMPTY_COMPOSITION: Composition = {
+    throughline: "",
+    patterns: [],
+    contradiction: "",
+    avoided: "",
+    themes: [],
+  };
 
   if (entries.length < 2) return base("empty");
   // Hold the reveal until ~2 weeks in (the day-15 payoff) — UNLESS the corpus was imported, in which
@@ -166,19 +176,29 @@ export async function buildMirror(userId: string): Promise<Mirror> {
   const cached = await cachedMirror(userId, entryCount);
   if (cached) return reveal(cached);
 
+  // Composing the mirror is a ~60s LLM call — NEVER do it in the SSR loader (it would hang the page).
+  // The fast path returns a "composing" reveal; the client calls composeMirror() (compose:true) to fill
+  // it in, showing an anticipation state meanwhile. The cron also composes with compose:true.
+  if (!opts?.compose) return reveal(EMPTY_COMPOSITION, true);
+
   const memories = memRows.map((r) => `(${String(r.type)}) ${String(r.content)}`);
   const context = `RECENT ENTRIES:\n${entries
     .map((e, i) => `[${i + 1}] (${e.date}) ${e.text}`)
     .join("\n")}\n\nREMEMBERED ABOUT THEM:\n${memories.map((m) => `- ${m}`).join("\n")}`;
 
-  const r = await chatPrivate(
-    [
-      { role: "system", content: MIRROR_SYS },
-      { role: "user", content: context },
-    ],
-    { temperature: 0.6, maxTokens: 700 },
-  ).catch(() => null);
-  // LLM unavailable — still render the streak + dream with a gentle placeholder.
+  // Bounded so a slow/hung sealed-inference call in this SSR loader can never 504 the page — past the
+  // deadline we fall through to the placeholder below (and the next visit rebuilds from a warm model).
+  const r = await Promise.race([
+    chatPrivate(
+      [
+        { role: "system", content: MIRROR_SYS },
+        { role: "user", content: context },
+      ],
+      { temperature: 0.6, maxTokens: 1200 },
+    ).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 90000)),
+  ]);
+  // LLM unavailable or too slow — still render the streak + dream with a gentle placeholder.
   if (!r) {
     return reveal({
       throughline: "Knole couldn't compose your mirror just now — try again in a moment.",
@@ -258,7 +278,7 @@ export async function mirrorStatus(userId: string): Promise<MirrorStatus> {
   const stat = (await db.execute(sql`
     SELECT count(DISTINCT date_trunc('day', created_at)) AS d, count(*) AS c,
            (now()::date - min(created_at)::date) AS since
-    FROM entries WHERE user_id = ${userId}
+    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
   `)) as unknown as Record<string, unknown>[];
   const dayCount = Number(stat[0]?.d ?? 0);
   const entryCount = Number(stat[0]?.c ?? 0);

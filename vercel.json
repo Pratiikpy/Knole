@@ -5,11 +5,11 @@
   "functions": {
     "api/server.mjs": {
       "includeFiles": "dist/server/**",
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/cron/dream.ts": {
       "includeFiles": "dist/worker/**",
-      "maxDuration": 60
+      "maxDuration": 300
     }
   },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/api/server" }],

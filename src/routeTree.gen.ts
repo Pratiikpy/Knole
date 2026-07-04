@@ -11,17 +11,26 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as YearRouteImport } from './routes/year'
 import { Route as WrappedRouteImport } from './routes/wrapped'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as TodayRouteImport } from './routes/today'
+import { Route as TherapyRouteImport } from './routes/therapy'
 import { Route as TheIndexRouteImport } from './routes/the-index'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RememberedRouteImport } from './routes/remembered'
+import { Route as ProgramsRouteImport } from './routes/programs'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OnThisDayRouteImport } from './routes/on-this-day'
+import { Route as IntentionsRouteImport } from './routes/intentions'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as IdentityRouteImport } from './routes/identity'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as FutureRouteImport } from './routes/future'
 import { Route as ExtensionRouteImport } from './routes/extension'
+import { Route as CreateRouteImport } from './routes/create'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -35,6 +44,11 @@ const WrappedRoute = WrappedRouteImport.update({
   path: '/wrapped',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UpgradeRoute = UpgradeRouteImport.update({
   id: '/upgrade',
   path: '/upgrade',
@@ -43,6 +57,11 @@ const UpgradeRoute = UpgradeRouteImport.update({
 const TodayRoute = TodayRouteImport.update({
   id: '/today',
   path: '/today',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TherapyRoute = TherapyRouteImport.update({
+  id: '/therapy',
+  path: '/therapy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TheIndexRoute = TheIndexRouteImport.update({
@@ -55,9 +74,19 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RememberedRoute = RememberedRouteImport.update({
   id: '/remembered',
   path: '/remembered',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgramsRoute = ProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -70,9 +99,24 @@ const OnThisDayRoute = OnThisDayRouteImport.update({
   path: '/on-this-day',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntentionsRoute = IntentionsRouteImport.update({
+  id: '/intentions',
+  path: '/intentions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InsightsRoute = InsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IdentityRoute = IdentityRouteImport.update({
+  id: '/identity',
+  path: '/identity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FutureRoute = FutureRouteImport.update({
@@ -85,9 +129,19 @@ const ExtensionRoute = ExtensionRouteImport.update({
   path: '/extension',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistantRoute = AssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AskRoute = AskRouteImport.update({
@@ -104,34 +158,52 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
+  '/assistant': typeof AssistantRoute
   '/chat': typeof ChatRoute
+  '/create': typeof CreateRoute
   '/extension': typeof ExtensionRoute
   '/future': typeof FutureRoute
+  '/history': typeof HistoryRoute
+  '/identity': typeof IdentityRoute
   '/insights': typeof InsightsRoute
+  '/intentions': typeof IntentionsRoute
   '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
+  '/programs': typeof ProgramsRoute
   '/remembered': typeof RememberedRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/the-index': typeof TheIndexRoute
+  '/therapy': typeof TherapyRoute
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
+  '/verify': typeof VerifyRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
+  '/assistant': typeof AssistantRoute
   '/chat': typeof ChatRoute
+  '/create': typeof CreateRoute
   '/extension': typeof ExtensionRoute
   '/future': typeof FutureRoute
+  '/history': typeof HistoryRoute
+  '/identity': typeof IdentityRoute
   '/insights': typeof InsightsRoute
+  '/intentions': typeof IntentionsRoute
   '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
+  '/programs': typeof ProgramsRoute
   '/remembered': typeof RememberedRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/the-index': typeof TheIndexRoute
+  '/therapy': typeof TherapyRoute
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
+  '/verify': typeof VerifyRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
 }
@@ -139,17 +211,26 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
+  '/assistant': typeof AssistantRoute
   '/chat': typeof ChatRoute
+  '/create': typeof CreateRoute
   '/extension': typeof ExtensionRoute
   '/future': typeof FutureRoute
+  '/history': typeof HistoryRoute
+  '/identity': typeof IdentityRoute
   '/insights': typeof InsightsRoute
+  '/intentions': typeof IntentionsRoute
   '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
+  '/programs': typeof ProgramsRoute
   '/remembered': typeof RememberedRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/the-index': typeof TheIndexRoute
+  '/therapy': typeof TherapyRoute
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
+  '/verify': typeof VerifyRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
 }
@@ -158,51 +239,78 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/ask'
+    | '/assistant'
     | '/chat'
+    | '/create'
     | '/extension'
     | '/future'
+    | '/history'
+    | '/identity'
     | '/insights'
+    | '/intentions'
     | '/on-this-day'
     | '/onboarding'
+    | '/programs'
     | '/remembered'
+    | '/research'
     | '/settings'
     | '/the-index'
+    | '/therapy'
     | '/today'
     | '/upgrade'
+    | '/verify'
     | '/wrapped'
     | '/year'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ask'
+    | '/assistant'
     | '/chat'
+    | '/create'
     | '/extension'
     | '/future'
+    | '/history'
+    | '/identity'
     | '/insights'
+    | '/intentions'
     | '/on-this-day'
     | '/onboarding'
+    | '/programs'
     | '/remembered'
+    | '/research'
     | '/settings'
     | '/the-index'
+    | '/therapy'
     | '/today'
     | '/upgrade'
+    | '/verify'
     | '/wrapped'
     | '/year'
   id:
     | '__root__'
     | '/'
     | '/ask'
+    | '/assistant'
     | '/chat'
+    | '/create'
     | '/extension'
     | '/future'
+    | '/history'
+    | '/identity'
     | '/insights'
+    | '/intentions'
     | '/on-this-day'
     | '/onboarding'
+    | '/programs'
     | '/remembered'
+    | '/research'
     | '/settings'
     | '/the-index'
+    | '/therapy'
     | '/today'
     | '/upgrade'
+    | '/verify'
     | '/wrapped'
     | '/year'
   fileRoutesById: FileRoutesById
@@ -210,17 +318,26 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AskRoute: typeof AskRoute
+  AssistantRoute: typeof AssistantRoute
   ChatRoute: typeof ChatRoute
+  CreateRoute: typeof CreateRoute
   ExtensionRoute: typeof ExtensionRoute
   FutureRoute: typeof FutureRoute
+  HistoryRoute: typeof HistoryRoute
+  IdentityRoute: typeof IdentityRoute
   InsightsRoute: typeof InsightsRoute
+  IntentionsRoute: typeof IntentionsRoute
   OnThisDayRoute: typeof OnThisDayRoute
   OnboardingRoute: typeof OnboardingRoute
+  ProgramsRoute: typeof ProgramsRoute
   RememberedRoute: typeof RememberedRoute
+  ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
   TheIndexRoute: typeof TheIndexRoute
+  TherapyRoute: typeof TherapyRoute
   TodayRoute: typeof TodayRoute
   UpgradeRoute: typeof UpgradeRoute
+  VerifyRoute: typeof VerifyRoute
   WrappedRoute: typeof WrappedRoute
   YearRoute: typeof YearRoute
 }
@@ -241,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WrappedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/upgrade': {
       id: '/upgrade'
       path: '/upgrade'
@@ -253,6 +377,13 @@ declare module '@tanstack/react-router' {
       path: '/today'
       fullPath: '/today'
       preLoaderRoute: typeof TodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/therapy': {
+      id: '/therapy'
+      path: '/therapy'
+      fullPath: '/therapy'
+      preLoaderRoute: typeof TherapyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/the-index': {
@@ -269,11 +400,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/remembered': {
       id: '/remembered'
       path: '/remembered'
       fullPath: '/remembered'
       preLoaderRoute: typeof RememberedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/programs': {
+      id: '/programs'
+      path: '/programs'
+      fullPath: '/programs'
+      preLoaderRoute: typeof ProgramsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -290,11 +435,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnThisDayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/intentions': {
+      id: '/intentions'
+      path: '/intentions'
+      fullPath: '/intentions'
+      preLoaderRoute: typeof IntentionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/insights': {
       id: '/insights'
       path: '/insights'
       fullPath: '/insights'
       preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/identity': {
+      id: '/identity'
+      path: '/identity'
+      fullPath: '/identity'
+      preLoaderRoute: typeof IdentityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/future': {
@@ -311,11 +477,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExtensionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistant': {
+      id: '/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ask': {
@@ -338,17 +518,26 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AskRoute: AskRoute,
+  AssistantRoute: AssistantRoute,
   ChatRoute: ChatRoute,
+  CreateRoute: CreateRoute,
   ExtensionRoute: ExtensionRoute,
   FutureRoute: FutureRoute,
+  HistoryRoute: HistoryRoute,
+  IdentityRoute: IdentityRoute,
   InsightsRoute: InsightsRoute,
+  IntentionsRoute: IntentionsRoute,
   OnThisDayRoute: OnThisDayRoute,
   OnboardingRoute: OnboardingRoute,
+  ProgramsRoute: ProgramsRoute,
   RememberedRoute: RememberedRoute,
+  ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
   TheIndexRoute: TheIndexRoute,
+  TherapyRoute: TherapyRoute,
   TodayRoute: TodayRoute,
   UpgradeRoute: UpgradeRoute,
+  VerifyRoute: VerifyRoute,
   WrappedRoute: WrappedRoute,
   YearRoute: YearRoute,
 }

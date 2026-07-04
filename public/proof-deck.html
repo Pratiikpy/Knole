@@ -617,7 +617,7 @@
     <div class="page">
       <header class="hero">
         <div class="eyebrow">
-          <span aria-hidden="true">⬡</span> Verified build proof · 0G Galileo testnet · 2026-07-01
+          <span aria-hidden="true">⬡</span> Verified build proof · Live on 0G Aristotle mainnet · 2026-07-04
         </div>
         <h1>See the whole thing<br />in a few minutes.</h1>
         <p class="lead">
@@ -654,6 +654,92 @@
           <div class="n">100</div>
           <div class="l">Lighthouse a11y · best-practices · SEO</div>
         </div>
+      </div>
+
+      <!-- ════════ NOW LIVE ON MAINNET ════════ -->
+      <div class="band" id="mainnet" style="border-top: 2px solid var(--tan, #7c6545)">
+        <div class="kicker">NOW LIVE · 0G ARISTOTLE MAINNET (CHAIN 16661)</div>
+        <h2>Not testnet. Live, on-chain, provable.</h2>
+        <p>
+          Knole runs on <strong>0G mainnet</strong> at
+          <a href="https://knole-app.vercel.app" style="color: inherit"
+            ><strong>knole-app.vercel.app</strong></a
+          >. Every privacy and ownership claim below is a <strong>real mainnet transaction</strong> you can
+          open on <a href="https://chainscan.0g.ai" style="color: inherit">0G ChainScan</a> right now — not a
+          promise, a receipt. Each row: what it proves, and the transaction that proves it.
+        </p>
+      </div>
+
+      <div style="overflow-x: auto; margin: 0 0 2.5rem">
+        <table
+          style="
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 640px;
+            line-height: 1.5;
+          "
+        >
+          <thead>
+            <tr style="text-align: left; border-bottom: 1px solid rgba(124, 101, 69, 0.3)">
+              <th style="padding: 0.6rem 0.8rem 0.6rem 0">Feature</th>
+              <th style="padding: 0.6rem 0.8rem">What the chain proves</th>
+              <th style="padding: 0.6rem 0">Outcome · on-chain</th>
+            </tr>
+          </thead>
+          <tbody style="vertical-align: top">
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>Memory iNFT (ERC-7857)</strong></td>
+              <td style="padding: 0.7rem 0.8rem">KnoleMemory contract deployed to mainnet; your memory mints to your own wallet, un-sellable</td>
+              <td style="padding: 0.7rem 0">
+                Token #1 minted →
+                <a href="https://chainscan.0g.ai/tx/0x870749f28bb13807867b354f0030d2910e778d6718fcec21bbca13d8489ee115">mint tx ↗</a><br />
+                <span style="opacity: 0.7">contract</span>
+                <a href="https://chainscan.0g.ai/address/0xf5F6Ee304e8BfD94666a4AdeC171d116e55c267A">0xf5F6…267A ↗</a>
+              </td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>Reflection receipts (#8)</strong></td>
+              <td style="padding: 0.7rem 0.8rem">Every reflection Merkle-batched into a tamper-evident root anchored on-chain — verifiable at /verify</td>
+              <td style="padding: 0.7rem 0">
+                Root anchored →
+                <a href="https://chainscan.0g.ai/tx/0x6d689a51ffd63ae09b64efb6c81c95c4fb09dc8bd89d00f360fa267785d61c0d">anchor tx ↗</a>
+              </td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>Gas-batched anchoring</strong></td>
+              <td style="padding: 0.7rem 0.8rem">Many users' memory roots committed in ONE transaction (each still individually Merkle-provable) — so scale doesn't drain gas</td>
+              <td style="padding: 0.7rem 0">
+                3 users → 1 tx →
+                <a href="https://chainscan.0g.ai/tx/0xd24ecac3cf23535c04804e99082a05d59d71033a0c9895e481df21b82df42229">batch tx ↗</a>
+              </td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>⭐ Auditable AI</strong></td>
+              <td style="padding: 0.7rem 0.8rem">
+                The sensing model's training data is published on 0G Storage (public, SHA-256-checkable) and a provenance commitment binding dataset + model + config is anchored on-chain
+              </td>
+              <td style="padding: 0.7rem 0">
+                Provenance anchored →
+                <a href="https://chainscan.0g.ai/tx/0x46a9de32b4df44240207d1640eea0e864e3f590ed81c5a495ee774b7c370247a">commitment tx ↗</a><br />
+                <span style="opacity: 0.7">model delivered →</span>
+                <a href="https://chainscan.0g.ai/tx/0x166afc61e5dbcffbe4e1df8e01e97bc4dbd3c8d080dfed2a31eb313138b81f7f">ack tx ↗</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>Sealed inference + models</strong></td>
+              <td style="padding: 0.7rem 0.8rem">Reflection (GLM-5.1), voice (Whisper), image (Z-Image), private web research (Qwen-Max) all run on the 0G mainnet Private Computer (TEE-sealed)</td>
+              <td style="padding: 0.7rem 0">Live on the 0G mainnet router · balance-funded</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size: 11.5px; opacity: 0.62; margin-top: 0.8rem">
+          The <strong>Auditable AI</strong> dataset is downloadable by its 0G Storage root
+          <code>0x2bda0a7c…4608cd0</code> (SHA-256 <code>0x914022c3…</code>); the fine-tuned sensing model
+          (Qwen2.5-0.5B LoRA) is trained + committed on mainnet but is <strong>not yet wired into the app</strong>
+          — sensing still runs on the big sealed model, and the on-device model is provenance-shipped, not
+          functional. Stated plainly, not dressed up.
+        </p>
       </div>
 
       <!-- ════════ THE FULL FLOW ════════ -->
@@ -1420,9 +1506,9 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
           reverts in the contract.
         </p>
         <div class="evidence">
-          <div class="cmd">KnoleMemory (ERC-7857) · 0G Galileo</div>
+          <div class="cmd">KnoleMemory (ERC-7857) · 0G mainnet</div>
           <pre>
-  contract ............... 0xf45C33fa8005734E67F9E99De844D220A18D898E
+  contract ............... 0xf5F6Ee304e8BfD94666a4AdeC171d116e55c267A
   mint(to = your wallet) . Token #3 · encryptedURI = 0g://&lt;root&gt; · metadataHash set
   approve() .............. <span class="token">revert</span> — not for sale
   setApprovalForAll() .... <span class="token">revert</span> — not for sale</pre>
@@ -1825,7 +1911,7 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
           </div>
           <div class="idx-row">
             <span class="k">Storage / chain</span
-            ><span class="v">0G Galileo testnet — Storage + Private Compute — via ethers</span>
+            ><span class="v">0G Aristotle mainnet — Storage + Private Compute — via ethers</span>
           </div>
           <div class="idx-row">
             <span class="k">Database</span
@@ -1923,7 +2009,7 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
             <ul>
               <li>That an entry exists (the 0G anchor is public)</li>
               <li>The on-chain root hash</li>
-              <li>That a testnet wallet signs the anchors</li>
+              <li>That a mainnet wallet signs the anchors</li>
             </ul>
           </div>
         </div>
@@ -1943,7 +2029,7 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
         <h2>Run every proof yourself</h2>
         <p>
           None of this is a screenshot you have to trust. Clone the repo, point it at your own Neon
-          DB + 0G testnet wallet + NVIDIA key, and re-run each line — the engine and crypto proofs
+          DB + 0G mainnet wallet + NVIDIA key, and re-run each line — the engine and crypto proofs
           need that environment, so a bare fork skips them honestly rather than faking green. The
           browser sweep below runs read-only against the live deploy; the write, onboarding,
           guest-gate, and 404 flows run against a local build, since the live demo is read-only by
@@ -1992,10 +2078,10 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
       </section>
 
       <section class="section" id="onchain">
-        <div class="num">ON-CHAIN · 0G GALILEO</div>
+        <div class="num">ON-CHAIN · 0G MAINNET</div>
         <h3 class="t">The roots</h3>
         <p class="lede">
-          Real, on the Galileo testnet — here it is on the 0G explorer, and
+          Real, on the 0G mainnet — here it is on the 0G explorer, and
           <strong>every hash below is a link you can click to verify.</strong> Knole hides your entry
           text (ciphertext) but never hides that an entry exists; the root is public and reveals nothing.
         </p>
@@ -2010,7 +2096,7 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
               alt="0G ChainScan — Mint 1 of Knole Memory, Success, ERC-721, TokenID 4"
             />
             <figcaption>
-              <strong>A real iNFT mint on 0G Galileo.</strong> "Mint 1 of Knole Memory (KNOLE)" · ✓
+              <strong>A real iNFT mint on 0G mainnet.</strong> "Mint 1 of Knole Memory (KNOLE)" · ✓
               Success · ERC-721 · TokenID 4 — minted from the zero address to the user's own wallet.
             </figcaption>
           </figure>
@@ -2025,7 +2111,7 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
             />
             <figcaption>
               <strong>The deployed contract.</strong> KnoleMemory, tracked as "Knole Memory (KNOLE),"
-              with a live history of real mints on the Galileo testnet.
+              with a live history of real mints on the 0G mainnet.
             </figcaption>
           </figure>
         </div>
@@ -2034,12 +2120,12 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
             <span class="k"><span class="hex" aria-hidden="true">⬡</span> Memory iNFT contract</span
             ><span class="v"
               ><a
-                href="https://chainscan-galileo.0g.ai/address/0xf45C33fa8005734E67F9E99De844D220A18D898E"
+                href="https://chainscan.0g.ai/address/0xf5F6Ee304e8BfD94666a4AdeC171d116e55c267A"
                 target="_blank"
                 rel="noopener"
-                >0xf45C33fa8005734E67F9E99De844D220A18D898E</a
+                >0xf5F6Ee304e8BfD94666a4AdeC171d116e55c267A</a
               >
-              — KnoleMemory (ERC-7857), deployed on 0G Galileo; mints to the user's own wallet and
+              — KnoleMemory (ERC-7857), deployed on 0G mainnet; mints to the user's own wallet and
               reverts every transfer (not for sale)</span
             >
           </div>
@@ -2047,10 +2133,10 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
             <span class="k"><span class="hex" aria-hidden="true">⬡</span> A real mint (Token #4)</span
             ><span class="v"
               ><a
-                href="https://chainscan-galileo.0g.ai/tx/0x0c49d19d4322db34aa3bb8f604334c080d25af03b531830de809cce81abcd5f0"
+                href="https://chainscan.0g.ai/tx/0x870749f28bb13807867b354f0030d2910e778d6718fcec21bbca13d8489ee115"
                 target="_blank"
                 rel="noopener"
-                >0x0c49d19d…abcd5f0</a
+                >0x870749f2…89ee115</a
               >
               — click to verify the on-chain iNFT mint transaction</span
             >

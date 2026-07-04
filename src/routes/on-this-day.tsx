@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { onThisDayFn, respondFn } from "@/server/fns";
+import { onThisDayFn, onThisDayNoteFn, respondFn } from "@/server/fns";
 import { Composing } from "@/components/knole/Composing";
 import { isAuthRequired } from "@/lib/authError";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/on-this-day")({
   head: () => ({
@@ -25,7 +25,18 @@ function fmtDate(ymd: string): string {
 }
 
 function OnThisDayPage() {
-  const { match, note } = Route.useLoaderData();
+  const { match, note: initialNote } = Route.useLoaderData();
+  const getNote = useServerFn(onThisDayNoteFn);
+  const [note, setNote] = useState(initialNote);
+  // The loader returns fast (no LLM); compose the then-vs-now note here so SSR never blocks.
+  useEffect(() => {
+    if (!initialNote && match) {
+      getNote()
+        .then((r) => setNote(r.note))
+        .catch(() => setNote("A while ago, this was on your mind. Notice what's shifted since."));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const doRespond = useServerFn(respondFn);
   const [answering, setAnswering] = useState(false);
   const [response, setResponse] = useState("");
@@ -129,7 +140,7 @@ function OnThisDayPage() {
                 <span className="font-display text-xs italic text-muted-foreground">now</span>
               </div>
               <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
-                {note}
+                {note || <span className="italic text-muted-foreground/70">composing a note…</span>}
               </p>
             </div>
           </div>

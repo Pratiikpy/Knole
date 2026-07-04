@@ -66,6 +66,7 @@ set the keys — the upgrade CTA says so honestly rather than dead-ending. To sw
 | #   | Item                              | Type | Notes                                                                                                                                                                 |
 | --- | --------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 15  | KMS / enclave for the KDF secret  | ☁️💳 | The key-provider code is pluggable; pick AWS KMS / GCP KMS / Vault and set its creds. Moves the master key out of `.env` so "only you can read it" is literally true. |
+| 15b | KMS custody for the **wallet signing key** | ☁️💳 | `EVM_PRIVATE_KEY` signs every on-chain tx and controls the funds. `signerProvider.ts` is the pluggable seam: inject a KMS-backed Signer at boot (`signerProvider.injectSigner(...)`) so the raw key never sits in `.env`. See the rotation runbook below. |
 | 16  | Security audit                    | 🧭💳 | Pen-test the extension + API; the in-repo hardening pass is done, but a third-party review is a human call before real users.                                         |
 | 17  | Privacy policy + Terms of Service | 🧭   | A journal of personal data needs these before onboarding real humans. Legal, not code.                                                                                |
 | 18  | Redis (if >1 instance)            | ☁️💳 | Back the in-memory rate limiter with Redis when horizontally scaled.                                                                                                  |
@@ -92,3 +93,27 @@ value for** (no safe default): `DATABASE_URL`, `NVIDIA_API_KEY`, `VITE_PRIVY_APP
 or is feature-gated (`STRIPE_*`, `OG_SEALED_INFERENCE`, `CRON_SECRET`, `KNOLE_REQUIRE_AUTH`, …).
 
 > Never commit `.env`. Rotate everything before mainnet or real funds.
+
+---
+
+## Wallet signing-key rotation runbook
+
+The wallet behind `EVM_PRIVATE_KEY` (currently `0xaa95…677Ce`) signs anchors, iNFT mints, and
+treasury moves, and holds real mainnet 0G. Nothing hardcodes its address — every signer comes from
+`signerProvider.ts` — so rotation is an ops change, not a code change.
+
+1. **Generate a fresh wallet** (ideally a KMS key so the private key never exists in plaintext:
+   AWS KMS `CreateKey` with `SIGN_VERIFY` / secp256k1, or a hardware signer).
+2. **Point custody at it.** Dev: set the new `EVM_PRIVATE_KEY`. Prod: at boot,
+   `signerProvider.injectSigner((provider) => new AwsKmsSigner(process.env.KNOLE_KMS_KEY_ID, provider))`
+   — a thin adapter over `@aws-sdk/client-kms` that implements ethers' `Signer`. Assert
+   `signerProvider.custody() === "kms"` in a health check before serving.
+3. **Move funds** from the old wallet to the new address (native 0G for gas + the compute ledger).
+4. **Re-grant on-chain roles.** The KnoleMemory iNFT (`KNOLE_NFT_ADDRESS_MAINNET`) mints from the
+   signer; if minting is owner-gated, transfer ownership to the new address. Re-fund the fine-tuning
+   /inference sub-accounts under the new wallet.
+5. **Update the treasury.** `ZG_TREASURY_ADDRESS` (pay-with-0G target) → the new address.
+6. **Retire the old key.** Zero its balance, then delete it from `.env` / disable the old KMS key.
+
+The **encryption** master secret rotates independently (row 15) — versioned in `keyProvider.ts`, no
+re-encryption needed. The two crown jewels (funds vs. data) are deliberately separate keys.

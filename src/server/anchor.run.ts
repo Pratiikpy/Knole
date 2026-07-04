@@ -1,7 +1,11 @@
-import { anchorDue } from "./anchor";
+import { anchorDueBatched } from "./anchor";
 
-// On-demand: anchor every due user's memory root on-chain (one tx each) — a manual catch-up
-// alongside the worker's opportunistic per-tick anchoring. `npm run anchor:run`.
-const n = await anchorDue({ limit: 200 });
-console.log(`anchor:run — anchored ${n} memory root(s) on-chain`);
+// On-demand: anchor every due user's memory root on-chain — a manual catch-up alongside the worker's
+// opportunistic anchoring. Gas-batched: all due users go on-chain in ONE tx. `npm run anchor:run`.
+const batch = await anchorDueBatched({ limit: 500 });
+console.log(
+  batch
+    ? `anchor:run — anchored ${batch.users} memory root(s) in 1 tx ${batch.txHash}`
+    : "anchor:run — nothing due",
+);
 process.exit(0);

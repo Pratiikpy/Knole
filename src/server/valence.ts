@@ -71,7 +71,7 @@ export async function moodTrajectory(
       (array_agg(text ORDER BY abs(valence) DESC))[1] AS rep_text,
       (array_agg(valence_label ORDER BY abs(valence) DESC))[1] AS rep_label
     FROM entries
-    WHERE user_id = ${userId} AND valence IS NOT NULL
+    WHERE user_id = ${userId} AND valence IS NOT NULL AND deleted_at IS NULL
       AND created_at > now() - (${days} * interval '1 day')
     GROUP BY date_trunc('day', created_at)
     ORDER BY date_trunc('day', created_at) ASC
@@ -106,7 +106,7 @@ export async function recentValenceTrend(userId: string): Promise<{
         WHERE created_at <= now() - interval '7 days' AND created_at > now() - interval '14 days'
       )::float AS prior
     FROM entries
-    WHERE user_id = ${userId} AND valence IS NOT NULL
+    WHERE user_id = ${userId} AND valence IS NOT NULL AND deleted_at IS NULL
       AND created_at > now() - interval '14 days'
   `)) as unknown as Record<string, unknown>[];
   const recentAvg = Number(rows[0]?.recent ?? 0);

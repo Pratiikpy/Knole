@@ -54,6 +54,7 @@ export async function saveEntry(
     mood?: string | null;
     valence?: number | null;
     valenceLabel?: string | null;
+    energy?: number | null;
   },
 ) {
   const v = vec ?? (await embed(text));
@@ -71,6 +72,7 @@ export async function saveEntry(
       mood: meta?.mood ?? null,
       valence: meta?.valence ?? null,
       valenceLabel: meta?.valenceLabel ?? null,
+      energy: meta?.energy ?? null,
     })
     .returning();
   return row;
@@ -188,7 +190,7 @@ export async function retrieveEntries(
   const rows = await db.execute(sql`
     SELECT id, text, created_at, 1 - (embedding <=> ${lit}::vector) AS score
     FROM entries
-    WHERE user_id = ${userId} AND embedding IS NOT NULL
+    WHERE user_id = ${userId} AND embedding IS NOT NULL AND deleted_at IS NULL
     ORDER BY embedding <=> ${lit}::vector
     LIMIT ${k}
   `);

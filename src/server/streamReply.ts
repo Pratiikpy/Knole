@@ -1,6 +1,7 @@
 import { saveEntry, saveReply, extractMemories, storeEntryOn0G } from "./engine";
 import { scoreEntryValence } from "./valence";
 import { storeSignals } from "./omission";
+import { recordReceipt } from "./receipts";
 import { clientEncEnabledFor } from "./clientEnc";
 import { requireUserId } from "./session";
 import { background } from "./background";
@@ -97,14 +98,18 @@ export async function handleStreamingReply(
         // Persist the reply + extract memories BEFORE closing so serverless keeps the function alive
         // through the write; extraction itself rides background()/waitUntil.
         if (full) {
-          await saveReply(entryId, full, true);
+          const reply = await saveReply(entryId, full, true);
           // Crisis intercept: the entry is saved (it's the user's private journal, and theirs), but a
           // self-harm disclosure must NEVER become derived data that could resurface — no recallable
-          // memory, no mood-graph "representative entry", no signal topics.
+          // memory, no mood-graph "representative entry", no signal topics, and no reflection receipt.
           if (!skipExtract) {
             background(extractMemories(userId, entryId, entryText), "extractMemories");
             background(scoreEntryValence(userId, entryId, entryText), "scoreValence");
             background(storeSignals(userId, entryId, entryText, new Date()), "storeSignals");
+            background(
+              recordReceipt(userId, { entryId, replyId: reply.id, input: entryText, output: full }),
+              "recordReceipt",
+            );
           }
         }
       } catch (e) {

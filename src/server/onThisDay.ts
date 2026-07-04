@@ -69,7 +69,7 @@ async function queryWindow(
   const rows = (await db.execute(sql`
     WITH e AS (
       SELECT text, (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date AS ld
-      FROM entries WHERE user_id = ${userId} AND type = 'journal'
+      FROM entries WHERE user_id = ${userId} AND type = 'journal' AND deleted_at IS NULL
     )
     SELECT text, to_char(ld, 'YYYY-MM-DD') AS ld FROM e
     WHERE ${where}
@@ -79,9 +79,13 @@ async function queryWindow(
   return { text: String(rows[0].text), ld: String(rows[0].ld) };
 }
 
-export async function onThisDay(userId: string): Promise<OnThisDay> {
+// The (fast, LLM-free) match computation — the on-this-day entry + its label, shared by the loader
+// and the lazy note generator.
+async function findMatch(
+  userId: string,
+): Promise<{ match: OnThisMatch; anchorIso: string } | null> {
   const s = await getSettings(userId);
-  if (!s || s.proactivityPaused || (s.freqDial ?? 0) === 0) return { match: null, note: "" };
+  if (!s || s.proactivityPaused || (s.freqDial ?? 0) === 0) return null;
   const tz = s.timezone || "UTC";
   const today = localYMD(tz);
 
@@ -97,7 +101,7 @@ export async function onThisDay(userId: string): Promise<OnThisDay> {
     hit = await queryWindow(userId, tz, [{ lo: shift(t, -2), hi: shift(t, 2) }]);
     span = "month";
   }
-  if (!hit) return { match: null, note: "" };
+  if (!hit) return null;
 
   const diff = daysBetween(today.iso, hit.ld);
   const yearsAgo = Math.round(diff / 365.25);
@@ -114,28 +118,40 @@ export async function onThisDay(userId: string): Promise<OnThisDay> {
     label = exactDay ? "A month ago today" : "About a month ago";
   }
 
-  const match: OnThisMatch = {
-    text: hit.text,
-    date: hit.ld,
-    yearsAgo,
-    monthsAgo,
-    span,
-    label,
+  return {
+    match: { text: hit.text, date: hit.ld, yearsAgo, monthsAgo, span, label },
+    anchorIso: today.iso,
   };
+}
 
-  // Reuse a recent composed note (keyed by today + the matched entry's date) — same as resurface.
-  const cached = await cachedNote(userId, today.iso, hit.ld);
-  if (cached) return { match, note: cached };
+/**
+ * Fast loader path — NEVER calls the LLM (a synchronous sealed inference here was a 504 on first view).
+ * Returns the matched entry + a cached note if fresh; otherwise `note: ""` and the client asks
+ * `onThisDayNote()` to compose one after render.
+ */
+export async function onThisDay(userId: string): Promise<OnThisDay> {
+  const found = await findMatch(userId);
+  if (!found) return { match: null, note: "" };
+  const cached = await cachedNote(userId, found.anchorIso, found.match.date);
+  return { match: found.match, note: cached ?? "" };
+}
+
+/** Lazily compose + cache the then-vs-now note (the slow LLM step), called client-side after render. */
+export async function onThisDayNote(userId: string): Promise<{ note: string }> {
+  const found = await findMatch(userId);
+  if (!found) return { note: "" };
+  const cached = await cachedNote(userId, found.anchorIso, found.match.date);
+  if (cached) return { note: cached };
 
   const r = await chatPrivate(
     [
       { role: "system", content: ON_THIS_DAY_SYS },
       {
         role: "user",
-        content: `${label}. Their entry from then:\n"${hit.text}"\n\nWrite the one short then-vs-now note.`,
+        content: `${found.match.label}. Their entry from then:\n"${found.match.text}"\n\nWrite the one short then-vs-now note.`,
       },
     ],
-    { temperature: 0.7, maxTokens: 120 },
+    { temperature: 0.7, maxTokens: 1024 },
   ).catch(() => null);
   const note =
     r?.content.trim() || "A while ago, this was on your mind. Notice what's shifted since.";
@@ -146,13 +162,13 @@ export async function onThisDay(userId: string): Promise<OnThisDay> {
         type: "pattern",
         threadKey: "on_this_day",
         content: { note },
-        sources: { anchor: today.iso, entryDate: hit.ld },
+        sources: { anchor: found.anchorIso, entryDate: found.match.date },
       });
     } catch {
       /* best-effort cache */
     }
   }
-  return { match, note };
+  return { note };
 }
 
 async function cachedNote(

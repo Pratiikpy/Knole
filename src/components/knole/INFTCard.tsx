@@ -63,7 +63,7 @@ export function INFTCard() {
     }
   };
 
-  const explorer = (tx: string) => `https://chainscan-galileo.0g.ai/tx/${tx}`;
+  const explorer = (tx: string) => `https://chainscan.0g.ai/tx/${tx}`;
 
   return (
     <div className="mt-10 rounded-2xl border border-tan/30 bg-tan/[0.04] p-6">
@@ -75,7 +75,20 @@ export function INFTCard() {
           </p>
           <div className="mt-3 space-y-1 text-[12px] text-muted-foreground">
             <div>
-              Token #{token.tokenId} · version {token.version}
+              Token #{token.tokenId} · version {token.version} ·{" "}
+              <span className="text-tan">
+                {token.version >= 8
+                  ? "Deepening"
+                  : token.version >= 4
+                    ? "Becoming"
+                    : token.version >= 2
+                      ? "Forming"
+                      : "Nascent"}
+              </span>
+            </div>
+            <div className="italic">
+              It grows with you — each time you evolve it, this version is anchored on-chain, a
+              record of who you're becoming.
             </div>
             <a
               href={explorer(token.txHash)}

@@ -1,19 +1,51 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type ReactNode } from "react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { whoamiFn, settingsFn, affirmAgeFn } from "@/server/fns";
 import { ThemeToggle } from "./ThemeToggle";
+import { PwaSetup } from "./PwaSetup";
 
-const nav = [
-  { to: "/today", label: "Today" },
-  { to: "/chat", label: "Chat" },
-  { to: "/ask", label: "Ask My Life" },
-  { to: "/insights", label: "Pattern Mirror" },
-  { to: "/future", label: "Future Self" },
-  { to: "/the-index", label: "Memory" },
-  { to: "/extension", label: "Save" },
-  { to: "/settings", label: "Settings" },
+type NavItem = { to: string; label: string };
+
+// The feature set is broad, so the desktop nav groups it into a few labelled menus instead of a
+// 16-item bar that wraps. Each group's trigger highlights when you're on one of its pages.
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Reflect",
+    items: [
+      { to: "/chat", label: "Chat" },
+      { to: "/assistant", label: "Ask Knole" },
+      { to: "/ask", label: "Ask My Life" },
+      { to: "/research", label: "Research" },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { to: "/insights", label: "Pattern Mirror" },
+      { to: "/future", label: "Future Self" },
+      { to: "/programs", label: "Programs" },
+      { to: "/intentions", label: "Intentions" },
+      { to: "/therapy", label: "Therapy prep" },
+    ],
+  },
+  {
+    label: "Memory",
+    items: [
+      { to: "/the-index", label: "The Index" },
+      { to: "/identity", label: "Identity" },
+      { to: "/history", label: "History" },
+      { to: "/extension", label: "Save from Chrome" },
+    ],
+  },
 ];
+const NAV_HOME: NavItem = { to: "/today", label: "Today" };
+const NAV_CREATE: NavItem = { to: "/create", label: "Create" };
+const NAV_SETTINGS: NavItem = { to: "/settings", label: "Settings" };
+
+// The mobile menu stays a flat list (all destinations), ordered to mirror the desktop grouping.
+const nav: NavItem[] = [NAV_HOME, ...NAV_GROUPS.flatMap((g) => g.items), NAV_CREATE, NAV_SETTINGS];
 
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -68,22 +100,13 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
             <ThemeToggle />
             {!hideNav && (
               <>
-                <nav className="hidden items-center gap-6 md:flex">
-                  {nav.map((n) => {
-                    const active = pathname === n.to;
-                    return (
-                      <Link
-                        key={n.to}
-                        to={n.to}
-                        aria-current={active ? "page" : undefined}
-                        className={`text-[12px] tracking-wide transition-colors ${
-                          active ? "text-ink" : "text-muted-foreground hover:text-ink"
-                        }`}
-                      >
-                        {n.label}
-                      </Link>
-                    );
-                  })}
+                <nav className="hidden items-center gap-5 md:flex">
+                  <NavLink item={NAV_HOME} pathname={pathname} />
+                  {NAV_GROUPS.map((g) => (
+                    <NavGroupMenu key={g.label} group={g} pathname={pathname} />
+                  ))}
+                  <NavLink item={NAV_CREATE} pathname={pathname} />
+                  <NavLink item={NAV_SETTINGS} pathname={pathname} />
                 </nav>
                 <button
                   type="button"
@@ -165,6 +188,7 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
       <main id="main" tabIndex={-1} className="outline-none">
         {children}
       </main>
+      <PwaSetup />
       <footer className="border-t border-rule py-12 text-center">
         <p className="font-display text-sm italic text-muted-foreground">
           A quiet, private mirror — only you can read this.
@@ -174,5 +198,69 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
         </p>
       </footer>
     </div>
+  );
+}
+
+const linkCls = (active: boolean) =>
+  `text-[12px] tracking-wide transition-colors ${
+    active ? "text-ink" : "text-muted-foreground hover:text-ink"
+  }`;
+
+function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+  const active = pathname === item.to;
+  return (
+    <Link to={item.to} aria-current={active ? "page" : undefined} className={linkCls(active)}>
+      {item.label}
+    </Link>
+  );
+}
+
+// A labelled dropdown grouping several destinations. Trigger highlights when the current page is one
+// of the group's items. Radix handles keyboard nav, focus, and outside-click for accessibility.
+function NavGroupMenu({
+  group,
+  pathname,
+}: {
+  group: { label: string; items: NavItem[] };
+  pathname: string;
+}) {
+  const active = group.items.some((i) => i.to === pathname);
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        className={`inline-flex items-center gap-1 outline-none focus-visible:underline ${linkCls(active)}`}
+      >
+        {group.label}
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path
+            d="M2 3.5 5 6.5 8 3.5"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        </svg>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="start"
+          sideOffset={10}
+          className="z-50 min-w-[160px] rounded-xl border border-rule bg-popover p-1.5 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.5)]"
+        >
+          {group.items.map((i) => (
+            <DropdownMenu.Item key={i.to} asChild>
+              <Link
+                to={i.to}
+                aria-current={pathname === i.to ? "page" : undefined}
+                className={`block cursor-pointer rounded-lg px-3 py-2 text-[13px] outline-none transition-colors focus:bg-secondary data-[highlighted]:bg-secondary ${
+                  pathname === i.to ? "text-ink" : "text-muted-foreground hover:text-ink"
+                }`}
+              >
+                {i.label}
+              </Link>
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

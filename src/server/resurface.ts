@@ -11,33 +11,44 @@ export type Resurfaced = {
   note: string;
 };
 
-export async function resurface(userId: string): Promise<Resurfaced> {
-  // The "past self" — the earliest thing they wrote.
+async function earliestEntry(userId: string): Promise<{ text: string; date: string } | null> {
   const rows = (await db.execute(sql`
     SELECT text, created_at FROM entries
-    WHERE user_id = ${userId} AND type = 'journal'
+    WHERE user_id = ${userId} AND type = 'journal' AND deleted_at IS NULL
     ORDER BY created_at ASC LIMIT 1
   `)) as unknown as Record<string, unknown>[];
-  if (!rows[0]) return { entry: null, note: "" };
+  if (!rows[0]) return null;
+  return { text: String(rows[0].text), date: String(rows[0].created_at) };
+}
 
-  const text = String(rows[0].text);
-  const date = String(rows[0].created_at);
+/**
+ * Fast path for the route loader — NEVER calls the LLM, so it can't block SSR (a synchronous sealed
+ * inference here was a 504 on first view). Returns the past entry plus a cached note if one is fresh;
+ * otherwise `note: ""` and the client asks `resurfaceNote()` to compose one after render.
+ */
+export async function resurface(userId: string): Promise<Resurfaced> {
+  const e = await earliestEntry(userId);
+  if (!e) return { entry: null, note: "" };
+  const cachedNote = await cachedResurface(userId, e.date);
+  return { entry: e, note: cachedNote ?? "" };
+}
 
-  // The "past self" entry is stable, so reuse a recent note instead of re-asking the LLM each view.
-  const cachedNote = await cachedResurface(userId, date);
-  if (cachedNote) return { entry: { text, date }, note: cachedNote };
+/** Lazily compose + cache the resurfacing note (the slow LLM step), called client-side after render. */
+export async function resurfaceNote(userId: string): Promise<{ note: string }> {
+  const e = await earliestEntry(userId);
+  if (!e) return { note: "" };
+  const cachedNote = await cachedResurface(userId, e.date);
+  if (cachedNote) return { note: cachedNote };
 
   const r = await chatPrivate(
     [
       { role: "system", content: RESURFACE_SYS },
-      { role: "user", content: `Their past entry:\n"${text}"\n\nWrite the one short note.` },
+      { role: "user", content: `Their past entry:\n"${e.text}"\n\nWrite the one short note.` },
     ],
-    { temperature: 0.7, maxTokens: 120 },
+    { temperature: 0.7, maxTokens: 1024 },
   ).catch(() => null);
-  // If the LLM is unavailable, still resurface the entry with a gentle default note.
   const note =
     r?.content.trim() || "Here's something you wrote a while ago. Sit with it for a moment.";
-  // Cache only a real composed note (not the offline fallback), keyed by the entry's date.
   if (r?.content.trim()) {
     try {
       await db.insert(reflectionArtifacts).values({
@@ -45,13 +56,13 @@ export async function resurface(userId: string): Promise<Resurfaced> {
         type: "pattern",
         threadKey: "resurface",
         content: { note },
-        sources: { entryDate: date },
+        sources: { entryDate: e.date },
       });
     } catch {
       /* best-effort cache */
     }
   }
-  return { entry: { text, date }, note };
+  return { note };
 }
 
 async function cachedResurface(userId: string, entryDate: string): Promise<string | null> {

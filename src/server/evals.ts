@@ -473,7 +473,7 @@ export async function runEvals(): Promise<EvalResult> {
     );
     daysAgo -= 2;
   }
-  const mirror = await buildMirror(mUid);
+  const mirror = await buildMirror(mUid, { compose: true });
   // The mirror must be SPECIFIC to this user — grounded in their actual themes, not a generic
   // letter. (A strict no-invented-facts LLM judge mis-flags an interpretive mirror's valid
   // inferences, so check deterministically that it names several of the distinctive things

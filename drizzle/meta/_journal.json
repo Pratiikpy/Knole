@@ -92,6 +92,55 @@
       "when": 1782828068420,
       "tag": "0012_fresh_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783152666917,
+      "tag": "0013_overrated_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783153089134,
+      "tag": "0014_stiff_nuke",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783153492745,
+      "tag": "0015_fair_human_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783154004263,
+      "tag": "0016_red_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783154830294,
+      "tag": "0017_glossy_james_howlett",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783157787861,
+      "tag": "0018_flat_baron_strucker",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783158333743,
+      "tag": "0019_superb_victor_mancha",
+      "breakpoints": true
     }
   ]
 }

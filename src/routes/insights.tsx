@@ -7,7 +7,166 @@ import { Pulse } from "@/components/knole/Pulse";
 import { MoodWeather } from "@/components/knole/MoodWeather";
 import { MirrorCeremony } from "@/components/knole/MirrorCeremony";
 import { SealedBadge } from "@/components/knole/SealedBadge";
-import { mirrorFn, moodTrajectoryFn, markMirrorSeenFn } from "@/server/fns";
+import {
+  mirrorFn,
+  mirrorComposeFn,
+  moodTrajectoryFn,
+  markMirrorSeenFn,
+  correlationsFn,
+  themesFn,
+  journalStatsFn,
+  mintProofFn,
+} from "@/server/fns";
+
+const EXPLORER = "https://chainscan.0g.ai";
+
+// Proof-of-journaling (#11) — a provable habit, committed on-chain without revealing a word.
+function ProofOfJournaling() {
+  const getStats = useServerFn(journalStatsFn);
+  const mint = useServerFn(mintProofFn);
+  const [stats, setStats] = useState<{ distinctDays: number; currentStreak: number } | null>(null);
+  const [proof, setProof] = useState<{ distinctDays: number; txHash: string; asOf: string } | null>(
+    null,
+  );
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    getStats()
+      .then((r) => {
+        setStats(r.stats);
+        setProof(r.proof);
+      })
+      .catch(() => {});
+  }, [getStats]);
+  if (!stats || stats.distinctDays < 1) return null;
+  async function commit() {
+    setBusy(true);
+    try {
+      const r = await mint();
+      if (r.ok) setProof(r.proof);
+    } catch {
+      /* leave as-is */
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="mt-8 rounded-2xl border border-rule bg-card/50 p-6">
+      <div className="mb-1 text-[10px] uppercase tracking-[0.22em] text-tan">
+        Proof of journaling
+      </div>
+      <p className="font-display text-[20px] italic leading-snug text-ink-soft">
+        You've reflected on {stats.distinctDays} {stats.distinctDays === 1 ? "day" : "days"}
+        {stats.currentStreak > 1 ? ` · ${stats.currentStreak}-day streak` : ""}.
+      </p>
+      <p className="mt-1 text-[12px] text-muted-foreground">
+        Commit it on 0G Chain — a timestamped proof of the habit that reveals nothing you wrote.
+      </p>
+      {proof ? (
+        <div className="mt-3 text-[12px]">
+          <span className="text-tan">
+            ✓ committed ({proof.distinctDays} days, {proof.asOf})
+          </span>{" "}
+          <a
+            href={`${EXPLORER}/tx/${proof.txHash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-2 text-muted-foreground hover:text-ink"
+          >
+            verify on 0G ↗
+          </a>
+        </div>
+      ) : (
+        <button
+          onClick={commit}
+          disabled={busy}
+          className="mt-3 rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper transition-opacity disabled:opacity-50"
+        >
+          {busy ? "Committing on-chain…" : "Commit on-chain"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+type Theme = { topic: string; pct: number; trend: "rising" | "declining" | "steady"; line: string };
+
+// Themes / topics view (#34) — what you write about most, with tone + trend. Client-fetched, gated.
+function Themes() {
+  const getThemes = useServerFn(themesFn);
+  const [items, setItems] = useState<Theme[] | null>(null);
+  useEffect(() => {
+    getThemes()
+      .then((r) => setItems(r.ready ? r.themes : []))
+      .catch(() => setItems([]));
+  }, [getThemes]);
+  if (!items || items.length === 0) return null;
+  const arrow = (t: Theme["trend"]) => (t === "rising" ? "↗" : t === "declining" ? "↘" : "→");
+  return (
+    <div className="mt-8">
+      <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-tan">
+        What you write about
+      </div>
+      <div className="space-y-3">
+        {items.map((t) => (
+          <div key={t.topic} className="rounded-2xl border border-rule bg-card/50 p-5">
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <span className="font-display text-[18px] italic text-ink">{t.topic}</span>
+              <span className="shrink-0 text-[12px] text-muted-foreground">
+                {t.pct}% · {arrow(t.trend)}
+              </span>
+            </div>
+            <p className="text-[14px] leading-relaxed text-muted-foreground">{t.line}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type Correlation = {
+  kind: "activity" | "topic" | "weekday";
+  subject: string;
+  delta: number;
+  n: number;
+  phrasing: string;
+};
+
+// Correlations over the person's own words (#1) — client-fetched so it never blocks the mirror loader,
+// and only renders once there's enough data to be honest. The screenshot-able aha.
+function Correlations() {
+  const getCorrelations = useServerFn(correlationsFn);
+  const [items, setItems] = useState<Correlation[] | null>(null);
+  useEffect(() => {
+    getCorrelations()
+      .then((r) => setItems(r.ready ? r.correlations : []))
+      .catch(() => setItems([]));
+  }, [getCorrelations]);
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="mt-8">
+      <div className="mb-1 text-[10px] uppercase tracking-[0.22em] text-tan">
+        Patterns in your days
+      </div>
+      <p className="mb-4 text-[12px] text-muted-foreground">
+        Gentle correlations from your own entries — tendencies, not certainties.
+      </p>
+      <div className="space-y-3">
+        {items.map((c) => (
+          <div
+            key={`${c.kind}:${c.subject}`}
+            className="rounded-2xl border border-rule bg-card/50 p-5"
+          >
+            <p className="text-[16px] leading-relaxed text-ink-soft">{c.phrasing}</p>
+            <div className="mt-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+              {c.kind} · {c.n} {c.n === 1 ? "day" : "days"} · {c.delta > 0 ? "+" : ""}
+              {c.delta.toFixed(1)} mood
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/insights")({
   head: () => ({
@@ -53,12 +212,24 @@ function Streak({ dayCount, entryCount }: { dayCount: number; entryCount: number
 }
 
 function InsightsPage() {
-  const { mirror: m, mood } = Route.useLoaderData();
+  const { mirror: loadedMirror, mood } = Route.useLoaderData();
+  const composeMirror = useServerFn(mirrorComposeFn);
+  // The loader returns fast (never blocks SSR on the ~60s compose). When it comes back `composing`,
+  // fetch the composition here and swap it in, showing an anticipation state meanwhile.
+  const [m, setM] = useState(loadedMirror);
+  useEffect(() => {
+    if (loadedMirror.composing)
+      composeMirror()
+        .then(setM)
+        .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const maxWeight = Math.max(1, ...m.themes.map((t) => t.weight));
   const markMirrorSeen = useServerFn(markMirrorSeenFn);
   const [play, setPlay] = useState(false);
   useEffect(() => {
     if (
+      !m.composing &&
       m.phase === "revealed" &&
       m.firstReveal &&
       typeof window !== "undefined" &&
@@ -67,7 +238,23 @@ function InsightsPage() {
     ) {
       setPlay(true);
     }
-  }, [m.phase, m.firstReveal]);
+  }, [m.phase, m.firstReveal, m.composing]);
+
+  if (m.composing) {
+    return (
+      <Shell>
+        <section className="px-6 pb-28 pt-12">
+          <div className="mx-auto max-w-[60ch]">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.22em] text-tan">Pattern Mirror</p>
+            <h1 className="mb-8 font-display text-[44px] italic leading-[1.02]">
+              Composing your mirror…
+            </h1>
+            <Composing label="Reading your fortnight — this takes a moment." />
+          </div>
+        </section>
+      </Shell>
+    );
+  }
 
   return (
     <Shell>
@@ -112,6 +299,9 @@ function InsightsPage() {
             <>
               <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
               <MoodWeather data={mood} />
+              <Correlations />
+              <Themes />
+              <ProofOfJournaling />
 
               {/* The anticipation — the day-15 arc building toward the reveal */}
               <div className="mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-7">
@@ -139,6 +329,9 @@ function InsightsPage() {
               {/* Streak — real */}
               <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
               <MoodWeather data={mood} />
+              <Correlations />
+              <Themes />
+              <ProofOfJournaling />
 
               {/* The throughline — the opening */}
               <div className="mt-8 rounded-2xl border border-rule bg-card/50 p-7">

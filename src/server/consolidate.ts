@@ -161,13 +161,19 @@ export async function consolidate(
   const g = await gather(userId, grain, periodStart);
   if (g.count < 2 && !opts?.force) return null;
 
-  const r = await chatPrivate(
-    [
-      { role: "system", content: CONSOLIDATE_SYS[grain] },
-      { role: "user", content: g.context },
-    ],
-    { temperature: 0.5, maxTokens: grain === "yearly" ? 900 : 600 },
-  ).catch(() => null);
+  // Bounded so a slow sealed-inference call can't 504 the /year loader; past the deadline we return
+  // null (no essence this render) and a later visit or the cron rebuilds it. The cron caller is fine
+  // with this too — it simply retries on its next tick.
+  const r = await Promise.race([
+    chatPrivate(
+      [
+        { role: "system", content: CONSOLIDATE_SYS[grain] },
+        { role: "user", content: g.context },
+      ],
+      { temperature: 0.5, maxTokens: grain === "yearly" ? 900 : 600 },
+    ).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 90000)),
+  ]);
   if (!r) return null;
   const m = r.content.match(/\{[\s\S]*\}/);
   if (!m) return null;

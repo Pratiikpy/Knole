@@ -2,6 +2,7 @@ import { sql, eq, and, isNotNull } from "drizzle-orm";
 import { keccak256, toUtf8Bytes } from "ethers";
 import { db, schema } from "../db";
 import { anchorOnChain } from "./og";
+import { buildLayers, proofFor, verifyProof } from "./receipts";
 
 const { entries, reflectionArtifacts } = schema;
 
@@ -86,6 +87,87 @@ export async function anchorDue(
   }
   if (anchored) console.log(`anchorDue: anchored ${anchored} memory root(s) on-chain`);
   return anchored;
+}
+
+export type BatchAnchor = { batchRoot: string; txHash: string; users: number };
+
+/** The leaf a user contributes to a batch anchor: a commitment to (their id, their memory root). */
+function batchLeaf(userId: string, root: string): string {
+  return keccak256(toUtf8Bytes(`${userId}:${root}`));
+}
+
+/**
+ * Gas-batched multi-user anchor: commit MANY users' memory roots to the chain in a SINGLE transaction.
+ * Every due user's `(id, memoryRoot)` becomes a Merkle leaf; only the tree root is written on-chain, and
+ * each user's record keeps its Merkle proof — so an individual anchor is still independently verifiable
+ * (`verifyBatchedAnchor`), while 500 users cost one tx instead of 500. This is the path a cron/worker
+ * should call when serving many users; `anchorMemoryRoot` remains for the single-user, one-root-per-tx case.
+ *
+ * Idempotent per user per UTC day (same due-set query as `anchorDue`). A crash after the tx but mid-write
+ * simply re-anchors the stragglers in the next batch — never a double count of a user, at worst one extra tx.
+ */
+export async function anchorDueBatched(opts: { limit?: number } = {}): Promise<BatchAnchor | null> {
+  const { limit = 500 } = opts;
+  const rows = (await db.execute(sql`
+    SELECT DISTINCT e.user_id FROM entries e
+    WHERE e.kv_ref IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM reflection_artifacts ra
+        WHERE ra.user_id = e.user_id AND ra.thread_key = 'anchor'
+          AND ra.created_at >= date_trunc('day', now())
+      )
+    LIMIT ${limit}
+  `)) as unknown as Record<string, unknown>[];
+  if (!rows.length) return null;
+
+  const items: { userId: string; root: string; count: number }[] = [];
+  for (const r of rows) {
+    const mr = await computeMemoryRoot(String(r.user_id));
+    if (mr) items.push({ userId: String(r.user_id), root: mr.root, count: mr.count });
+  }
+  if (!items.length) return null;
+
+  const leaves = items.map((it) => batchLeaf(it.userId, it.root));
+  const layers = buildLayers(leaves);
+  const batchRoot = layers[layers.length - 1][0];
+
+  const txHash = await anchorOnChain(batchRoot); // ← ONE transaction for the whole batch
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    await db
+      .update(entries)
+      .set({ anchoredRoot: it.root })
+      .where(and(eq(entries.userId, it.userId), isNotNull(entries.kvRef)));
+    await db.insert(reflectionArtifacts).values({
+      userId: it.userId,
+      type: "pattern",
+      threadKey: "anchor",
+      content: {
+        root: it.root,
+        txHash,
+        entryCount: it.count,
+        batched: true,
+        batchRoot,
+        proof: proofFor(layers, i),
+      },
+      sources: {},
+    });
+  }
+  console.log(
+    `anchorDueBatched: ${items.length} memory root(s) anchored on-chain in 1 tx ${txHash}`,
+  );
+  return { batchRoot, txHash, users: items.length };
+}
+
+/** Verify a user's batched anchor: their (id, root) leaf walks its Merkle proof to the anchored batch root. */
+export function verifyBatchedAnchor(
+  userId: string,
+  root: string,
+  proof: string[],
+  batchRoot: string,
+): boolean {
+  return verifyProof(batchLeaf(userId, root), proof, batchRoot);
 }
 
 /** The user's latest on-chain anchor, for the ownership UI. */

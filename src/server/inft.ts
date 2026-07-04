@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { putData } from "./og";
+import { putData, signerFor, contractAddress, NET_NAME } from "./og";
 import { keyForUser, retrieveIdentityMemories } from "./engine";
 
 const { users, reflectionArtifacts } = schema;
@@ -10,10 +10,10 @@ const { users, reflectionArtifacts } = schema;
 // OWN: an encrypted snapshot is stored on 0G Storage (the per-user key encrypts it), and the token
 // records only the storage root + a hash. Mint + evolve need NO oracle (the oracle in the full spec is
 // only for re-encrypting on a sale — which Knole deliberately never does). Ready the moment a deployed
-// KnoleMemory contract address is supplied (KNOLE_NFT_ADDRESS); honest "not configured" until then.
+// KnoleMemory contract address is supplied — per-network via KNOLE_NFT_ADDRESS_MAINNET / _TESTNET
+// (or the legacy bare KNOLE_NFT_ADDRESS); honest "not configured" until then.
 
-const NFT_ADDRESS = process.env.KNOLE_NFT_ADDRESS ?? "";
-const RPC = process.env.OG_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
+const NFT_ADDRESS = contractAddress("KNOLE_NFT_ADDRESS");
 const PK = process.env.EVM_PRIVATE_KEY ?? "";
 
 const ABI = [
@@ -26,9 +26,10 @@ export function inftConfigured(): boolean {
   return !!NFT_ADDRESS && !!PK;
 }
 
+// Minted on the primary network (the contract address is resolved per-network); the iNFT record notes
+// which chain so the token can always be looked up on the right one.
 function contract(): ethers.Contract {
-  const wallet = new ethers.Wallet(PK, new ethers.JsonRpcProvider(RPC));
-  return new ethers.Contract(NFT_ADDRESS, ABI, wallet);
+  return new ethers.Contract(NFT_ADDRESS, ABI, signerFor());
 }
 
 type Snapshot = {
@@ -75,6 +76,7 @@ export type INFTRecord = {
   root: string;
   version: number;
   mintedAt: string;
+  network?: string;
 };
 
 export async function inftStatus(userId: string): Promise<INFTRecord | null> {
@@ -108,7 +110,10 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
   const existing = await inftStatus(userId);
   const c = contract();
 
-  if (existing) {
+  // Only evolve a token that lives on the CURRENT network. A record from another chain (e.g. a
+  // testnet token after the mainnet migration; legacy records with no network tag are testnet) can't
+  // be evolved on this contract — fall through to mint a fresh token here instead.
+  if (existing && (existing.network ?? "testnet") === NET_NAME) {
     const tx = await c.evolve(existing.tokenId, uri, rootHash, metadataHash);
     const rcpt = await tx.wait();
     const rec: INFTRecord = {
@@ -117,6 +122,7 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
       root: rootHash,
       version: existing.version + 1,
       mintedAt: existing.mintedAt,
+      network: existing.network ?? NET_NAME,
     };
     await db
       .insert(reflectionArtifacts)
@@ -144,6 +150,7 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
     root: rootHash,
     version: 1,
     mintedAt: new Date().toISOString(),
+    network: NET_NAME,
   };
   await db
     .insert(reflectionArtifacts)

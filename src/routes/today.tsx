@@ -13,9 +13,15 @@ import {
   onThisDayFn,
   omissionRadarFn,
   quickCheckInFn,
+  promptOfTheDayFn,
+  programTodayFn,
+  advanceProgramFn,
+  whatModelSawFn,
+  decisionReplayFn,
+  receiptForEntryFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/today")({
   head: () => ({
@@ -42,6 +48,13 @@ const lenses = [
   { id: "decision", label: "Decide" },
 ] as const;
 
+// The depth dial for the deepening loop — how hard the follow-up leans (research: always skippable).
+const DEEPEN = [
+  { id: "listen", label: "Listen" },
+  { id: "reflect", label: "Reflect" },
+  { id: "push", label: "Honest" },
+] as const;
+
 // The one-tap nightly check-in — the friction floor (retention #1). Labels match the server enum.
 const CHECKIN_MOODS = [
   { key: "heavy", label: "heavy" },
@@ -51,6 +64,26 @@ const CHECKIN_MOODS = [
   { key: "bright", label: "bright" },
 ] as const;
 type CheckInMood = (typeof CHECKIN_MOODS)[number]["key"];
+
+// Structured check-in (#33): optional activities (Daylio-style) + energy. Activities become tags,
+// correlatable against mood. A sensible default set; the note field covers anything not listed.
+const CHECKIN_ACTIVITIES = [
+  "work",
+  "exercise",
+  "friends",
+  "family",
+  "rest",
+  "outdoors",
+  "poor sleep",
+  "alone",
+];
+const CHECKIN_ENERGY = [
+  { key: "low", label: "low energy" },
+  { key: "mid", label: "steady" },
+  { key: "high", label: "high energy" },
+] as const;
+
+const EXPLORER = "https://chainscan.0g.ai";
 
 const reflectingMsgs = [
   "Reading what you wrote…",
@@ -104,6 +137,8 @@ function TodayPage() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkedInMood, setCheckedInMood] = useState("");
   const [checkInNote, setCheckInNote] = useState("");
+  const [checkInEnergy, setCheckInEnergy] = useState<"low" | "mid" | "high" | null>(null);
+  const [checkInActs, setCheckInActs] = useState<string[]>([]);
   // The 14-Day Mirror arc progress — a cheap day-count call (no LLM) that gives the daily loop
   // visible momentum toward the flagship reveal.
   const getMirrorStatus = useServerFn(mirrorStatusFn);
@@ -119,6 +154,55 @@ function TodayPage() {
   const [loading, setLoading] = useState(false);
   const [remembered, setRemembered] = useState<RecallPill | null>(null);
   const [msgIdx, setMsgIdx] = useState(0);
+  // The in-the-moment deepening loop (#29): after the reflection ends on a question, the person can
+  // answer and Knole responds — reflect-first, one question, adapting each turn. Fully skippable (the
+  // entry is already saved). Turns render as a visible thread under the first reflection.
+  const [entryId, setEntryId] = useState<string | null>(null);
+  const [thread, setThread] = useState<{ role: "you" | "knole"; text: string }[]>([]);
+  const [deepInput, setDeepInput] = useState("");
+  const [deepMode, setDeepMode] = useState<"listen" | "reflect" | "push">("reflect");
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [deepClosed, setDeepClosed] = useState(false);
+  // Guided prompts + programs (#30): a personalized prompt-of-the-day (from the person's own recent
+  // themes) sets the heading; an active program surfaces its current day, and writing it advances the
+  // program. Free-write is always one tap away — programs are invitations, never homework.
+  const getPromptOfTheDay = useServerFn(promptOfTheDayFn);
+  const getProgramToday = useServerFn(programTodayFn);
+  const doAdvanceProgram = useServerFn(advanceProgramFn);
+  const [potdPersonalized, setPotdPersonalized] = useState(false);
+  const [programToday, setProgramToday] = useState<{
+    id: string;
+    title: string;
+    dayNumber: number;
+    totalDays: number;
+    day: { framing: string; prompt: string; followUp?: string };
+  } | null>(null);
+  const [activeProgramId, setActiveProgramId] = useState<string | null>(null);
+  // "What the model saw" (#3): the anonymized text the model actually received — the crown-jewel made
+  // visible. Fetched on demand for the entry that was just reflected on.
+  const getModelSaw = useServerFn(whatModelSawFn);
+  const [modelSaw, setModelSaw] = useState<{ anonymised: string; replaced: number } | null>(null);
+  const [modelSawOpen, setModelSawOpen] = useState(false);
+  const [modelSawText, setModelSawText] = useState("");
+  // Decision Replay (#2): if this entry reads like a choice, bring back the last similar one they faced.
+  const getDecisionReplay = useServerFn(decisionReplayFn);
+  const [decisionReplay, setDecisionReplay] = useState<{ text: string; ago: string } | null>(null);
+  // Reflection receipt (#8): a tamper-evident, on-chain-anchored receipt for this reflection.
+  const getReceipt = useServerFn(receiptForEntryFn);
+  const [receipt, setReceipt] = useState<{
+    id: string;
+    leafHash: string;
+    sealed: boolean;
+    anchoredRoot: string | null;
+    anchorTx: string | null;
+  } | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  // Voice journaling — record, transcribe on 0G (Whisper), drop the text into the page to edit.
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   // Cycle a calm "thinking" line while the reflection generates (~15-18s LLM call).
   useEffect(() => {
@@ -137,6 +221,22 @@ function TodayPage() {
     setRemembered(null);
     setReflected(false);
     setCrisis(false);
+    // A fresh reflection starts a fresh thread.
+    setEntryId(null);
+    setThread([]);
+    setDeepInput("");
+    setDeepClosed(false);
+    // Remember exactly what text was sent, for the "what the model saw" reveal.
+    setModelSaw(null);
+    setModelSawOpen(false);
+    setModelSawText(entry);
+    setDecisionReplay(null);
+    setReceipt(null);
+    setReceiptOpen(false);
+    // In parallel with reflecting: if this reads like a decision, surface the last similar one.
+    getDecisionReplay({ data: { text: entry } })
+      .then((r) => setDecisionReplay(r.match))
+      .catch(() => {});
     // Known demo guest: show the sign-in line directly — no doomed fetch, no 401 in the console.
     if (demoGated) {
       setReflection(
@@ -165,6 +265,9 @@ function TodayPage() {
       // the "it remembered" receipts pill (date + the user's own past words).
       setRemembered(parseRecalledHeader(res.headers.get("x-knole-recalled")));
       setCrisis(res.headers.get("x-knole-crisis") === "1");
+      // The entry id lets the person answer the reflection's question and keep going (the deepen loop).
+      const eid = res.headers.get("x-knole-entry-id");
+      setEntryId(eid);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let acc = "";
@@ -181,11 +284,154 @@ function TodayPage() {
         setReflection(acc);
       }
       setReflected(true);
+      // If this was a program day, advance the program (tags the entry, moves to the next day).
+      if (activeProgramId && eid) {
+        try {
+          await doAdvanceProgram({ data: { programId: activeProgramId, entryId: eid } });
+        } catch {
+          /* non-fatal — the entry is saved either way */
+        }
+        setActiveProgramId(null);
+        getProgramToday()
+          .then((r) => setProgramToday(r.today))
+          .catch(() => {});
+      }
     } catch {
       setReflection("Something interrupted the reflection — try again in a moment.");
       setReflected(true);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function toggleModelSaw() {
+    if (modelSawOpen) {
+      setModelSawOpen(false);
+      return;
+    }
+    setModelSawOpen(true);
+    if (!modelSaw && modelSawText) {
+      try {
+        setModelSaw(await getModelSaw({ data: { text: modelSawText } }));
+      } catch {
+        /* leave closed-value null; the panel shows a fallback */
+      }
+    }
+  }
+
+  async function startVoice() {
+    setVoiceErr(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = ["audio/webm", "audio/mp4", "audio/ogg"].find(
+        (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
+      );
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data.size) chunksRef.current.push(e.data);
+      };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        if (blob.size < 400) {
+          setVoiceErr("Didn't catch that — try again.");
+          return;
+        }
+        setTranscribing(true);
+        try {
+          const fd = new FormData();
+          fd.append("file", blob, "voice.webm");
+          const res = await fetch("/journal/transcribe", { method: "POST", body: fd });
+          if (!res.ok) throw new Error(String(res.status));
+          const { text } = (await res.json()) as { text?: string };
+          if (text && text.trim()) {
+            setEntry((prev) => (prev.trim() ? `${prev.trim()} ${text.trim()}` : text.trim()));
+            setReflected(false);
+            setReflection(null);
+            setEntryId(null);
+            setThread([]);
+          } else {
+            setVoiceErr("Didn't catch any words — try again.");
+          }
+        } catch {
+          setVoiceErr("Couldn't transcribe just now — you can type instead.");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      setVoiceErr("Microphone access is needed to speak your entry.");
+    }
+  }
+
+  function stopVoice() {
+    mediaRef.current?.stop();
+    setRecording(false);
+  }
+
+  async function toggleReceipt() {
+    if (receiptOpen) {
+      setReceiptOpen(false);
+      return;
+    }
+    setReceiptOpen(true);
+    if (!receipt && entryId) {
+      try {
+        const r = await getReceipt({ data: { entryId } });
+        setReceipt(r.receipt);
+      } catch {
+        /* the receipt writes in the background; a retry usually finds it */
+      }
+    }
+  }
+
+  async function handleDeepen() {
+    const answer = deepInput.trim();
+    if (!answer || !entryId || deepLoading) return;
+    setDeepLoading(true);
+    // Show the person's answer + a placeholder Knole turn immediately; the reply streams into it.
+    setThread((t) => [...t, { role: "you", text: answer }, { role: "knole", text: "" }]);
+    setDeepInput("");
+    const fail = () =>
+      setThread((t) => {
+        const c = [...t];
+        c[c.length - 1] = {
+          role: "knole",
+          text: "Something interrupted me — try again in a moment.",
+        };
+        return c;
+      });
+    try {
+      const res = await fetch("/journal/deepen", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ entryId, answer, mode: deepMode }),
+      });
+      if (!res.ok || !res.body) {
+        fail();
+        return;
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        setThread((t) => {
+          const c = [...t];
+          c[c.length - 1] = { role: "knole", text: acc };
+          return c;
+        });
+      }
+    } catch {
+      fail();
+    } finally {
+      setDeepLoading(false);
     }
   }
 
@@ -216,6 +462,21 @@ function TodayPage() {
   useEffect(() => {
     getMirrorStatus()
       .then((m) => setMirror(m))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Personalized prompt-of-the-day becomes the heading (with a "for you" mark when it's drawn from
+    // the person's own themes). The static prompt chips stay as quick alternatives.
+    getPromptOfTheDay()
+      .then((r) => {
+        setPrompt(r.prompt);
+        setPotdPersonalized(r.personalized);
+      })
+      .catch(() => {});
+    getProgramToday()
+      .then((r) => setProgramToday(r.today))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -269,7 +530,14 @@ function TodayPage() {
       /* ignore */
     }
     if (demoGated) return; // ephemeral in the demo
-    void doQuickCheckIn({ data: { mood, note: checkInNote.trim() || undefined } }).catch(() => {});
+    void doQuickCheckIn({
+      data: {
+        mood,
+        note: checkInNote.trim() || undefined,
+        energy: checkInEnergy ?? undefined,
+        activities: checkInActs.length ? checkInActs : undefined,
+      },
+    }).catch(() => {});
   };
 
   const dismissRadar = () => {
@@ -420,6 +688,45 @@ function TodayPage() {
               <p className="mb-4 font-display text-[17px] italic text-ink-soft">
                 One tap before the page — how's today landing?
               </p>
+              {/* Optional structured detail (#33): what shaped today + energy, then tap a mood to log. */}
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {CHECKIN_ACTIVITIES.map((a) => {
+                  const on = checkInActs.includes(a);
+                  return (
+                    <button
+                      key={a}
+                      onClick={() =>
+                        setCheckInActs((s) => (on ? s.filter((x) => x !== a) : [...s, a]))
+                      }
+                      className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+                        on
+                          ? "bg-tan/[0.15] text-tan ring-1 ring-tan/30"
+                          : "border border-rule text-muted-foreground hover:text-ink"
+                      }`}
+                    >
+                      {a}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mb-4 flex flex-wrap gap-1.5">
+                {CHECKIN_ENERGY.map((e) => (
+                  <button
+                    key={e.key}
+                    onClick={() => setCheckInEnergy((cur) => (cur === e.key ? null : e.key))}
+                    className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+                      checkInEnergy === e.key
+                        ? "bg-tan/[0.15] text-tan ring-1 ring-tan/30"
+                        : "border border-rule text-muted-foreground hover:text-ink"
+                    }`}
+                  >
+                    {e.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                tap a mood to log
+              </p>
               <div className="flex flex-wrap gap-2">
                 {CHECKIN_MOODS.map((m) => (
                   <button
@@ -473,6 +780,47 @@ function TodayPage() {
             </Link>
           )}
 
+          {/* Guided program — the current day, if the person is in one. Writing it advances the arc. */}
+          {programToday && (
+            <div className="animate-fade-up mb-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-6">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-tan">
+                  {programToday.title} · day {programToday.dayNumber} of {programToday.totalDays}
+                </span>
+                <Link
+                  to="/programs"
+                  className="shrink-0 text-[11px] text-muted-foreground hover:text-ink"
+                >
+                  all programs →
+                </Link>
+              </div>
+              <p className="mb-1 font-display text-[16px] italic text-ink-soft">
+                {programToday.day.framing}
+              </p>
+              <p className="mb-4 text-[15px] leading-relaxed text-ink">{programToday.day.prompt}</p>
+              <button
+                onClick={() => {
+                  setPrompt(programToday.day.prompt);
+                  setActiveProgramId(programToday.id);
+                  setReflected(false);
+                  setReflection(null);
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper transition-opacity"
+              >
+                {activeProgramId === programToday.id ? "Writing this page ↓" : "Write today's page"}
+              </button>
+            </div>
+          )}
+
+          {!programToday && (
+            <Link
+              to="/programs"
+              className="mb-6 block text-[12px] text-muted-foreground hover:text-ink"
+            >
+              Start a guided program — never face a blank page →
+            </Link>
+          )}
+
           <div className="mb-6 flex flex-wrap gap-2">
             {prompts.map((p) => {
               const active = prompt === p;
@@ -493,6 +841,11 @@ function TodayPage() {
           </div>
 
           <div className="rounded-2xl border border-rule bg-card/50 p-8">
+            {potdPersonalized && !activeProgramId && (
+              <span className="mb-2 block text-[10px] uppercase tracking-[0.2em] text-tan">
+                for you
+              </span>
+            )}
             <p className="font-display text-[18px] italic text-muted-foreground">{prompt}.</p>
 
             <textarea
@@ -502,6 +855,9 @@ function TodayPage() {
                 setReflected(false);
                 setReflection(null);
                 setRemembered(null);
+                setEntryId(null);
+                setThread([]);
+                setDeepClosed(false);
               }}
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleReflect();
@@ -510,6 +866,28 @@ function TodayPage() {
               className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Write what's true, even if it's small."
             />
+
+            {/* Voice journaling — speak, transcribed privately on 0G, then edit like any entry. */}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                onClick={recording ? stopVoice : startVoice}
+                disabled={transcribing}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors disabled:opacity-50 ${
+                  recording
+                    ? "border-tan/50 bg-tan/[0.1] text-tan"
+                    : "border-rule text-muted-foreground hover:text-ink"
+                }`}
+              >
+                <span className={recording ? "animate-breathe" : ""}>●</span>
+                {transcribing ? "Transcribing…" : recording ? "Stop" : "Speak"}
+              </button>
+              {recording && (
+                <span className="text-[11px] text-muted-foreground">
+                  listening — tap stop when you're done
+                </span>
+              )}
+              {voiceErr && <span className="text-[11px] text-tan">{voiceErr}</span>}
+            </div>
 
             {!reflected && entry.trim().length > 10 && (
               <div className="mt-6">
@@ -587,6 +965,186 @@ function TodayPage() {
                 {crisis && !loading && (
                   <div className="mt-4">
                     <CrisisCard />
+                  </div>
+                )}
+
+                {/* "What the model saw" — the anonymized text the model actually received (#3). */}
+                {!crisis && !loading && modelSawText && (
+                  <div className="mt-4">
+                    <button
+                      onClick={toggleModelSaw}
+                      className="text-[11px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+                    >
+                      {modelSawOpen ? "hide what the model saw" : "what the model saw"}
+                    </button>
+                    {modelSawOpen && (
+                      <div className="animate-fade-up mt-2 rounded-xl border border-rule bg-card/60 p-4">
+                        <p className="whitespace-pre-line font-mono text-[13px] leading-relaxed text-ink-soft">
+                          {modelSaw ? modelSaw.anonymised : "…"}
+                        </p>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          {modelSaw
+                            ? modelSaw.replaced > 0
+                              ? `${modelSaw.replaced} name${
+                                  modelSaw.replaced === 1 ? "" : "s"
+                                } replaced before your words reached the model — it never saw the real ones.`
+                              : "No names to hide here — but every entry is scrubbed the same way before it ever leaves your device."
+                            : "Reading it back the way the model received it…"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Reflection receipt — tamper-evident, anchored on 0G Chain (#8). */}
+                {!crisis && !loading && entryId && (
+                  <div className="mt-3">
+                    <button
+                      onClick={toggleReceipt}
+                      className="text-[11px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+                    >
+                      {receiptOpen ? "hide reflection receipt" : "reflection receipt"}
+                    </button>
+                    {receiptOpen && (
+                      <div className="animate-fade-up mt-2 rounded-xl border border-rule bg-card/60 p-4 text-[12px]">
+                        {receipt ? (
+                          <>
+                            <div className="break-all font-mono text-[11px] text-ink-soft">
+                              leaf {receipt.leafHash.slice(0, 22)}…
+                            </div>
+                            <div className="mt-1 text-muted-foreground">
+                              {receipt.sealed ? "Sealed in a 0G TEE · " : ""}
+                              {receipt.anchoredRoot
+                                ? "anchored on 0G Chain ✓"
+                                : "committed — anchors on-chain nightly"}
+                            </div>
+                            <div className="mt-2 flex items-center gap-4">
+                              {receipt.anchorTx && (
+                                <a
+                                  href={`${EXPLORER}/tx/${receipt.anchorTx}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-tan hover:text-ink"
+                                >
+                                  verify on 0G ↗
+                                </a>
+                              )}
+                              <Link
+                                to="/verify"
+                                search={{ id: receipt.id }}
+                                className="text-muted-foreground hover:text-ink"
+                              >
+                                full verification →
+                              </Link>
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            This reflection isn't receipted yet — try again in a moment.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Decision Replay — the last similar choice they faced, in their own words (#2). */}
+            {decisionReplay && !crisis && (
+              <div className="animate-fade-up mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-6">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-tan">
+                  You've faced a choice like this before
+                </div>
+                <p className="mb-2 text-[12px] text-muted-foreground">
+                  {decisionReplay.ago}, you wrote:
+                </p>
+                <p className="font-display text-[16px] italic leading-snug text-ink-soft">
+                  "
+                  {decisionReplay.text.length > 260
+                    ? `${decisionReplay.text.slice(0, 260)}…`
+                    : decisionReplay.text}
+                  "
+                </p>
+              </div>
+            )}
+
+            {/* The deepening loop — answer the reflection's question and keep going. Skippable; the
+                entry is already saved. Only after a real reflection (not a crisis hand-off). */}
+            {reflected && reflection && !crisis && entryId && (
+              <div className="animate-fade-up mt-6 border-t border-rule pt-6">
+                {thread.map((t, i) =>
+                  t.role === "you" ? (
+                    <div key={i} className="mb-4">
+                      <span className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        you
+                      </span>
+                      <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink">
+                        {t.text}
+                      </p>
+                    </div>
+                  ) : (
+                    <div key={i} className="mb-4 border-l-2 border-tan/40 pl-6">
+                      <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
+                        {t.text || <span className="italic text-muted-foreground">…</span>}
+                        {deepLoading && i === thread.length - 1 && (
+                          <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-breathe bg-tan align-middle" />
+                        )}
+                      </p>
+                    </div>
+                  ),
+                )}
+                {deepClosed ? (
+                  <p className="text-[12px] italic text-muted-foreground">
+                    Held. It's here when you want to come back.
+                  </p>
+                ) : (
+                  <div>
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                      <span className="mr-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        Depth
+                      </span>
+                      {DEEPEN.map((d) => (
+                        <button
+                          key={d.id}
+                          onClick={() => setDeepMode(d.id)}
+                          className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+                            deepMode === d.id
+                              ? "bg-tan/[0.15] text-tan ring-1 ring-tan/30"
+                              : "text-muted-foreground hover:text-ink"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={deepInput}
+                      onChange={(e) => setDeepInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleDeepen();
+                      }}
+                      rows={2}
+                      className="w-full resize-none rounded-xl border border-rule bg-card/60 px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:border-tan/40 focus:outline-none"
+                      placeholder={
+                        thread.length ? "Stay with it, or answer…" : "Answer, or go a layer deeper…"
+                      }
+                    />
+                    <div className="mt-2 flex items-center justify-between">
+                      <button
+                        onClick={() => setDeepClosed(true)}
+                        className="text-[11px] text-muted-foreground hover:text-ink"
+                      >
+                        that's enough for today
+                      </button>
+                      <button
+                        onClick={handleDeepen}
+                        disabled={deepLoading || !deepInput.trim()}
+                        className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper transition-opacity disabled:opacity-50"
+                      >
+                        {deepLoading ? "…" : "Go deeper"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

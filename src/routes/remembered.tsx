@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { resurfaceFn, respondFn } from "@/server/fns";
+import { resurfaceFn, resurfaceNoteFn, respondFn } from "@/server/fns";
 import { Composing } from "@/components/knole/Composing";
 import { isAuthRequired } from "@/lib/authError";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/remembered")({
   head: () => ({
@@ -25,7 +25,18 @@ function fmtDate(iso: string): string {
 }
 
 function RememberedPage() {
-  const { entry, note } = Route.useLoaderData();
+  const { entry, note: initialNote } = Route.useLoaderData();
+  const getNote = useServerFn(resurfaceNoteFn);
+  const [note, setNote] = useState(initialNote);
+  // The loader returns fast (no LLM); compose the note here so SSR never blocks on inference.
+  useEffect(() => {
+    if (!initialNote && entry) {
+      getNote()
+        .then((r) => setNote(r.note))
+        .catch(() => setNote("Here's something you wrote a while ago. Sit with it for a moment."));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const doRespond = useServerFn(respondFn);
   const [answering, setAnswering] = useState(false);
   const [response, setResponse] = useState("");
@@ -131,7 +142,7 @@ function RememberedPage() {
                 <span className="font-display text-xs italic text-muted-foreground">now</span>
               </div>
               <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
-                {note}
+                {note || <span className="italic text-muted-foreground/70">composing a note…</span>}
               </p>
             </div>
           </div>

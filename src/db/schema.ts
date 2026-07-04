@@ -86,6 +86,9 @@ export const users = pgTable("users", {
   // Stripe billing — written only by verified webhooks. `plan` ("free" | "deep") is the entitlement.
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  // Pay-as-you-go credits (Part 7C) — power metered breadth (image gen, general assistant) for users
+  // who aren't on the subscription. Topped up via a Stripe one-time pack or pay-with-0G; never negative.
+  credits: integer("credits").default(0).notNull(),
   // The day-15 Mirror reveal ceremony fires once — stamped here (belt-and-suspenders with a
   // localStorage guard, so a storage clear can't replay it across devices).
   mirrorRevealedAt: timestamp("mirror_revealed_at"),
@@ -117,6 +120,9 @@ export const entries = pgTable(
     // new leaves the row.
     valence: real("valence"),
     valenceLabel: text("valence_label"),
+    // Structured check-in (#33): a user-selected energy level (0..1) alongside mood. Activities the
+    // person logs ride the `tags` array below (unified with #35 tags), so they're correlatable for free.
+    energy: real("energy"),
     // Conversational capture: a composed "Daily Chat" entry carries an evocative title + topical
     // tags (also ride the 0G payload + a future timeline). Null for ordinary journal entries.
     title: text("title"),
@@ -125,6 +131,9 @@ export const entries = pgTable(
     kvRef: text("kv_ref"), // 0G KV pointer (source of truth)
     encScheme: text("enc_scheme"), // 'server' | 'client' — who holds the 0G blob's key (null = legacy)
     anchoredRoot: text("anchored_root"), // on-chain memory-root anchor
+    // Soft delete (#35): a deleted entry drops out of every list + recall but stays recoverable for
+    // 30 days (journalers fear losing entries — durability is trust). Purged after the window.
+    deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
@@ -227,6 +236,12 @@ export const memoryHistory = pgTable(
     oldValue: jsonb("old_value"),
     newValue: jsonb("new_value"),
     actor: actorType("actor").default("system").notNull(),
+    // Tamper-evident recall (#12): each audit row gets a leaf hash; leaves are Merkle-batched and the
+    // root is anchored on 0G Chain, so any later alteration of the memory's history is detectable.
+    leafHash: text("leaf_hash"),
+    anchoredRoot: text("anchored_root"),
+    anchorTx: text("anchor_tx"),
+    proof: jsonb("proof").$type<string[]>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -296,6 +311,79 @@ export const pushSubscriptions = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [uniqueIndex("push_subscriptions_endpoint_uniq").on(t.endpoint)],
+);
+
+// ── program enrollments (guided journaling programs #30) ──
+// A person's place in a guided program. The catalog itself is app content (server/programs.ts); this
+// only tracks progress. One row per (user, program) — restarting a program resets it in place.
+export const programEnrollments = pgTable(
+  "program_enrollments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    programId: text("program_id").notNull(), // matches a Program.id in the catalog
+    currentDay: integer("current_day").default(0).notNull(), // 0-indexed next day to write
+    status: text("status").default("active").notNull(), // active | completed | abandoned
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    lastEntryAt: timestamp("last_entry_at"),
+    completedAt: timestamp("completed_at"),
+  },
+  (t) => [
+    uniqueIndex("program_enrollments_user_program_uniq").on(t.userId, t.programId),
+    index("program_enrollments_user_idx").on(t.userId),
+  ],
+);
+
+// ── reflection receipts (#8) ─────────────────────────────
+// A tamper-evident receipt for every reflection: a hash of (input, output, model, sealed flag,
+// time). Leaves are batched into a Merkle tree whose root is anchored on 0G Chain; each receipt keeps
+// its proof so anyone can recompute the leaf, verify the path to the anchored root, and see the tx.
+export const receipts = pgTable(
+  "receipts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").references(() => entries.id, { onDelete: "set null" }),
+    replyId: uuid("reply_id"),
+    inputHash: text("input_hash").notNull(), // sha256 of the reflected-on text
+    outputHash: text("output_hash").notNull(), // sha256 of the reflection
+    model: text("model").notNull(),
+    sealed: boolean("sealed").default(false).notNull(), // ran inside the 0G TEE
+    leafHash: text("leaf_hash").notNull(), // keccak256(input|output|model|sealed|ts)
+    anchoredRoot: text("anchored_root"), // the Merkle root once anchored
+    anchorTx: text("anchor_tx"), // on-chain tx that wrote the root
+    proof: jsonb("proof").$type<string[]>(), // sibling hashes, leaf → root
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("receipts_user_idx").on(t.userId),
+    index("receipts_entry_idx").on(t.entryId),
+    index("receipts_unanchored_idx").on(t.userId, t.anchoredRoot),
+  ],
+);
+
+// ── intentions (evidence-quoted goals #31) ───────────────
+// What the person is working toward, in their own words. Movement is measured from their entries and
+// shown WITH a quoted line — never a punishing streak. Max ~3 active (enforced in the engine).
+export const intentions = pgTable(
+  "intentions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    status: text("status").default("active").notNull(), // active | achieved | released
+    source: text("source").default("user").notNull(), // user | suggested (AI-proposed, accepted)
+    embedding: vector("embedding", { dimensions: EMBED_DIM }), // to match relevant entries
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [index("intentions_user_idx").on(t.userId)],
 );
 
 // ── eval runs (release gate) ─────────────────────────────

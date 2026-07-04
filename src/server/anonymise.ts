@@ -59,10 +59,16 @@ export function aggregate(tokens: NerToken[]): Span[] {
 
 export type Anonymised = { anonymised: string; map: Record<string, string> };
 
-export async function anonymise(text: string): Promise<Anonymised> {
+/**
+ * Anonymise PII to stable tokens. `only` restricts which NER groups are stripped — reflection strips
+ * everything (default), but private research passes with `only: ["PER"]` so the person's identity is
+ * removed while the research SUBJECT (places, orgs, topics) survives — otherwise the search is useless.
+ */
+export async function anonymise(text: string, opts?: { only?: string[] }): Promise<Anonymised> {
   const ner = await getNER();
   const tokens = await ner(text);
-  const spans = aggregate(tokens).filter((s) => s.word.length >= 2);
+  let spans = aggregate(tokens).filter((s) => s.word.length >= 2);
+  if (opts?.only) spans = spans.filter((s) => opts.only!.includes(s.group));
 
   // unique by lowercased word, longest first so longer names replace before any substring of them
   const seen = new Set<string>();

@@ -2,12 +2,15 @@ import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { runDreaming } from "./dreaming";
 import { storeEntryOn0G } from "./engine";
-import { anchorDue } from "./anchor";
+import { anchorDueBatched } from "./anchor";
 import { runWeeklyDigests } from "./digest";
 import { runProactiveNudges } from "./proactivity";
 import { scoreEntryValence } from "./valence";
 import { backfillSignals, computeOmissionRadar, usersDueForRadar } from "./omission";
 import { consolidateDue } from "./consolidate";
+import { purgeExpiredTrash } from "./trash";
+import { anchorReceiptsDue } from "./receipts";
+import { anchorHistoryDue } from "./tamperEvident";
 
 let ticking = false;
 
@@ -19,8 +22,10 @@ export async function tick(): Promise<{
   users: number;
   dreamed: number;
   pruned?: number;
+  purged?: number;
   backfilled?: number;
   anchored?: number;
+  receiptsAnchored?: number;
   digested?: number;
   nudged?: number;
   valenced?: number;
@@ -69,6 +74,14 @@ export async function tick(): Promise<{
       console.error("cache prune failed:", (e as Error).message);
     }
 
+    // Permanently remove entries whose 30-day trash window has expired (#35).
+    let purged = 0;
+    try {
+      purged = await purgeExpiredTrash();
+    } catch (e) {
+      console.error("trash purge failed:", (e as Error).message);
+    }
+
     // Re-drive entries stranded off-chain by a transient 0G failure, within whatever time the
     // dream loop left (0G uploads are slow), so the "you own it on 0G" guarantee self-heals over
     // ticks instead of silently losing entries. A backlog catches up over nights or via backfill:0g.
@@ -79,13 +92,31 @@ export async function tick(): Promise<{
       console.error("0G backfill failed:", (e as Error).message);
     }
 
-    // Daily on-chain anchor of each due user's memory root — a timestamped, tamper-evident
-    // commitment to their whole state. Opportunistic + idempotent per day, like the backfill.
+    // Daily on-chain anchor of every due user's memory root — a timestamped, tamper-evident
+    // commitment to their whole state. Gas-batched: all due users go on-chain in ONE tx (each still
+    // individually verifiable via its Merkle proof), so a many-user demo doesn't drain the wallet.
     let anchored = 0;
     try {
-      anchored = await anchorDue({ start, budgetMs });
+      const batch = await anchorDueBatched({ limit: 500 });
+      anchored = batch?.users ?? 0;
     } catch (e) {
       console.error("anchor step failed:", (e as Error).message);
+    }
+
+    // Reflection receipts (#8): batch each user's un-anchored receipts into a Merkle tree and anchor
+    // the root on-chain — opportunistic + bounded like the memory anchor.
+    let receiptsAnchored = 0;
+    try {
+      receiptsAnchored = await anchorReceiptsDue({ start, budgetMs });
+    } catch (e) {
+      console.error("receipt anchor step failed:", (e as Error).message);
+    }
+
+    // Tamper-evident recall (#12): anchor each user's un-anchored memory-history events on-chain.
+    try {
+      await anchorHistoryDue({ start, budgetMs });
+    } catch (e) {
+      console.error("history anchor step failed:", (e as Error).message);
     }
 
     // Hierarchical consolidation — roll up the most-recent completed week/month/year per due user.
@@ -154,8 +185,10 @@ export async function tick(): Promise<{
       users: rows.length,
       dreamed,
       pruned,
+      purged,
       backfilled,
       anchored,
+      receiptsAnchored,
       digested,
       nudged,
       valenced,

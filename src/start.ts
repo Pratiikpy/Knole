@@ -4,10 +4,13 @@ import { setResponseHeaders, getRequest } from "@tanstack/react-start/server";
 import { renderErrorPage } from "./lib/error-page";
 import { handleExtensionSave } from "./server/extensionSave";
 import { handleJournalStream } from "./server/journalStream";
+import { handleDeepenStream } from "./server/journalDeepen";
+import { handleTranscribe } from "./server/journalTranscribe";
 import { handleChatStream } from "./server/chatStream";
 import { handleAskStream } from "./server/askStream";
 import { handleFutureStream } from "./server/futureStream";
 import { handleChatReflectStream } from "./server/chatReflectStream";
+import { handleAssistantStream } from "./server/assistant";
 import { handleStripeWebhookRequest } from "./server/stripeWebhook";
 
 // Baseline security headers on every response: block MIME-sniffing, clickjacking
@@ -23,7 +26,8 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "strict-origin-when-cross-origin",
-    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    // Microphone allowed for same-origin (voice journaling); camera + geolocation stay denied.
+    "permissions-policy": "camera=(), microphone=(self), geolocation=()",
     // Isolate the page from cross-origin openers while still allowing the Privy OAuth popup to talk
     // back — the recommended COOP for popup auth, and it clears Privy's COOP-check console error.
     "cross-origin-opener-policy": "same-origin-allow-popups",
@@ -98,15 +102,21 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
   const handler =
     path === "/journal/stream"
       ? handleJournalStream
-      : path === "/chat/stream"
-        ? handleChatStream
-        : path === "/ask/stream"
-          ? handleAskStream
-          : path === "/future/stream"
-            ? handleFutureStream
-            : path === "/chat/reflect-stream"
-              ? handleChatReflectStream
-              : null;
+      : path === "/journal/deepen"
+        ? handleDeepenStream
+        : path === "/journal/transcribe"
+          ? handleTranscribe
+          : path === "/chat/stream"
+            ? handleChatStream
+            : path === "/ask/stream"
+              ? handleAskStream
+              : path === "/future/stream"
+                ? handleFutureStream
+                : path === "/chat/reflect-stream"
+                  ? handleChatReflectStream
+                  : path === "/assistant/stream"
+                    ? handleAssistantStream
+                    : null;
   if (!handler) return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
   return handler(request);

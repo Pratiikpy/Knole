@@ -1,6 +1,6 @@
 import "dotenv/config";
 import Stripe from "stripe";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 
 // Subscription billing via Stripe. Everything here is feature-gated: with no Stripe keys set
@@ -70,6 +70,66 @@ export async function createCheckoutSession(
   return session.url;
 }
 
+// ── pay-as-you-go credits (Part 7C) ──
+// Credit packs are one-time payments priced inline (no pre-created Stripe Price needed — works with
+// just the secret key). Credits meter the breadth (image gen, general assistant) for non-subscribers.
+export const CREDIT_PACKS = [
+  { id: "small", credits: 50, cents: 500, label: "50 credits" },
+  { id: "medium", credits: 120, cents: 1000, label: "120 credits" },
+  { id: "large", credits: 300, cents: 2000, label: "300 credits" },
+] as const;
+
+export type CreditPackId = (typeof CREDIT_PACKS)[number]["id"];
+
+/** One-time Stripe Checkout for a credit pack; credits are granted by the verified webhook. */
+export async function createCreditCheckout(userId: string, packId: string): Promise<string> {
+  const pack = CREDIT_PACKS.find((p) => p.id === packId);
+  if (!SECRET || !pack) throw new Error("BILLING_NOT_CONFIGURED");
+  const customer = await ensureCustomer(userId);
+  const session = await stripe().checkout.sessions.create({
+    mode: "payment",
+    customer,
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          unit_amount: pack.cents,
+          product_data: { name: `Knole — ${pack.label}` },
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${APP_URL}/create?credited=1`,
+    cancel_url: `${APP_URL}/upgrade?canceled=1`,
+    metadata: { knoleUserId: userId, credits: String(pack.credits) },
+  });
+  if (!session.url) throw new Error("stripe returned no checkout url");
+  return session.url;
+}
+
+export async function getCredits(userId: string): Promise<number> {
+  const [u] = await db
+    .select({ c: users.credits })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return u?.c ?? 0;
+}
+
+export async function addCredits(userId: string, n: number): Promise<void> {
+  if (n <= 0) return;
+  await db.execute(sql`UPDATE users SET credits = credits + ${n} WHERE id = ${userId}`);
+}
+
+/** Atomically spend credits — only succeeds (and only deducts) when the balance covers it. */
+export async function deductCredits(userId: string, n: number): Promise<boolean> {
+  if (n <= 0) return true;
+  const res = (await db.execute(sql`
+    UPDATE users SET credits = credits - ${n} WHERE id = ${userId} AND credits >= ${n} RETURNING id
+  `)) as unknown as unknown[];
+  return res.length > 0;
+}
+
 /** A Stripe Billing Portal URL so a subscriber can manage or cancel. */
 export async function createBillingPortalSession(userId: string): Promise<string> {
   if (!SECRET) throw new Error("BILLING_NOT_CONFIGURED");
@@ -102,17 +162,28 @@ export async function handleStripeWebhook(
       const s = event.data.object as Stripe.Checkout.Session;
       const userId = s.metadata?.knoleUserId;
       // Grant only when the user id from (server-set) metadata also matches the customer Stripe
-      // attached to this paid session — the same customer cross-check the subscription branches use,
-      // so a tampered knoleUserId can't move a plan onto an account that didn't pay.
+      // attached to this paid session — the same customer cross-check, so a tampered knoleUserId can't
+      // move a plan/credits onto an account that didn't pay.
       if (userId && s.customer) {
-        await db
-          .update(users)
-          .set({
-            plan: "deep",
-            stripeCustomerId: String(s.customer),
-            ...(s.subscription ? { stripeSubscriptionId: String(s.subscription) } : {}),
-          })
-          .where(and(eq(users.id, userId), eq(users.stripeCustomerId, String(s.customer))));
+        if (s.mode === "payment") {
+          // A one-time credit pack — add the credits from (server-set) metadata, once paid.
+          const credits = Number(s.metadata?.credits ?? 0);
+          if (credits > 0 && s.payment_status === "paid") {
+            await db.execute(sql`
+              UPDATE users SET credits = credits + ${credits}
+              WHERE id = ${userId} AND stripe_customer_id = ${String(s.customer)}
+            `);
+          }
+        } else {
+          await db
+            .update(users)
+            .set({
+              plan: "deep",
+              stripeCustomerId: String(s.customer),
+              ...(s.subscription ? { stripeSubscriptionId: String(s.subscription) } : {}),
+            })
+            .where(and(eq(users.id, userId), eq(users.stripeCustomerId, String(s.customer))));
+        }
       }
       break;
     }
@@ -130,12 +201,14 @@ export async function handleStripeWebhook(
   return { received: true, type: event.type };
 }
 
-/** The user's plan + whether billing is even enabled in this deployment. */
-export async function getBilling(userId: string): Promise<{ plan: string; configured: boolean }> {
+/** The user's plan + credits + whether billing is even enabled in this deployment. */
+export async function getBilling(
+  userId: string,
+): Promise<{ plan: string; credits: number; configured: boolean }> {
   const [u] = await db
-    .select({ plan: users.plan })
+    .select({ plan: users.plan, credits: users.credits })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  return { plan: u?.plan ?? "free", configured: billingConfigured() };
+  return { plan: u?.plan ?? "free", credits: u?.credits ?? 0, configured: billingConfigured() };
 }

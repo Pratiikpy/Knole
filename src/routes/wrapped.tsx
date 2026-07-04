@@ -57,16 +57,20 @@ function WrappedPage() {
   const gridN = Math.min(Math.max(m.daysSinceFirst + 1, 14), 35);
   const filled = Math.min(m.dayCount, gridN);
 
-  if (m.phase === "empty") {
+  // `composing` = the mirror is being composed (open Insights to watch it) — show the forming state
+  // rather than an empty card built from not-yet-composed data.
+  if (m.phase === "empty" || m.composing) {
     return (
       <Shell>
         <section className="px-6 pb-28 pt-16">
           <div className="mx-auto max-w-[58ch]">
             <h1 className="font-display text-[40px] italic leading-tight">
-              Your Wrapped is still forming.
+              {m.composing ? "Your Wrapped is composing." : "Your Wrapped is still forming."}
             </h1>
             <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
-              Write for a few days and Knole will gather the shape of what&apos;s been on your mind
+              {m.composing
+                ? "Open the Pattern Mirror to watch Knole read your fortnight — your Wrapped card fills in once it's composed."
+                : "Write for a few days and Knole will gather the shape of what's been on your mind"}
               — yours to keep, and to share without ever showing the words.{" "}
               <Link to="/today" className="text-tan hover:text-ink">
                 Start today →
