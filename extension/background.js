@@ -3,7 +3,7 @@
 // authenticated with the user's token (from chrome.storage). No content script, no page access
 // beyond the selection the user explicitly right-clicks.
 
-const ENDPOINT = "https://knole-app.vercel.app/ext/save";
+const ENDPOINT = "https://www.knole.me/ext/save";
 const MENU_ID = "save-to-knole";
 
 chrome.runtime.onInstalled.addListener(() => {
