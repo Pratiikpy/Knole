@@ -93,22 +93,40 @@ function OnboardingInner() {
   const begin = async () => {
     setStep(3);
     setGenerating(true);
+    setReflection("");
     try {
-      const res = await doOnboard({
-        data: {
-          opener,
-          voice: voice as "warm" | "structural" | "honest" | "curious",
-          thing: thing || undefined,
-        },
+      // Stream the first reflection token-by-token (same-origin, ephemeral for a guest — nothing is
+      // written until you sign in). Falls through to a gentle line if the stream can't start.
+      const res = await fetch("/onboard/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ opener, voice, thing: thing || undefined }),
       });
-      setReflection(res.reflection);
-      setPersisted(res.persisted);
-      setCrisis(res.crisis === true);
-    } catch (e) {
+      if (!res.ok || !res.body) {
+        setReflection(
+          "I'm here, and I've got this. Come back tomorrow and we'll pick up the thread.",
+        );
+        return;
+      }
+      setCrisis(res.headers.get("x-knole-crisis") === "1");
+      setPersisted(res.headers.get("x-knole-persisted") === "1");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      let first = true;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        if (first) {
+          setGenerating(false); // first token in → clear the "reading…" state, show the stream
+          first = false;
+        }
+        setReflection(acc);
+      }
+    } catch {
       setReflection(
-        isAuthRequired(e)
-          ? "Sign in to start your own Knole — your words stay private to you."
-          : "I'm here, and I've got this. Come back tomorrow and we'll pick up the thread.",
+        "I'm here, and I've got this. Come back tomorrow and we'll pick up the thread.",
       );
     } finally {
       setGenerating(false);

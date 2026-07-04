@@ -4,6 +4,7 @@ import { setResponseHeaders, getRequest } from "@tanstack/react-start/server";
 import { renderErrorPage } from "./lib/error-page";
 import { handleExtensionSave } from "./server/extensionSave";
 import { handleJournalStream } from "./server/journalStream";
+import { handleOnboardStream } from "./server/onboardStream";
 import { handleDeepenStream } from "./server/journalDeepen";
 import { handleTranscribe } from "./server/journalTranscribe";
 import { handleChatStream } from "./server/chatStream";
@@ -116,7 +117,9 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
                   ? handleChatReflectStream
                   : path === "/assistant/stream"
                     ? handleAssistantStream
-                    : null;
+                    : path === "/onboard/stream"
+                      ? handleOnboardStream
+                      : null;
   if (!handler) return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
   return handler(request);
