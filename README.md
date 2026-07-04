@@ -33,11 +33,15 @@ The demand is already proven — people upload years of journals into LLMs hunti
 
 ## What Knole Does
 
-- **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter.
+- **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter. Reflections **stream token-by-token**, and each one leaves a tamper-evident on-chain receipt.
 - **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
-- **Ask My Life** — answers drawn only from your journal, quoting the original entries back with receipts.
-- **The Index** — every memory with source quotes, edit/forget controls, append-only history, and a `⬡ 0G` badge.
-- **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Mood Timeline · Chrome Capture · ChatGPT/journal import · Omission Radar · Crisis Safety (SB243).
+- **Ask My Life** · **Ask Knole** · **Private Research** — answers drawn from your journal (quoted back by date with receipts), a private general assistant, and private web research (Qwen-Max on 0G).
+- **The Index** — every memory with source quotes, edit/forget controls, append-only history, and a `⬡ 0G` badge; plus **"what the model saw"** (the anonymized text) and **tamper-evident recall** (memory history anchored on-chain).
+- **⭐ Auditable AI** — the small sensing model that reads every entry is fine-tuned on 0G, its training data published on 0G Storage, and its provenance anchored on-chain: the AI reading your words is auditable, not a black box (`/verify`).
+- **Structure & momentum** — Guided **Programs** · evidence-quoted **Intentions** · **Therapy-prep** session briefs · **Correlations** and **Decision Replay** over your own words · **Themes** · in-the-moment **deepening**.
+- **Voice · Image · Capture** — **voice journaling** (Whisper on 0G) · reflective **image generation** (Z-Image) · **Chrome capture** from anywhere · ChatGPT/journal **import**.
+- **Ownership & money** — **Memory iNFT** (ERC-7857, un-sellable) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · full **export** and **restore-from-chain**.
+- **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Mood Timeline · Omission Radar · retention loop (digest + push) · Night theme · Crisis Safety (SB243).
 
 ## Privacy by Architecture
 
