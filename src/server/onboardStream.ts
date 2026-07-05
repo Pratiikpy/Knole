@@ -1,4 +1,4 @@
-import { getSessionUserId } from "./session";
+import { currentUserId } from "./session";
 import { enforceRate } from "./rateLimit";
 import { detectCrisis, CRISIS_REPLY } from "./safety";
 import { reflectStream } from "./reflect";
@@ -46,7 +46,7 @@ export async function handleOnboardStream(request: Request): Promise<Response> {
     });
   }
 
-  const userId = await getSessionUserId(); // null for a true guest → ephemeral aha, no write to gate
+  const userId = await currentUserId(); // the visitor's own journal — their private guest, or signed-in
   const voice = ["warm", "structural", "honest", "curious"].includes(String(body.voice))
     ? (String(body.voice) as "warm" | "structural" | "honest" | "curious")
     : undefined;

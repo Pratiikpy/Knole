@@ -1,6 +1,6 @@
 import { hkdfSync } from "node:crypto";
 import { useSession } from "@tanstack/react-start/server";
-import { getDemoUserId } from "./engine";
+import { getDemoUserId, createGuestUser } from "./engine";
 import { resolveUserFromToken } from "./auth";
 
 // The session cookie is sealed (encrypted + signed) with its own password. Prefer a dedicated
@@ -21,7 +21,10 @@ function sessionPassword(): string {
   ).toString("hex"));
 }
 
-type SessionData = { userId?: string };
+// userId = a signed-in Privy account; guestId = this browser's private, no-signup journal. A given
+// cookie holds one or the other (signing in supersedes the guest). Every visitor gets their OWN
+// space via one of these — no two people ever share a journal.
+type SessionData = { userId?: string; guestId?: string };
 
 function knoleSession() {
   // useSession here is TanStack Start's server-side session utility, not a React hook
@@ -30,7 +33,26 @@ function knoleSession() {
   return useSession<SessionData>({ password: sessionPassword(), name: "knole_session" });
 }
 
-/** The signed-in user id from the session cookie, or null. Defensive: null on any error. */
+/**
+ * The effective user for THIS browser: a signed-in Privy user, else this browser's private guest.
+ * `create` mints (and remembers) a guest when none exists yet — so a first write/read gives the
+ * visitor their own private journal instead of a shared one. `create=false` just peeks.
+ */
+async function effectiveUserId(create: boolean): Promise<string | null> {
+  const s = await knoleSession();
+  if (s.data.userId) return s.data.userId;
+  if (s.data.guestId) return s.data.guestId;
+  if (!create) return null;
+  const guestId = await createGuestUser();
+  await s.update({ ...s.data, guestId });
+  return guestId;
+}
+
+/**
+ * The SIGNED-IN user id (Privy) only — null for a guest or anonymous visitor. Ownership/billing
+ * paths that must never accept a guest (subscribe, buy credits) rely on this; guest journaling goes
+ * through currentUserId / requireUserId instead.
+ */
 export async function getSessionUserId(): Promise<string | null> {
   try {
     const s = await knoleSession();
@@ -40,27 +62,47 @@ export async function getSessionUserId(): Promise<string | null> {
   }
 }
 
-/**
- * The resolver READ paths use: the signed-in user when a valid session exists,
- * otherwise the shared demo user. Falling back to demo on *any* failure means session
- * bugs can never break the (unauthenticated) demo experience — the public showcase.
- */
-export async function currentUserId(): Promise<string> {
-  return (await getSessionUserId()) ?? getDemoUserId();
+/** True when this browser is on an anonymous guest journal (not signed in). Drives "sign in to keep it". */
+export async function isGuest(): Promise<boolean> {
+  return (await getSessionUserId()) === null;
 }
 
-// Writes require a real session by default (secure-by-default): an anonymous request is rejected
-// rather than silently writing to the shared demo user. A deployment that wants the writable
-// no-signup demo — or local dev — must opt out explicitly with KNOLE_REQUIRE_AUTH=off, so a forgotten
-// env var fails closed, never open.
-export const REQUIRE_AUTH = (process.env.KNOLE_REQUIRE_AUTH ?? "on").toLowerCase() !== "off";
+/**
+ * The resolver READ + WRITE paths use: the signed-in user, else this browser's own private guest
+ * (minted on demand). Never a shared account — so opening the site gives you a real, private journal.
+ * Falls back to the demo user only if the session machinery itself fails, so a cookie bug can't break
+ * reads.
+ */
+export async function currentUserId(): Promise<string> {
+  try {
+    return (await effectiveUserId(true)) ?? (await getDemoUserId());
+  } catch {
+    return getDemoUserId();
+  }
+}
 
-/** The resolver WRITE paths use. Throws "AUTH_REQUIRED" when prod has no session. */
+// Retained for the eval/test harness and any deployment that still wants writes hard-gated behind a
+// real login. Off by default now that guests get their own private journal (a rejected write is no
+// longer the safe default — an isolated guest write is).
+export const REQUIRE_AUTH = (process.env.KNOLE_REQUIRE_AUTH ?? "off").toLowerCase() !== "off";
+
+/**
+ * The resolver WRITE paths use. Guests write to their OWN private journal (minted on demand); only a
+ * deployment that opts into KNOLE_REQUIRE_AUTH=on rejects anonymous writes outright.
+ */
 export async function requireUserId(): Promise<string> {
-  const sid = await getSessionUserId();
-  if (sid) return sid;
-  if (!REQUIRE_AUTH) return getDemoUserId();
-  throw new Error("AUTH_REQUIRED");
+  if (REQUIRE_AUTH) {
+    const sid = await getSessionUserId();
+    if (sid) return sid;
+    throw new Error("AUTH_REQUIRED");
+  }
+  try {
+    const uid = await effectiveUserId(true);
+    if (uid) return uid;
+  } catch {
+    /* fall through to demo */
+  }
+  return getDemoUserId();
 }
 
 /** Verify a Privy access token and open a session for that user. False on a bad token. */

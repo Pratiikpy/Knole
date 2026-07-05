@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { sql, eq, and, isNull } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
@@ -40,6 +40,18 @@ export function getDemoUserId(): Promise<string> {
     })();
   }
   return demoUserIdP;
+}
+
+// A per-browser anonymous user — the private, no-signup journal. Each browser gets its own (remembered
+// in the sealed session cookie), so no two visitors ever share a journal — the whole point of a
+// private product. Starter credits let a guest try the metered surfaces (research, image) before
+// signing in; the free daily practice (write, reflect, mirror, ask, chat) never costs a credit.
+export async function createGuestUser(): Promise<string> {
+  const ins = await db
+    .insert(users)
+    .values({ privyId: `guest-${randomUUID()}`, credits: 40 })
+    .returning({ id: users.id });
+  return ins[0].id;
 }
 
 // ── save an entry (+ local embedding) ────────────────────

@@ -75,9 +75,9 @@ const FOOTER_LINKS: NavItem[] = [
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
-  // Show the "you're in the demo" prompt only where writes are actually gated (production).
-  const [showDemo, setShowDemo] = useState(false);
-  // SB243 age-affirmation backstop for pre-existing accounts (onboarding gates new users up front).
+  // A guest is writing in their own private journal — offer to sign in and keep it forever.
+  const [showGuest, setShowGuest] = useState(false);
+  // SB243 age-affirmation backstop for signed-in accounts (onboarding gates new writers up front).
   const [needsAge, setNeedsAge] = useState(false);
   const whoami = useServerFn(whoamiFn);
   const getSettings = useServerFn(settingsFn);
@@ -87,9 +87,9 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
     whoami()
       .then((r) => {
         if (!alive) return;
-        setShowDemo(!!r.isDemo && !!r.gated);
-        // Only gate a real signed-in account — a guest/demo has no account to age-gate.
-        if (!r.isDemo) {
+        setShowGuest(!r.signedIn);
+        // Only age-gate a real signed-in account here — new writers are gated in onboarding.
+        if (r.signedIn) {
           getSettings()
             .then((s) => alive && s && !s.ageAffirmedAt && setNeedsAge(true))
             .catch(() => {});
@@ -191,11 +191,11 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
           </nav>
         )}
       </header>
-      {!hideNav && showDemo && (
+      {!hideNav && showGuest && (
         <div className="border-b border-tan/30 bg-tan/[0.06] px-6 py-2 text-center text-[12px] text-ink-soft">
-          You're exploring the demo.{" "}
+          This is your private journal, on this device.{" "}
           <Link to="/settings" className="font-medium text-tan underline-offset-2 hover:underline">
-            Sign in to start your own private Knole →
+            Sign in to keep it forever →
           </Link>
         </div>
       )}

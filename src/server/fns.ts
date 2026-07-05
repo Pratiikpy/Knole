@@ -338,8 +338,11 @@ export const clearSessionFn = createServerFn({ method: "POST" }).handler(async (
 });
 
 export const whoamiFn = createServerFn({ method: "GET" }).handler(async () => {
-  const userId = await currentUserId();
-  return { userId, isDemo: userId === (await getDemoUserId()), gated: REQUIRE_AUTH };
+  // Report signed-in vs guest WITHOUT minting a guest (that happens on the first real read/write, not
+  // on every page's whoami). `isDemo` now means "not signed in" — the UIs use it only to prompt
+  // sign-in, and since guests write to their own private journal, nothing here gates them.
+  const signedIn = (await getSessionUserId()) !== null;
+  return { userId: null as string | null, isDemo: !signedIn, gated: REQUIRE_AUTH, signedIn };
 });
 
 export const exportFn = createServerFn({ method: "GET" }).handler(async () => {
