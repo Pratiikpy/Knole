@@ -38,7 +38,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Memory",
     items: [
       { to: "/the-index", label: "The Index", hint: "Everything Knole remembers" },
-      { to: "/verify", label: "Auditable AI", hint: "How the model is verified on 0G" },
       { to: "/identity", label: "Identity", hint: "Your portable memory capsule" },
       { to: "/history", label: "History", hint: "Every entry, by date" },
       { to: "/extension", label: "Save from Chrome", hint: "Clip anything to Knole" },
@@ -69,7 +68,6 @@ const nav: NavItem[] = [
 // public trust surfaces, reachable even from the landing (which hides the top nav).
 const FOOTER_LINKS: NavItem[] = [
   { to: "/upgrade", label: "Plans" },
-  { to: "/verify", label: "Auditable AI" },
   { to: "/extension", label: "Save to Chrome" },
 ];
 

@@ -4,11 +4,11 @@
 
 <h3>A private AI journal that acts as a mirror, not an assistant</h3>
 
-<p><em>Anonymized before inference · read inside a 0G TEE · encrypted under your key · recoverable from 0G · minted to your wallet</em></p>
+<p><em>Anonymized before the model · encrypted under your key · recoverable from 0G · minted to your wallet</em></p>
 
 [![Live demo](https://img.shields.io/badge/Live-knole.me-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole.me) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/eJhJgPoH5aU) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole.me/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
 
-![0G](https://img.shields.io/badge/0G-Aristotle_mainnet-7c6f5b?style=flat-square) ![Sealed inference](https://img.shields.io/badge/sealed_inference-on_(0G_TEE)-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT_ERC--7857-7c6f5b?style=flat-square) ![Evals](https://img.shields.io/badge/evals-21%2F21-2ea043?style=flat-square) [![CI](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml/badge.svg)](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml) ![License](https://img.shields.io/badge/license-MIT-7c6f5b?style=flat-square)
+![0G](https://img.shields.io/badge/0G-Aristotle_mainnet-7c6f5b?style=flat-square) ![Anonymized](https://img.shields.io/badge/anonymized-before_the_model-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT_ERC--7857-7c6f5b?style=flat-square) ![Evals](https://img.shields.io/badge/evals-21%2F21-2ea043?style=flat-square) [![CI](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml/badge.svg)](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml) ![License](https://img.shields.io/badge/license-MIT-7c6f5b?style=flat-square)
 
 </div>
 
@@ -51,7 +51,6 @@ The behaviour Knole productises already exists at scale. This is a validated mar
 - **Life Canvas** — your whole life on one private page: a **mood arc**, a **theme constellation**, your **cast of characters**, and the journey grid — every panel drawn from your own entries. The artifact only your own data can make (`/canvas`).
 - **Ask My Life** · **Ask Knole** · **Chat** · **Private Research** — answers drawn from your journal (quoted back by date with receipts), a private general assistant, a day-to-day thinking partner that remembers (anonymized every turn), and private web research (Qwen-Max on 0G).
 - **The Index** — every memory with source quotes, edit/forget controls, append-only history, and a `⬡ 0G` badge; plus **"what the model saw"** (the anonymized text) and **tamper-evident recall** (memory history anchored on-chain).
-- **⭐ Auditable AI** — a small sensing model fine-tuned on 0G for the entry-reading job (memories, mood, topics, a crisis tripwire), its training data (public only) published on 0G Storage and its provenance anchored on-chain — the open, fully verifiable counterpart to the TEE-sealed model that reads your entries: auditable, not a black box (`/verify`).
 - **Structure & momentum** — Guided **Programs** · evidence-quoted **Intentions** · **Therapy-prep** session briefs · **Correlations** and **Decision Replay** over your own words · **Themes** · in-the-moment **deepening**.
 - **Voice · Image · Capture** — **voice journaling** (Whisper on 0G) · reflective **image generation** (Z-Image) · **Chrome capture** from anywhere · ChatGPT/journal **import**.
 - **Ownership & money** — **Memory iNFT** (ERC-7857, un-sellable) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · full **export** and **restore-from-chain**.
@@ -135,7 +134,7 @@ You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and �
 
 ## Current Status
 
-**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): 0G TEE sealed inference · local anonymization · encrypted storage · restore from 0G · the memory engine · 14-Day Mirror · reflection lenses · Ask My Life · private web research · voice journaling · the Index · wallet encryption · Memory iNFT · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · **Auditable AI** (published training data + on-chain model provenance) — all served fully on 0G.
+**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): local anonymization before the model · encryption under your key · restore-from-chain · Memory iNFT (ERC-7857, un-sellable) · the memory engine · 14-Day Mirror · Life Canvas · reflection lenses · Ask My Life · private web research · voice journaling · the Index · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · 0G sealed inference — all served fully on 0G.
 
 **Before high-volume production:** an external security audit and KMS-backed key custody are recommended (the signing-key seam and rotation runbook are in place — see `HUMAN.md`).
 
