@@ -135,6 +135,55 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* 0G PROOF — verifiable in ten seconds: real TEE, real iNFT, real on-chain provenance */}
+      <section className="border-t border-rule px-6 py-14">
+        <div className="mx-auto max-w-[64ch]">
+          <p className="mb-6 text-center text-[11px] uppercase tracking-[0.22em] text-tan">
+            Verifiably on 0G mainnet — not a claim, a receipt you can open
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <a
+              href="/verify"
+              className="group rounded-2xl border border-rule bg-card/40 p-5 transition-colors hover:border-tan/40"
+            >
+              <div className="font-display text-[19px] italic text-ink">Sealed inference</div>
+              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                Your reflections run inside a <strong className="text-ink-soft">0G TEE</strong> —
+                even the operator can't read them.
+              </div>
+              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">Auditable AI →</div>
+            </a>
+            <a
+              href="https://chainscan.0g.ai/tx/0x870749f28bb13807867b354f0030d2910e778d6718fcec21bbca13d8489ee115"
+              target="_blank"
+              rel="noreferrer"
+              className="group rounded-2xl border border-rule bg-card/40 p-5 transition-colors hover:border-tan/40"
+            >
+              <div className="font-display text-[19px] italic text-ink">Memory iNFT</div>
+              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                A real <strong className="text-ink-soft">ERC-7857</strong> mint on 0G mainnet — your
+                memory, owned by your wallet, un-sellable.
+              </div>
+              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">Verify the tx ↗</div>
+            </a>
+            <a
+              href="https://chainscan.0g.ai/tx/0x46a9de32b4df44240207d1640eea0e864e3f590ed81c5a495ee774b7c370247a"
+              target="_blank"
+              rel="noreferrer"
+              className="group rounded-2xl border border-rule bg-card/40 p-5 transition-colors hover:border-tan/40"
+            >
+              <div className="font-display text-[19px] italic text-ink">Model provenance</div>
+              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                The sensing model's dataset + provenance{" "}
+                <strong className="text-ink-soft">anchored on-chain</strong> — the AI is auditable,
+                not a black box.
+              </div>
+              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">Verify the tx ↗</div>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* 14-DAY MIRROR */}
       <section className="border-t border-rule px-6 py-24">
         <div className="mx-auto max-w-[60ch]">

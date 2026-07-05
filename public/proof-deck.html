@@ -1361,6 +1361,23 @@
         </p>
       </div>
       <section class="section showcase" id="assistant-shots" style="margin-top: 28px">
+        <figure class="shot wide">
+          <img
+            src="proof-shots/life-canvas.webp"
+            width="1440"
+            height="1040"
+            loading="lazy"
+            decoding="async"
+            alt="The Life Canvas — a mood arc, theme constellation, and cast of characters, all drawn from the user's own entries"
+          />
+          <figcaption>
+            <strong>The Life Canvas — the artifact only your own data can draw.</strong> One private
+            page that <em>is</em> your life: your mood traced across the days you wrote, the themes you
+            circle (sized and tinted by how they land), the people who keep appearing, and the shape of
+            your months. Not a chart you asked an AI to render — the one made of <em>you</em>, that
+            never leaves your device.
+          </figcaption>
+        </figure>
         <figure class="shot">
           <img
             src="proof-shots/private-research.webp"
@@ -1901,6 +1918,15 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
               advice.
             </p>
             <div class="proof">mirror-groundedness eval · mirror.ts</div>
+          </div>
+          <div class="feature">
+            <h3>Life Canvas <span class="route">/canvas</span></h3>
+            <p>
+              Your whole life on one private page — a mood arc, a theme constellation, your cast of
+              characters, and the journey grid — every panel drawn from your own entries. The artifact
+              only your own data can make.
+            </p>
+            <div class="proof">lifeCanvas.ts · valence · themes · relationship memories</div>
           </div>
           <div class="feature">
             <h3>The Index <span class="route">/the-index</span></h3>

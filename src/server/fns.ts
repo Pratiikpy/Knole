@@ -34,6 +34,7 @@ import { background } from "./background";
 import { askMyLife } from "./ask";
 import { chatReply, composeEntry } from "./chat";
 import { buildMirror, mirrorStatus } from "./mirror";
+import { lifeCanvas } from "./lifeCanvas";
 import { sealedActive } from "./sealed";
 import { pushConfigured, vapidPublicKey } from "./notify";
 import { savePushSubscription } from "./digest";
@@ -526,6 +527,12 @@ export const mintMemoryINFTFn = createServerFn({ method: "POST" }).handler(async
 export const moodTrajectoryFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
   return moodTrajectory(userId);
+});
+
+// The Life Canvas (a screenshot-able artifact made of YOUR life) — mood, themes, cast, journey in one call.
+export const lifeCanvasFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return lifeCanvas(userId);
 });
 
 // Correlations over your own words (#1) — the screenshot-able aha, computed from mood × activities ×

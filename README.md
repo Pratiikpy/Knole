@@ -48,6 +48,7 @@ The behaviour Knole productises already exists at scale. This is a validated mar
 
 - **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter. Reflections **stream token-by-token**, and each one leaves a tamper-evident on-chain receipt.
 - **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
+- **Life Canvas** — your whole life on one private page: a **mood arc**, a **theme constellation**, your **cast of characters**, and the journey grid — every panel drawn from your own entries. The artifact only your own data can make (`/canvas`).
 - **Ask My Life** · **Ask Knole** · **Private Research** — answers drawn from your journal (quoted back by date with receipts), a private general assistant, and private web research (Qwen-Max on 0G).
 - **The Index** — every memory with source quotes, edit/forget controls, append-only history, and a `⬡ 0G` badge; plus **"what the model saw"** (the anonymized text) and **tamper-evident recall** (memory history anchored on-chain).
 - **⭐ Auditable AI** — a small sensing model fine-tuned on 0G for the entry-reading job (memories, mood, topics, a crisis tripwire), its training data (public only) published on 0G Storage and its provenance anchored on-chain — the open, fully verifiable counterpart to the TEE-sealed model that reads your entries: auditable, not a black box (`/verify`).
