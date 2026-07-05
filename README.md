@@ -6,7 +6,7 @@
 
 <p><em>Anonymized before inference · read inside a 0G TEE · encrypted under your key · recoverable from 0G · minted to your wallet</em></p>
 
-[![Live demo](https://img.shields.io/badge/Live-knole--app.vercel.app-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole.me) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/rqOQbSuONPg) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole.me/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
+[![Live demo](https://img.shields.io/badge/Live-knole.me-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole.me) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/rqOQbSuONPg) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole.me/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)
 
 ![0G](https://img.shields.io/badge/0G-Aristotle_mainnet-7c6f5b?style=flat-square) ![Sealed inference](https://img.shields.io/badge/sealed_inference-on_(0G_TEE)-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT_ERC--7857-7c6f5b?style=flat-square) ![Evals](https://img.shields.io/badge/evals-21%2F21-2ea043?style=flat-square) [![CI](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml/badge.svg)](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml) ![License](https://img.shields.io/badge/license-MIT-7c6f5b?style=flat-square)
 
@@ -29,9 +29,22 @@
 
 AI has quietly become where people process their decisions, relationships, and emotions. Yet every AI journal asks you to trust a company with your most private writing — and that trust is a **policy, not a mechanism.** A court recently forced OpenAI to produce 20M "deleted" ChatGPT logs.
 
-The demand is already proven — people upload years of journals into LLMs hunting for patterns, and venture-backed apps have validated the market (**Rosebud** $6M/~10k payers · **Mindsera** 80k users · **PIN AI** $10M from a16z). The missing piece isn't demand. It's **privacy, trust, and true ownership.** That is Knole.
+The missing piece isn't demand. It's **privacy, trust, and true ownership.** That is Knole.
+
+## Proven demand — not a bet
+
+The behaviour Knole productises already exists at scale. This is a validated market, researched end to end — not a hope.
+
+- **Therapy & companionship is the #1 generative-AI use case** — ~31% of all usage, up from 17% the year before (HBR, 2025); ~1 in 4 Americans would rather talk to an AI than a therapist. The center of consumer AI, not a wellness niche.
+- **People already hand-build this.** *"I fed 14 years of journals into Claude — it found a 4-month burnout cycle I never noticed"* (2k+ upvotes) · *"AI sees the patterns I refuse to accept; it's not sugarcoating."* The demand is here; the private, owned version isn't.
+- **The category is funded, so the bet is de-risked** — **Rosebud** $6M (Bessemer, Tim Ferriss) on ~10k payers · **Mindsera** 80k users · **PIN AI** $10M (a16z) on private, user-owned AI. Knole's edge is sharper differentiation and *real* privacy, not first-mover risk.
+- **Retention is what the category lives or dies on** — AI apps retain **21% vs 30.7%** for non-AI (RevenueCat, 2026); Knole's 30-second daily check-in is the on-ramp built to beat that.
+
+**Every single feature maps to a demand people already voice.** The [feature-by-feature demand table on Notion](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db) ties each one to real evidence — Rosebud · Stoic · Daylio · Day One · Reddit · a court record · a16z. Nothing here is speculative.
 
 ## What Knole Does
+
+*One private memory engine behind ~30 features across 25 routes — the full product, not a demo.*
 
 - **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter. Reflections **stream token-by-token**, and each one leaves a tamper-evident on-chain receipt.
 - **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
