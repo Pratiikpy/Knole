@@ -2134,6 +2134,24 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
             </p>
             <div class="proof">sensingProvenance.ts · verifyReceipt</div>
           </div>
+          <div class="feature">
+            <h3>Correlations <span class="route">/insights</span></h3>
+            <p>
+              Gentle correlations from your own entries — how your mood shifts with the activities you
+              log, the topics you write, and the day of week. Phrased as hypotheses, never causes, and
+              gated on enough data so a coincidence never masquerades as a pattern.
+            </p>
+            <div class="proof">correlations.ts (≥12-entry gate) · test:correlations</div>
+          </div>
+          <div class="feature">
+            <h3>Pay with 0G <span class="route">/create</span></h3>
+            <p>
+              Top up credits with no card — send 0G to the treasury from the wallet you already have;
+              the transfer is verified on-chain and credited to you, idempotent per tx hash so a replay
+              never double-counts.
+            </p>
+            <div class="proof">payWith0G.ts · test:og-pay (a real on-chain 0G transfer)</div>
+          </div>
         </div>
       </section>
 
