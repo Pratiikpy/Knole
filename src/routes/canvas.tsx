@@ -111,6 +111,20 @@ function CanvasPage() {
             draws.
           </p>
 
+          {/* Share — the one thing that travels: the shape of your months, no words. */}
+          <div className="mt-6">
+            <Link
+              to="/card"
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper transition-opacity hover:opacity-90"
+            >
+              Share the shape of your month
+              <span aria-hidden>→</span>
+            </Link>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              A beautiful card of your mood arc and themes — no words, no names, only the shape.
+            </p>
+          </div>
+
           {/* stat row */}
           <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[

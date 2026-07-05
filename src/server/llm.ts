@@ -55,6 +55,36 @@ export async function chat(
   throw new Error(`LLM request failed (${lastErr})`);
 }
 
+// Best-effort inference prewarm: a tiny request that opens the 0G connection and wakes glm-5.1 so the
+// FIRST real reflection doesn't eat the cold-start. Fired on page load (via warmupFn) seconds before
+// the person finishes writing, so by submit the model is hot. Never throws, short timeout, result
+// discarded — a warm miss just means the old latency, never an error.
+let lastWarm = 0;
+export async function warmInference(): Promise<void> {
+  if (!ZG_URL || !ZG_KEY) return;
+  const now = Date.now();
+  if (now - lastWarm < 60_000) return; // at most once a minute per server instance
+  lastWarm = now;
+  try {
+    await fetch(`${ZG_URL}/chat/completions`, {
+      method: "POST",
+      signal: AbortSignal.timeout(Number(process.env.LLM_WARM_TIMEOUT_MS ?? 8000)),
+      headers: {
+        Authorization: `Bearer ${ZG_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: ZG_MODEL,
+        messages: [{ role: "user", content: "hi" }],
+        max_tokens: 1,
+        stream: false,
+      }),
+    });
+  } catch {
+    /* best-effort — a cold model on submit is the only cost of a miss */
+  }
+}
+
 /**
  * Streaming variant — yields content deltas as the 0G model produces them (OpenAI SSE). No retry loop:
  * streaming is best-effort for TTFT; callers fall back to chat() on failure.

@@ -86,6 +86,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Knole" },
       { name: "description", content: "A notebook that listens back." },
       { name: "theme-color", content: "#faf9f6" },
+      // Installed-app (standalone) polish — iOS + Android launch chrome-free and look native.
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "Knole" },
+      { name: "application-name", content: "Knole" },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Knole" },
       { property: "og:url", content: `${SITE_URL}/` },

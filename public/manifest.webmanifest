@@ -1,14 +1,46 @@
 {
-  "name": "Knole",
+  "id": "/",
+  "name": "Knole — a private journal that remembers",
   "short_name": "Knole",
   "description": "A private journal that remembers your whole life — and that only you can read.",
-  "start_url": "/today",
+  "start_url": "/today?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "health", "productivity"],
   "background_color": "#faf9f6",
   "theme_color": "#faf9f6",
   "icons": [
     { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
-    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "maskable" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "New entry",
+      "short_name": "Write",
+      "description": "Write a line and get a reflection",
+      "url": "/today?source=shortcut",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ask my life",
+      "short_name": "Ask",
+      "description": "Ask your own past anything",
+      "url": "/ask?source=shortcut",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "The Mirror",
+      "short_name": "Mirror",
+      "description": "Your patterns, reflected back",
+      "url": "/insights?source=shortcut",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

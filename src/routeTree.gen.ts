@@ -30,6 +30,7 @@ import { Route as FutureRouteImport } from './routes/future'
 import { Route as ExtensionRouteImport } from './routes/extension'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as CardRouteImport } from './routes/card'
 import { Route as CanvasRouteImport } from './routes/canvas'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AskRouteImport } from './routes/ask'
@@ -140,6 +141,11 @@ const ChatRoute = ChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardRoute = CardRouteImport.update({
+  id: '/card',
+  path: '/card',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CanvasRoute = CanvasRouteImport.update({
   id: '/canvas',
   path: '/canvas',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
   '/canvas': typeof CanvasRoute
+  '/card': typeof CardRoute
   '/chat': typeof ChatRoute
   '/create': typeof CreateRoute
   '/extension': typeof ExtensionRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
   '/canvas': typeof CanvasRoute
+  '/card': typeof CardRoute
   '/chat': typeof ChatRoute
   '/create': typeof CreateRoute
   '/extension': typeof ExtensionRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
   '/canvas': typeof CanvasRoute
+  '/card': typeof CardRoute
   '/chat': typeof ChatRoute
   '/create': typeof CreateRoute
   '/extension': typeof ExtensionRoute
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/assistant'
     | '/canvas'
+    | '/card'
     | '/chat'
     | '/create'
     | '/extension'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/assistant'
     | '/canvas'
+    | '/card'
     | '/chat'
     | '/create'
     | '/extension'
@@ -304,6 +315,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/assistant'
     | '/canvas'
+    | '/card'
     | '/chat'
     | '/create'
     | '/extension'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   AskRoute: typeof AskRoute
   AssistantRoute: typeof AssistantRoute
   CanvasRoute: typeof CanvasRoute
+  CardRoute: typeof CardRoute
   ChatRoute: typeof ChatRoute
   CreateRoute: typeof CreateRoute
   ExtensionRoute: typeof ExtensionRoute
@@ -504,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/card': {
+      id: '/card'
+      path: '/card'
+      fullPath: '/card'
+      preLoaderRoute: typeof CardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/canvas': {
       id: '/canvas'
       path: '/canvas'
@@ -540,6 +560,7 @@ const rootRouteChildren: RootRouteChildren = {
   AskRoute: AskRoute,
   AssistantRoute: AssistantRoute,
   CanvasRoute: CanvasRoute,
+  CardRoute: CardRoute,
   ChatRoute: ChatRoute,
   CreateRoute: CreateRoute,
   ExtensionRoute: ExtensionRoute,

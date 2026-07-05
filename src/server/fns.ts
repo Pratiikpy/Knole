@@ -21,6 +21,7 @@ import {
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
 import { warmNER, anonymise } from "./anonymise";
+import { warmInference } from "./llm";
 import {
   currentUserId,
   getSessionUserId,
@@ -321,7 +322,10 @@ export const provenanceFn = createServerFn({ method: "POST" })
 // doesn't cold-load them on submit. The NER (anonymise) is the larger download (~105MB), so warming
 // it alongside the embedder — overlapping the download with the user's reading/typing — matters most.
 export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
-  await Promise.all([warmEmbed(), warmNER()]);
+  // Warm the local models (embed + NER) AND the 0G inference path, so the first reflection's
+  // time-to-first-token doesn't pay the cold-start. Inference warm is awaited (not fire-and-forget) so
+  // it survives on serverless; all three are best-effort and never throw.
+  await Promise.all([warmEmbed(), warmNER(), warmInference()]);
   return { ok: true };
 });
 

@@ -4,7 +4,7 @@
 //   2) Web-push delivery for the weekly digest + proactive nudges (opt-in from Settings).
 // Bump CACHE to invalidate old caches on deploy.
 
-const CACHE = "knole-v1";
+const CACHE = "knole-v2";
 const PRECACHE = ["/offline.html", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
