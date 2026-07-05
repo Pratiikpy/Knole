@@ -49,7 +49,7 @@ const ESC: Record<string, string> = {
 const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c] ?? c);
 
 function digestHtml(d: WeeklyDigest): string {
-  const base = process.env.PUBLIC_BASE_URL ?? "https://knole-app.vercel.app";
+  const base = process.env.PUBLIC_BASE_URL ?? "https://knole.me";
   return `<!doctype html><html><body style="margin:0;background:#faf9f6;font-family:Georgia,'Times New Roman',serif;color:#1c1917">
   <div style="max-width:520px;margin:0 auto;padding:40px 28px">
     <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#7c6545;margin-bottom:24px">Knole &middot; your week</div>
