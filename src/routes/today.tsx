@@ -8,6 +8,7 @@ import { parseRecalledHeader, type RecallPill } from "@/components/knole/recall"
 import {
   nudgeFn,
   whoamiFn,
+  warmupFn,
   resurfaceFn,
   mirrorStatusFn,
   onThisDayFn,
@@ -105,6 +106,15 @@ function TodayPage() {
   // A demo guest can't journal (writes are auth-gated). Learn that up front so Reflect shows the
   // sign-in line directly instead of firing a doomed request that 401s into the console.
   const whoami = useServerFn(whoamiFn);
+  // Warm the inference path the moment the composer is focused — a few seconds before submit — so
+  // glm-5.1 is hot and the reflection's first token comes sooner. Fired once per page.
+  const warmup = useServerFn(warmupFn);
+  const warmedRef = useRef(false);
+  const warmOnIntent = () => {
+    if (warmedRef.current) return;
+    warmedRef.current = true;
+    void warmup().catch(() => {});
+  };
   const [demoGated, setDemoGated] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -210,7 +220,7 @@ function TodayPage() {
       setMsgIdx(0);
       return;
     }
-    const id = setInterval(() => setMsgIdx((i) => (i + 1) % reflectingMsgs.length), 2400);
+    const id = setInterval(() => setMsgIdx((i) => (i + 1) % reflectingMsgs.length), 2800);
     return () => clearInterval(id);
   }, [loading]);
 
@@ -850,6 +860,7 @@ function TodayPage() {
 
             <textarea
               value={entry}
+              onFocus={warmOnIntent}
               onChange={(e) => {
                 setEntry(e.target.value);
                 setReflected(false);
@@ -938,11 +949,20 @@ function TodayPage() {
             )}
 
             {loading && !reflected && (
-              <div className="animate-fade-up mt-8 flex items-center gap-3 border-l-2 border-tan/40 pl-6">
-                <Pulse />
-                <span className="font-display text-[18px] italic text-muted-foreground">
-                  {reflectingMsgs[msgIdx]}
-                </span>
+              <div className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6">
+                {/* Hold their own words while the mirror considers them — the wait reads as reflection,
+                    not a spinner. A mirror pauses; a chatbot blurts. */}
+                {entry.trim() && (
+                  <p className="max-w-[54ch] whitespace-pre-line font-display text-[17px] italic leading-relaxed text-ink/55">
+                    {entry.trim().length > 240 ? `${entry.trim().slice(0, 240)}…` : entry.trim()}
+                  </p>
+                )}
+                <div className="mt-4 flex items-center gap-3">
+                  <Pulse />
+                  <span className="animate-breathe font-display text-[16px] italic text-muted-foreground">
+                    {reflectingMsgs[msgIdx]}
+                  </span>
+                </div>
               </div>
             )}
 
