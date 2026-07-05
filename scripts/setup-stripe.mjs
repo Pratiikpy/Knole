@@ -5,7 +5,7 @@ import fs from "node:fs";
 // One-shot Stripe setup: creates the "Knole Deeper" product, its monthly + yearly recurring prices,
 // and the webhook endpoint the app listens on — then writes STRIPE_PRICE_MONTHLY / STRIPE_PRICE_YEARLY
 // / STRIPE_WEBHOOK_SECRET into .env. Idempotent (reuses the product + matching prices on re-run) and
-// refuses to run against a live key. The amounts match the /upgrade copy ($12/mo, $84/yr).
+// refuses to run against a live key. The amounts match the /upgrade copy ($9/mo, $84/yr).
 const KEY = process.env.STRIPE_SECRET_KEY ?? "";
 if (!KEY.startsWith("sk_test_")) {
   console.error("Refusing: STRIPE_SECRET_KEY is not a test key (sk_test_…). No resources created.");
@@ -30,7 +30,7 @@ if (!product) {
   console.log("created product", product.id);
 } else console.log("reusing product", product.id);
 
-// Prices ($12/mo, $84/yr)
+// Prices ($9/mo, $84/yr)
 const prices = (await stripe.prices.list({ product: product.id, limit: 100 })).data;
 const findPrice = (interval, amount) =>
   prices.find(
@@ -40,11 +40,11 @@ const findPrice = (interval, amount) =>
       p.unit_amount === amount &&
       p.recurring?.interval === interval,
   );
-let monthly = findPrice("month", 1200);
+let monthly = findPrice("month", 900);
 if (!monthly)
   monthly = await stripe.prices.create({
     product: product.id,
-    unit_amount: 1200,
+    unit_amount: 900,
     currency: "usd",
     recurring: { interval: "month" },
   });
