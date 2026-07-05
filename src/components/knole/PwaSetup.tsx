@@ -40,6 +40,9 @@ export function PwaSetup() {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
     if (isStandalone()) return;
+    // Don't cover the share page with an install nudge — /card is a "post this" moment, not an
+    // "install this" one. The SW still registers above.
+    if (typeof window !== "undefined" && window.location.pathname === "/card") return;
 
     // Respect a prior dismissal (localStorage so it doesn't nag across visits).
     try {
