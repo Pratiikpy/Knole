@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { sessionPrepFn, postSessionFn } from "@/server/fns";
+import type { SessionPrep } from "@/server/therapy";
 import { useState } from "react";
 
 export const Route = createFileRoute("/therapy")({
@@ -17,7 +18,9 @@ export const Route = createFileRoute("/therapy")({
   component: TherapyPage,
 });
 
-type Prep = Awaited<ReturnType<typeof sessionPrepFn>>;
+// Use the source type directly — the server-fn's inferred return type resolves to `never` under this
+// TanStack Start + TS combo, which would silently untype the whole page.
+type Prep = SessionPrep;
 
 function TherapyPage() {
   const prepFn = useServerFn(sessionPrepFn);
@@ -52,7 +55,7 @@ function TherapyPage() {
 
   const toggle = (k: string) => setInclude((s) => ({ ...s, [k]: !s[k] }));
 
-  function buildText(p: Extract<Prep, { ready: true }>): string {
+  function buildText(p: Prep): string {
     const lines: string[] = [`Session prep — since ${p.since}`, ""];
     const tps = p.talkingPoints.filter((_, i) => include[`tp${i}`]);
     if (tps.length) {
@@ -74,7 +77,7 @@ function TherapyPage() {
     return lines.join("\n").trim();
   }
 
-  async function copyForSession(p: Extract<Prep, { ready: true }>) {
+  async function copyForSession(p: Prep) {
     try {
       await navigator.clipboard.writeText(buildText(p));
       setCopied(true);

@@ -196,6 +196,41 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* EVERYDAY, BUT PRIVATE — the assistant surfaces, so a visitor knows Knole isn't only a
+          backward-looking journal: it researches the live web and makes images, all on 0G. */}
+      <section className="border-t border-rule px-6 py-24">
+        <div className="mx-auto max-w-[64ch]">
+          <p className="mb-4 text-[11px] uppercase tracking-[0.22em] text-tan">
+            Everything you'd open ChatGPT for
+          </p>
+          <h2 className="mb-10 max-w-[42ch] font-display text-balance text-[34px] italic leading-[1.1] md:text-[40px]">
+            An assistant, web research, and images —{" "}
+            <span className="text-tan">without the surveillance.</span>
+          </h2>
+          <div className="grid gap-8 md:grid-cols-3">
+            {[
+              {
+                t: "Private Research",
+                b: "Ask a real question, get a researched answer from the live web. Your name is stripped before the search runs — so it never leaves tied to you.",
+              },
+              {
+                t: "Ask Knole",
+                b: "A private general assistant for anything on your mind — the same help you'd ask an AI for, without handing your questions to a company.",
+              },
+              {
+                t: "Create",
+                b: "Turn a few words into an image, generated on 0G and yours to keep. Everything ChatGPT does, made private.",
+              },
+            ].map((c) => (
+              <div key={c.t}>
+                <h3 className="font-display text-2xl italic">{c.t}</h3>
+                <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{c.b}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* PRIVACY */}
       <section className="border-t border-rule px-6 py-24">
         <div className="mx-auto max-w-[54ch] text-center">

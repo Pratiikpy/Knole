@@ -1,10 +1,10 @@
 import { anonymise, deAnonymise } from "./anonymise";
 
-// Private web research (Part 7B) — the counter to a generic research tool. Runs on 0G's verified-tier
-// Qwen-Max (native web search) via a dedicated research key, and — crucially — the query is anonymised
-// before it ever leaves: any names/places are stripped, so the search never carries the person's
-// identity. The answer is de-anonymised on the way back. Private research: the query never leaves tied
-// to you.
+// Private web research (Part 7B) — the counter to a generic research tool. Runs a real, forced web
+// search on 0G's verified-tier Qwen-Max via a dedicated research key (see the request body), and —
+// crucially — the query is anonymised before it ever leaves: any names/places are stripped, so the
+// search never carries the person's identity. The answer is de-anonymised on the way back. Private
+// research: the query never leaves tied to you.
 
 const RKEY = process.env.ZG_RESEARCH_SECRET ?? "";
 const RURL = (process.env.ZG_SERVICE_URL ?? "https://router-api.0g.ai/v1").replace(/\/$/, "");
@@ -14,9 +14,9 @@ export function researchConfigured(): boolean {
   return !!RKEY;
 }
 
-const RESEARCH_SYS = `You are Knole's private research assistant. Research the question thoroughly and answer with accuracy and care.
+const RESEARCH_SYS = `You are Knole's private research assistant. You have just run a live web search — ground your answer in those results.
 - Be well-organized and clear. Lead with the answer, then the substance.
-- Cite sources or links when you have them, and note when you searched vs. when you're reasoning from knowledge.
+- Cite the sources you used (titles and links) so the reader can verify; prefer the freshest, most authoritative ones.
 - Distinguish what you're confident about from what's uncertain — never fabricate facts, numbers, or citations.
 - The person's identity has been stripped from this query; never guess who they are.
 Plain, readable prose (light structure is fine for longer answers).`;
@@ -46,6 +46,13 @@ export async function research(question: string): Promise<ResearchResult> {
       ],
       max_tokens: 2000,
       temperature: 0.4,
+      // Actually run a live web search on 0G's Qwen-Max. Without this the model only *wants* to
+      // search (it emits a search intent that goes nowhere) and answers from training data — so the
+      // "web research" promise was false. `enable_search` alone is treated as optional by the
+      // provider and often skipped; `forced_search` is what reliably performs a real search. The
+      // query is already PER-anonymised above, so the search never carries the person's identity.
+      enable_search: true,
+      search_options: { forced_search: true, enable_source: true },
     }),
     signal: AbortSignal.timeout(120_000),
   });

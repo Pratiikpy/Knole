@@ -73,6 +73,93 @@
         -webkit-font-smoothing: antialiased;
         line-height: 1.6;
       }
+      /* Sticky section nav — turns the long scroll into something navigable, with a scroll-spy
+         active state and a top progress bar so a reader always knows where they are and what's left. */
+      html {
+        scroll-behavior: smooth;
+      }
+      [id] {
+        scroll-margin-top: 66px;
+      }
+      #deck-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        width: 0;
+        background: var(--tan);
+        z-index: 60;
+      }
+      #deck-nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: color-mix(in srgb, var(--paper) 84%, transparent);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--rule);
+      }
+      .deck-nav-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 22px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .deck-nav-brand {
+        flex: none;
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 20px;
+        line-height: 1;
+        color: var(--ink);
+        text-decoration: none;
+      }
+      .deck-nav-links {
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .deck-nav-links::-webkit-scrollbar {
+        display: none;
+      }
+      .deck-nav-links a {
+        white-space: nowrap;
+        font-size: 12.5px;
+        letter-spacing: 0.01em;
+        color: var(--muted-fg);
+        text-decoration: none;
+        padding: 3px 0;
+        border-bottom: 1.5px solid transparent;
+        transition:
+          color 0.15s ease,
+          border-color 0.15s ease;
+      }
+      .deck-nav-links a:hover {
+        color: var(--ink);
+      }
+      .deck-nav-links a.active {
+        color: var(--tan);
+        border-bottom-color: var(--tan);
+      }
+      @media (max-width: 640px) {
+        .deck-nav-brand {
+          display: none;
+        }
+        .deck-nav-inner {
+          padding: 0 14px;
+          gap: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
       .page {
         max-width: 1080px;
         margin: 0 auto;
@@ -614,8 +701,24 @@
     </style>
   </head>
   <body>
+    <div id="deck-progress"></div>
+    <nav id="deck-nav" aria-label="Deck sections">
+      <div class="deck-nav-inner">
+        <a class="deck-nav-brand" href="#top">Knole</a>
+        <div class="deck-nav-links">
+          <a href="#mainnet">Live on 0G</a>
+          <a href="#flow">Watch it work</a>
+          <a href="#new">What shipped</a>
+          <a href="#assistant-surfaces">Everyday, private</a>
+          <a href="#proofs">The receipts</a>
+          <a href="#surfaces">Every surface</a>
+          <a href="#depth">Under the hood</a>
+          <a href="#run">Run it yourself</a>
+        </div>
+      </div>
+    </nav>
     <div class="page">
-      <header class="hero">
+      <header class="hero" id="top">
         <div class="eyebrow">
           <span aria-hidden="true">⬡</span> Verified build proof · Live on 0G Aristotle mainnet · 2026-07-04
         </div>
@@ -728,7 +831,7 @@
             </tr>
             <tr>
               <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>Sealed inference + models</strong></td>
-              <td style="padding: 0.7rem 0.8rem">Reflection (GLM-5.1), voice (Whisper), image (Z-Image), private web research (Qwen-Max) all run on the 0G mainnet Private Computer (TEE-sealed)</td>
+              <td style="padding: 0.7rem 0.8rem">Reflection (GLM-5.1), voice (Whisper) and image (Z-Image) run on the 0G mainnet Private Computer, TEE-sealed; private web research (Qwen-Max, verified tier) runs with the query anonymised — your name stripped before it ever leaves</td>
               <td style="padding: 0.7rem 0">Live on the 0G mainnet router · balance-funded</td>
             </tr>
           </tbody>
@@ -743,7 +846,7 @@
       </div>
 
       <!-- ════════ THE FULL FLOW ════════ -->
-      <div class="band">
+      <div class="band" id="flow">
         <div class="kicker">THE FULL FLOW · ~90 SECONDS</div>
         <h2>Watch it work, end to end</h2>
         <p>
@@ -1247,6 +1350,215 @@
         </figure>
       </section>
 
+      <!-- ════════ EVERYTHING CHATGPT DOES — PRIVATE ════════ -->
+      <div class="band" id="assistant-surfaces">
+        <div class="kicker">EVERYTHING CHATGPT DOES — PRIVATE</div>
+        <h2>The everyday surfaces, on 0G</h2>
+        <p>
+          Knole isn't only backward-looking. It researches the live web, answers anything, makes
+          images, and runs guided arcs — every one private, every one on 0G. Real outcomes, captured
+          this pass — not descriptions.
+        </p>
+      </div>
+      <section class="section showcase" id="assistant-shots" style="margin-top: 28px">
+        <figure class="shot">
+          <img
+            src="proof-shots/private-research.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Private Research — a web-researched answer citing a 2018 Journal of Affective Disorders meta-analysis"
+          />
+          <figcaption>
+            <strong>Private Research — real web search, anonymized.</strong> A forced live web search
+            on 0G's Qwen-Max; your name is stripped before the query leaves. Here: journaling for
+            anxiety, answered with a 2018 <em>Journal of Affective Disorders</em> meta-analysis of 24
+            trials — cited, not hallucinated.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/ask-knole.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Ask Knole — a private assistant drafting a kind-but-firm deadline-extension email"
+          />
+          <figcaption>
+            <strong>Ask Knole — a private ChatGPT that can't read your journal.</strong> Anything on
+            your mind, anonymised before the model and saved to nothing. Here: a kind-but-firm
+            deadline-extension email, drafted in full.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/ask-live.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Ask My Life — a throughline plus dated receipts quoting the user's own entries"
+          />
+          <figcaption>
+            <strong>Ask My Life — your past, with receipts.</strong> Ask anything; Knole answers from
+            your own history and <em>quotes you back by date</em> — never a paraphrase without showing
+            where it came from. Here: "what have I been avoiding?" → a throughline and the dated
+            entries that prove it.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/chat-live.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Chat — a private thinking partner that remembers, with a 'drew on 6 things you've shared' receipt"
+          />
+          <figcaption>
+            <strong>Chat — a thinking partner that remembers.</strong> Talk freely, nothing saved
+            until you turn it into an entry. It draws on what you've shared (a "drew on 6 things"
+            receipt), anonymised before the model and de-anonymised in the reply.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/create-image.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Create — an ink-wash river at dawn generated on 0G Z-Image"
+          />
+          <figcaption>
+            <strong>Create — images on 0G, yours to keep.</strong> A few words become a picture on
+            0G's Z-Image, downloadable and private. Everything ChatGPT does, without the surveillance.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/programs.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Programs — guided reflection arcs"
+          />
+          <figcaption>
+            <strong>Programs — guided arcs when the page feels blank.</strong> Working With Anxiety,
+            The Decision Journal, Morning Pages, 14 Days of Gratitude — a few minutes a day, always
+            yours to leave.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/intentions.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Intentions — what you're working toward, in your own words"
+          />
+          <figcaption>
+            <strong>Intentions — what you said you'd do.</strong> Knole reads your entries and
+            surfaces the commitments you made to yourself, quoted back in your own words.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/identity.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Portable identity — grant another 0G app scoped, revocable access to your memory"
+          />
+          <figcaption>
+            <strong>Portable memory identity.</strong> Your memory is yours to carry — grant another
+            0G app or agent scoped, revocable access. Ownership you can exercise, not just assert.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/therapy-brief.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Therapy prep — talking points synthesized from recent entries, each with a verbatim dated quote"
+          />
+          <figcaption>
+            <strong>Therapy prep — walk in with your clearest self.</strong> Talking points gathered
+            from what's been alive since last time, each backed by a <em>verbatim, dated quote</em>
+            from your own entries. Nothing leaves the page unless you copy it.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/future-self-live.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Future-Self — a grounded letter from who your entries point toward"
+          />
+          <figcaption>
+            <strong>Talk to your future self.</strong> A grounded letter from who your own entries
+            point toward — a mirror of your values, never a prophecy. Here: the job decision, answered
+            back in your own patterns.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img
+            src="proof-shots/wrapped-card-live.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="A private Wrapped — a shareable card of the shape of your fortnight, never the words"
+          />
+          <figcaption>
+            <strong>A private Wrapped.</strong> A shareable card of the <em>shape</em> of your
+            fortnight — the journey grid, the day count, a theme — never the words. Only the shape
+            ever leaves your device.
+          </figcaption>
+        </figure>
+        <figure class="shot wide">
+          <img
+            src="proof-shots/pattern-mirror-live.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Pattern Mirror — a composed letter with a proof-of-journaling streak committed on 0G Chain"
+          />
+          <figcaption>
+            <strong>The Pattern Mirror, composed.</strong> "Here's what was on your mind" — a private
+            letter written from your own words, with a proof-of-journaling streak committed on 0G
+            Chain and your emotional weather traced over time. The throughline names a pattern you
+            couldn't see yourself.
+          </figcaption>
+        </figure>
+        <figure class="shot wide">
+          <img
+            src="proof-shots/auditable-ai.webp"
+            width="1440"
+            height="900"
+            loading="lazy"
+            decoding="async"
+            alt="Auditable AI — the sensing-model provenance card, committed on 0G mainnet"
+          />
+          <figcaption>
+            <strong>Auditable AI — stated honestly.</strong> A small sensing model fine-tuned on 0G,
+            its dataset (SHA-256-checkable) and provenance committed on-chain. Live entries are read
+            by the larger model sealed in the 0G TEE; this open fine-tune is the fully verifiable
+            version of that job — not a black box, and not overclaimed.
+          </figcaption>
+        </figure>
+      </section>
+
       <!-- ════════ THE PROOF ════════ -->
       <div class="band" id="proofs">
         <div class="kicker">THE PROOF · IT'S ALL REAL</div>
@@ -1727,11 +2039,80 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
             </p>
             <div class="proof">digest.ts · notify.ts · proactivity.ts</div>
           </div>
+          <div class="feature">
+            <h3>Private Research <span class="route">/research</span></h3>
+            <p>
+              A forced live web search on 0G's Qwen-Max — your name is stripped before the query
+              leaves, so the search never carries your identity. Real citations, not the model
+              guessing from memory.
+            </p>
+            <div class="proof">research.ts (forced_search) · anonymise PER-only</div>
+          </div>
+          <div class="feature">
+            <h3>Ask Knole <span class="route">/assistant</span></h3>
+            <p>
+              A private general assistant — anything on your mind, anonymised before the model and
+              saved to your journal never. A ChatGPT that knows the shape of you but can't read your
+              data.
+            </p>
+            <div class="proof">assistant.ts · streamed reply</div>
+          </div>
+          <div class="feature">
+            <h3>Create <span class="route">/create</span></h3>
+            <p>
+              Text-to-image on 0G's Z-Image — a few words become a picture, generated privately and
+              downloadable. Everything ChatGPT does, without the surveillance.
+            </p>
+            <div class="proof">image gen on 0G · create.tsx</div>
+          </div>
+          <div class="feature">
+            <h3>Programs <span class="route">/programs</span></h3>
+            <p>
+              Guided reflection arcs for when the page feels blank — Working With Anxiety, The
+              Decision Journal, Morning Pages, 14 Days of Gratitude — a few minutes a day, always
+              yours to leave.
+            </p>
+            <div class="proof">programs.ts · startProgram</div>
+          </div>
+          <div class="feature">
+            <h3>Intentions <span class="route">/intentions</span></h3>
+            <p>
+              The commitments you made to yourself, read back from your own entries and quoted by
+              date — what you said you'd do, held gently in front of you.
+            </p>
+            <div class="proof">intentions.tsx · engine recall</div>
+          </div>
+          <div class="feature">
+            <h3>Therapy prep <span class="route">/therapy</span></h3>
+            <p>
+              A session brief from what's been alive since last time — grounded in your own words and
+              dated, yours to take; and it gates honestly when there isn't enough recent writing yet.
+            </p>
+            <div class="proof">therapy.tsx · recent-window guard</div>
+          </div>
+          <div class="feature">
+            <h3>Portable identity <span class="route">/identity</span></h3>
+            <p>
+              Grant another 0G app or agent scoped, revocable access to your memory — ownership you
+              can actually exercise, not just assert.
+            </p>
+            <div class="proof">identity.tsx · revocable grants</div>
+          </div>
+          <div class="feature">
+            <h3>Auditable AI <span class="route">/verify</span></h3>
+            <p>
+              A small sensing model fine-tuned on 0G, its dataset (SHA-256-checkable) and provenance
+              committed on-chain; plus recompute any reflection receipt to its anchored root. Stated
+              honestly: live entries are read by the larger TEE-sealed model, and this open fine-tune
+              is the verifiable version of that job.
+            </p>
+            <div class="proof">sensingProvenance.ts · verifyReceipt</div>
+          </div>
         </div>
       </section>
 
       <!-- ════════ UNDER THE HOOD ════════ -->
-      <div class="band">
+      <div class="band" id="depth">
         <div class="kicker">DEPTH</div>
         <h2>Under the hood</h2>
         <p>
@@ -2024,7 +2405,7 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
       </section>
 
       <!-- ════════ REPRODUCE ════════ -->
-      <div class="band">
+      <div class="band" id="run">
         <div class="kicker">REPRODUCE</div>
         <h2>Run every proof yourself</h2>
         <p>
@@ -2174,5 +2555,55 @@ POST router-api.0g.ai/v1/chat/completions   (stream: false)
         <span class="tagline">We can't read it, can't reset it, can't take it away.</span>
       </footer>
     </div>
+    <script>
+      // Scroll-spy for the sticky section nav + a top progress bar. Pure vanilla, no deps — the deck
+      // stays a single self-contained static file.
+      (function () {
+        var nav = document.getElementById("deck-nav");
+        if (!nav) return;
+        var links = Array.prototype.slice.call(nav.querySelectorAll(".deck-nav-links a"));
+        var progress = document.getElementById("deck-progress");
+        // Map each nav link to its target section element (in document order).
+        var targets = links
+          .map(function (a) {
+            var el = document.getElementById(a.getAttribute("href").slice(1));
+            return el ? { a: a, el: el } : null;
+          })
+          .filter(Boolean);
+
+        function onScroll() {
+          // progress bar
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+          if (progress) progress.style.width = pct + "%";
+          // active section = the last one whose top has passed the nav line
+          var line = window.scrollY + 90;
+          var current = targets[0];
+          for (var i = 0; i < targets.length; i++) {
+            if (targets[i].el.offsetTop <= line) current = targets[i];
+          }
+          links.forEach(function (a) {
+            a.classList.toggle("active", current && a === current.a);
+          });
+        }
+        var ticking = false;
+        window.addEventListener(
+          "scroll",
+          function () {
+            if (!ticking) {
+              window.requestAnimationFrame(function () {
+                onScroll();
+                ticking = false;
+              });
+              ticking = true;
+            }
+          },
+          { passive: true }
+        );
+        window.addEventListener("resize", onScroll, { passive: true });
+        onScroll();
+      })();
+    </script>
   </body>
 </html>

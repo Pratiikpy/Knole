@@ -69,9 +69,10 @@ function VerifyPage() {
         <div className="mx-auto max-w-[58ch]">
           <h1 className="mb-2 font-display text-[44px] italic leading-none">Auditable AI</h1>
           <p className="mb-10 max-w-[50ch] text-[15px] leading-relaxed text-muted-foreground">
-            Your phone reads, the enclave thinks, the chain proves both. The small model that reads
-            every entry is trained only on public data — never your journals — so we publish it in
-            full. The reflections you read run sealed in a 0G TEE. Both are provable here.
+            Your words are anonymized on your phone, your reflections run sealed in a 0G TEE, and
+            the chain proves both. We also fine-tuned a small sensing model on 0G — trained only on
+            public data, never your journals — and published it in full, from dataset to on-chain
+            commitment. Everything here is provable.
           </p>
 
           {prov?.configured && <ProvenanceCard p={prov} explorer={explorer} />}
@@ -178,7 +179,7 @@ function ProvenanceCard({ p, explorer }: { p: Provenance; explorer: string }) {
           {anchored ? "✓ Verifiable on 0G " + p.network : "Provenance pending"}
         </span>
         <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] text-muted-foreground">
-          the model that reads your words
+          fine-tuned &amp; published on 0G
         </span>
       </div>
 
@@ -218,11 +219,13 @@ function ProvenanceCard({ p, explorer }: { p: Provenance; explorer: string }) {
       </div>
 
       <p className="mt-5 text-[11px] leading-relaxed text-muted-foreground">
-        The sensing model extracts memories, mood, topics and a crisis tripwire from each entry. It
-        was fine-tuned on 0G from the dataset above — public corpora and synthetic examples only, so
-        the exact training data is downloadable by its 0G Storage root and its SHA-256 checks out.
-        The on-chain commitment binds that dataset, the base model, and the training config
-        together: the AI reading your words is auditable, not a black box.
+        This small sensing model was fine-tuned on 0G for the job of reading an entry — pulling out
+        memories, mood, topics, and a crisis tripwire. It was trained on the dataset above (public
+        corpora and synthetic examples only, never your journals), so the exact training data is
+        downloadable by its 0G Storage root and its SHA-256 checks out, and the on-chain commitment
+        binds that dataset, the base model, and the training config together. Today those signals
+        are extracted by a larger model sealed in the 0G TEE; this open fine-tune is the fully
+        auditable version of that same job — provenance you can verify, not a black box.
       </p>
     </div>
   );

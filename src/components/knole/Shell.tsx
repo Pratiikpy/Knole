@@ -6,46 +6,71 @@ import { whoamiFn, settingsFn, affirmAgeFn } from "@/server/fns";
 import { ThemeToggle } from "./ThemeToggle";
 import { PwaSetup } from "./PwaSetup";
 
-type NavItem = { to: string; label: string };
+type NavItem = { to: string; label: string; hint?: string };
+type NavGroup = { label: string; items: NavItem[] };
 
 // The feature set is broad, so the desktop nav groups it into a few labelled menus instead of a
-// 16-item bar that wraps. Each group's trigger highlights when you're on one of its pages.
-const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+// 16-item bar that wraps. Each group's trigger highlights when you're on one of its pages, and each
+// item carries a one-line hint so the menu is self-explanatory — e.g. "Research" reads as private
+// web search, not a search of your own journal.
+const NAV_GROUPS: NavGroup[] = [
   {
     label: "Reflect",
     items: [
-      { to: "/chat", label: "Chat" },
-      { to: "/assistant", label: "Ask Knole" },
-      { to: "/ask", label: "Ask My Life" },
-      { to: "/research", label: "Research" },
+      { to: "/ask", label: "Ask My Life", hint: "Answers from your own past" },
+      { to: "/research", label: "Private Research", hint: "Anonymized web search, on 0G" },
+      { to: "/assistant", label: "Ask Knole", hint: "A private general assistant" },
+      { to: "/chat", label: "Chat", hint: "Talk it through, day to day" },
     ],
   },
   {
     label: "Insights",
     items: [
-      { to: "/insights", label: "Pattern Mirror" },
-      { to: "/future", label: "Future Self" },
-      { to: "/programs", label: "Programs" },
-      { to: "/intentions", label: "Intentions" },
-      { to: "/therapy", label: "Therapy prep" },
+      { to: "/insights", label: "Pattern Mirror", hint: "Recurring patterns, dated" },
+      { to: "/future", label: "Future Self", hint: "A letter from who you're becoming" },
+      { to: "/programs", label: "Programs", hint: "Guided reflection tracks" },
+      { to: "/intentions", label: "Intentions", hint: "What you said you'd do" },
+      { to: "/therapy", label: "Therapy prep", hint: "A brief for your next session" },
     ],
   },
   {
     label: "Memory",
     items: [
-      { to: "/the-index", label: "The Index" },
-      { to: "/identity", label: "Identity" },
-      { to: "/history", label: "History" },
-      { to: "/extension", label: "Save from Chrome" },
+      { to: "/the-index", label: "The Index", hint: "Everything Knole remembers" },
+      { to: "/verify", label: "Auditable AI", hint: "How the model is verified on 0G" },
+      { to: "/identity", label: "Identity", hint: "Your portable memory capsule" },
+      { to: "/history", label: "History", hint: "Every entry, by date" },
+      { to: "/extension", label: "Save from Chrome", hint: "Clip anything to Knole" },
     ],
   },
 ];
 const NAV_HOME: NavItem = { to: "/today", label: "Today" };
 const NAV_CREATE: NavItem = { to: "/create", label: "Create" };
-const NAV_SETTINGS: NavItem = { to: "/settings", label: "Settings" };
+// Account holds Settings and the paid plan — universally where billing lives, so "Plans" (the fully
+// built Stripe subscription) is reachable in one click without widening the top bar.
+const NAV_ACCOUNT: NavGroup = {
+  label: "Account",
+  items: [
+    { to: "/settings", label: "Settings", hint: "Voice, export, privacy" },
+    { to: "/upgrade", label: "Plans", hint: "Go deeper · unlimited memory" },
+  ],
+};
 
 // The mobile menu stays a flat list (all destinations), ordered to mirror the desktop grouping.
-const nav: NavItem[] = [NAV_HOME, ...NAV_GROUPS.flatMap((g) => g.items), NAV_CREATE, NAV_SETTINGS];
+const nav: NavItem[] = [
+  NAV_HOME,
+  ...NAV_GROUPS.flatMap((g) => g.items),
+  NAV_CREATE,
+  ...NAV_ACCOUNT.items,
+];
+
+// Secondary links that live in the footer on every page — the standard home for pricing and the
+// public trust surfaces, reachable even from the landing (which hides the top nav).
+const FOOTER_LINKS: NavItem[] = [
+  { to: "/upgrade", label: "Plans" },
+  { to: "/verify", label: "Auditable AI" },
+  { to: "/extension", label: "Save to Chrome" },
+];
 
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -106,7 +131,7 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
                     <NavGroupMenu key={g.label} group={g} pathname={pathname} />
                   ))}
                   <NavLink item={NAV_CREATE} pathname={pathname} />
-                  <NavLink item={NAV_SETTINGS} pathname={pathname} />
+                  <NavGroupMenu group={NAV_ACCOUNT} pathname={pathname} />
                 </nav>
                 <button
                   type="button"
@@ -193,7 +218,17 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
         <p className="font-display text-sm italic text-muted-foreground">
           A quiet, private mirror — only you can read this.
         </p>
-        <p className="mx-auto mt-2 max-w-[46ch] px-6 text-[11px] leading-relaxed text-muted-foreground/70">
+        <nav className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 text-[12px] text-muted-foreground">
+          {FOOTER_LINKS.map((l) => (
+            <Link key={l.to} to={l.to} className="transition-colors hover:text-ink">
+              {l.label}
+            </Link>
+          ))}
+          <a href="/proof-deck.html" className="transition-colors hover:text-ink">
+            Proof deck
+          </a>
+        </nav>
+        <p className="mx-auto mt-5 max-w-[46ch] px-6 text-[11px] leading-relaxed text-muted-foreground/70">
           Knole is an AI reflection — not a person, and not a substitute for professional care.
         </p>
       </footer>
@@ -244,18 +279,23 @@ function NavGroupMenu({
         <DropdownMenu.Content
           align="start"
           sideOffset={10}
-          className="z-50 min-w-[160px] rounded-xl border border-rule bg-popover p-1.5 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.5)]"
+          className="z-50 min-w-[224px] rounded-xl border border-rule bg-popover p-1.5 shadow-[0_20px_60px_-30px_rgba(28,25,23,0.5)]"
         >
           {group.items.map((i) => (
             <DropdownMenu.Item key={i.to} asChild>
               <Link
                 to={i.to}
                 aria-current={pathname === i.to ? "page" : undefined}
-                className={`block cursor-pointer rounded-lg px-3 py-2 text-[13px] outline-none transition-colors focus:bg-secondary data-[highlighted]:bg-secondary ${
+                className={`block cursor-pointer rounded-lg px-3 py-2 outline-none transition-colors focus:bg-secondary data-[highlighted]:bg-secondary ${
                   pathname === i.to ? "text-ink" : "text-muted-foreground hover:text-ink"
                 }`}
               >
-                {i.label}
+                <span className="block text-[13px] leading-tight">{i.label}</span>
+                {i.hint && (
+                  <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground/70">
+                    {i.hint}
+                  </span>
+                )}
               </Link>
             </DropdownMenu.Item>
           ))}

@@ -25,7 +25,9 @@ export async function transcribeAudio(
   if (!url || !key) throw new Error("0G transcription not configured");
   const bytes = audio instanceof Uint8Array ? audio : new Uint8Array(audio);
   const form = new FormData();
-  form.append("file", new Blob([bytes], { type: mime }), filename);
+  // `bytes` is always a valid BlobPart at runtime; the cast sidesteps the TS lib.dom union that now
+  // includes SharedArrayBuffer (which we never pass) in Uint8Array's backing type.
+  form.append("file", new Blob([bytes as BlobPart], { type: mime }), filename);
   form.append("model", whisper);
   form.append("response_format", "json");
 

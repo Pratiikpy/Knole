@@ -50,3 +50,9 @@ qa-shots/
 
 # internal working docs — never public
 WHAT_WE_DID.md
+
+# proof-shot capture staging — intermediate PNGs/video; the deck ships the .webp files
+public/proof-shots/journey/
+public/proof-shots/pages/
+public/proof-shots/vid/
+public/proof-shots/write.png

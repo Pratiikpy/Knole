@@ -38,13 +38,19 @@ const ROUTES = [
 ];
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({
+  viewport: { width: 1280, height: 900 },
+  deviceScaleFactor: 2,
+});
 const report = [];
 
 for (const [name, path, keywords] of ROUTES) {
   const row = { name, path, ok: false, contentOk: false, title: "", h1: "", found: "", note: "" };
   try {
-    const resp = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    const resp = await page.goto(`${BASE}${path}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
     row.status = resp?.status() ?? 0;
     await page.waitForTimeout(2200);
     try {
@@ -54,18 +60,34 @@ for (const [name, path, keywords] of ROUTES) {
     }
     await page.screenshot({ path: `${OUT}/${name}.png` });
     row.title = (await page.title()).slice(0, 80);
-    row.h1 = (await page.locator("h1,h2").first().textContent().catch(() => "") || "").trim().slice(0, 80);
-    const text = (await page.locator("body").innerText().catch(() => "")).toLowerCase();
+    row.h1 = (
+      (await page
+        .locator("h1,h2")
+        .first()
+        .textContent()
+        .catch(() => "")) || ""
+    )
+      .trim()
+      .slice(0, 80);
+    const text = (
+      await page
+        .locator("body")
+        .innerText()
+        .catch(() => "")
+    ).toLowerCase();
     const hit = keywords.find((k) => text.includes(k.toLowerCase()));
     row.found = hit || "";
     row.contentOk = !!hit;
-    row.ok = (row.status >= 200 && row.status < 400) && text.length > 200;
+    row.ok = row.status >= 200 && row.status < 400 && text.length > 200;
     row.note = `${text.length} chars`;
   } catch (e) {
     row.note = String(e).split("\n")[0].slice(0, 100);
   }
   report.push(row);
-  console.log(`${row.ok && row.contentOk ? "✓" : row.ok ? "~" : "✗"} ${name.padEnd(14)} status=${row.status ?? "-"} content=${row.contentOk ? "yes(" + row.found + ")" : "NO"} ${row.note}`, ...(row.ok ? [] : ["<<"]));
+  console.log(
+    `${row.ok && row.contentOk ? "✓" : row.ok ? "~" : "✗"} ${name.padEnd(14)} status=${row.status ?? "-"} content=${row.contentOk ? "yes(" + row.found + ")" : "NO"} ${row.note}`,
+    ...(row.ok ? [] : ["<<"]),
+  );
 }
 
 writeFileSync(`${OUT}/audit.json`, JSON.stringify(report, null, 2));

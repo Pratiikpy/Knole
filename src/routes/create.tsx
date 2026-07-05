@@ -49,7 +49,7 @@ function CreatePage() {
       .then((r) => {
         setCredits(r.credits);
         setUnlimited(r.unlimited);
-        setPacks(r.packs as Pack[]);
+        setPacks([...r.packs] as Pack[]);
       })
       .catch(() => {});
     getTreasury()

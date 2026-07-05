@@ -79,6 +79,10 @@ function ResearchPage() {
               {credits} credits · 3 per query ·{" "}
               <Link to="/create" className="text-tan hover:text-ink">
                 top up
+              </Link>{" "}
+              ·{" "}
+              <Link to="/upgrade" className="text-tan hover:text-ink">
+                go unlimited
               </Link>
             </p>
           )}

@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { mirrorFn } from "@/server/fns";
+import { mirrorFn, mirrorComposeFn } from "@/server/fns";
 import { Composing } from "@/components/knole/Composing";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 
 export const Route = createFileRoute("/wrapped")({
@@ -21,7 +22,20 @@ export const Route = createFileRoute("/wrapped")({
 });
 
 function WrappedPage() {
-  const m = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
+  const composeMirror = useServerFn(mirrorComposeFn);
+  // The loader returns fast (never blocks SSR on the ~40s compose). When it comes back `composing`
+  // — which happens whenever the mirror cache is absent or stale (it invalidates on any new entry) —
+  // fetch the composition here and swap it in, the same lazy pattern Insights uses. Without this,
+  // Wrapped only ever *read* the cache and stayed stuck on "composing" forever.
+  const [m, setM] = useState(loaded);
+  useEffect(() => {
+    if (loaded.composing)
+      composeMirror()
+        .then(setM)
+        .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -65,11 +79,11 @@ function WrappedPage() {
         <section className="px-6 pb-28 pt-16">
           <div className="mx-auto max-w-[58ch]">
             <h1 className="font-display text-[40px] italic leading-tight">
-              {m.composing ? "Your Wrapped is composing." : "Your Wrapped is still forming."}
+              {m.composing ? "Composing your Wrapped…" : "Your Wrapped is still forming."}
             </h1>
             <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
               {m.composing
-                ? "Open the Pattern Mirror to watch Knole read your fortnight — your Wrapped card fills in once it's composed."
+                ? "Knole is reading your fortnight and gathering the shape of it — this takes a moment."
                 : "Write for a few days and Knole will gather the shape of what's been on your mind"}
               — yours to keep, and to share without ever showing the words.{" "}
               <Link to="/today" className="text-tan hover:text-ink">

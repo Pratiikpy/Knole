@@ -68,7 +68,7 @@ async function cachedMirror(userId: string, entryCount: number): Promise<Composi
     const rows = (await db.execute(sql`
       SELECT content, sources FROM reflection_artifacts
       WHERE user_id = ${userId} AND thread_key = 'mirror'
-        AND created_at > now() - interval '12 hours'
+        AND created_at > now() - interval '36 hours'
       ORDER BY created_at DESC LIMIT 1
     `)) as unknown as Record<string, unknown>[];
     if (!rows[0]) return null;
@@ -95,12 +95,12 @@ async function userHasImport(userId: string): Promise<boolean> {
 
 export async function buildMirror(userId: string, opts?: { compose?: boolean }): Promise<Mirror> {
   const entryRows = (await db.execute(sql`
-    SELECT text, created_at FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 14
+    SELECT text, created_at FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 10
   `)) as unknown as Record<string, unknown>[];
   const memRows = (await db.execute(sql`
     SELECT content, type FROM memories
     WHERE user_id = ${userId} AND status IN ('active', 'pinned')
-    ORDER BY created_at DESC LIMIT 18
+    ORDER BY created_at DESC LIMIT 12
   `)) as unknown as Record<string, unknown>[];
   const stat = (await db.execute(sql`
     SELECT count(DISTINCT date_trunc('day', created_at)) AS d, count(*) AS c,
@@ -181,9 +181,14 @@ export async function buildMirror(userId: string, opts?: { compose?: boolean }):
   // it in, showing an anticipation state meanwhile. The cron also composes with compose:true.
   if (!opts?.compose) return reveal(EMPTY_COMPOSITION, true);
 
-  const memories = memRows.map((r) => `(${String(r.type)}) ${String(r.content)}`);
+  // Truncate each entry to its signal-bearing head for the compose PROMPT only — the thinking model's
+  // (and the local anonymiser's) latency scales with prompt length, and the day-15 pattern lives in the
+  // opening lines. The full entry text is kept in `entries` above, so the per-pattern quote receipts
+  // below stay verbatim. This is the single biggest lever on Mirror compose time.
+  const clip = (t: string) => (t.length > 300 ? t.slice(0, 300) + "…" : t);
+  const memories = memRows.map((r) => `(${String(r.type)}) ${clip(String(r.content))}`);
   const context = `RECENT ENTRIES:\n${entries
-    .map((e, i) => `[${i + 1}] (${e.date}) ${e.text}`)
+    .map((e, i) => `[${i + 1}] (${e.date}) ${clip(e.text)}`)
     .join("\n")}\n\nREMEMBERED ABOUT THEM:\n${memories.map((m) => `- ${m}`).join("\n")}`;
 
   // Bounded so a slow/hung sealed-inference call in this SSR loader can never 504 the page — past the
