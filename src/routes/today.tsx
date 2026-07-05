@@ -115,6 +115,9 @@ function TodayPage() {
     warmedRef.current = true;
     void warmup().catch(() => {});
   };
+  // On Reflect, bring the reflection area into view so the person watches the mirror consider them,
+  // instead of staring at a "Reflecting…" button while the magic happens below the fold.
+  const reflectRef = useRef<HTMLDivElement | null>(null);
   const [demoGated, setDemoGated] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -230,6 +233,8 @@ function TodayPage() {
     setReflection("");
     setRemembered(null);
     setReflected(false);
+    // Scroll the reflection into view once it has mounted (next frame), so the wait is watched.
+    setTimeout(() => reflectRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
     setCrisis(false);
     // A fresh reflection starts a fresh thread.
     setEntryId(null);
@@ -947,6 +952,9 @@ function TodayPage() {
                 </div>
               </div>
             )}
+
+            {/* Anchor: the reflection area scrolls here on Reflect (offset for the sticky header). */}
+            <div ref={reflectRef} className="scroll-mt-24" />
 
             {loading && !reflected && (
               <div className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6">
