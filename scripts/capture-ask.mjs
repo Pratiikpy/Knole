@@ -4,7 +4,7 @@
 // answer is complete. Read-only; no writes. Run: node scripts/capture-ask.mjs
 import { chromium } from "@playwright/test";
 
-const BASE = process.env.PROOF_BASE_URL ?? "https://knole-app.vercel.app";
+const BASE = process.env.PROOF_BASE_URL ?? "https://knole.me";
 const browser = await chromium.launch();
 const page = await browser.newPage({
   viewport: { width: 1280, height: 900 },

@@ -14,4 +14,4 @@ Disallow: /extension
 Disallow: /settings
 Disallow: /_serverFn/
 
-Sitemap: https://knole-app.vercel.app/sitemap.xml
+Sitemap: https://knole.me/sitemap.xml

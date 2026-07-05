@@ -23,7 +23,7 @@ import {
   sleep,
 } from "./demo-lib.mjs";
 
-const BASE = process.env.DEMO_BASE_URL ?? "https://knole-app.vercel.app";
+const BASE = process.env.DEMO_BASE_URL ?? "https://knole.me";
 const DECK =
   process.env.DEMO_DECK_URL ?? pathToFileURL(path.resolve("public/proof-deck.html")).href;
 const W = 3840,

@@ -5,7 +5,7 @@
 import { chromium } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const BASE = process.env.PROOF_BASE_URL ?? "https://knole-app.vercel.app";
+const BASE = process.env.PROOF_BASE_URL ?? "https://knole.me";
 const OUT = "public/proof-shots/pages";
 mkdirSync(OUT, { recursive: true });
 
