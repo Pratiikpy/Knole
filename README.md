@@ -48,12 +48,13 @@ The behaviour Knole productises already exists at scale. This is a validated mar
 
 - **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter. Reflections **stream token-by-token**, and each one leaves a tamper-evident on-chain receipt.
 - **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
-- **Life Canvas** — your whole life on one private page: a **mood arc**, a **theme constellation**, your **cast of characters**, and the journey grid — every panel drawn from your own entries. The artifact only your own data can make (`/canvas`).
+- **Life Canvas** — your whole life on one private page: a **mood arc**, a **theme constellation**, your **cast of characters**, and the journey grid — every panel drawn from your own entries. The artifact only your own data can make (`/canvas`) — plus a **shareable card** of your mood arc + themes, no words or names, made to post (`/card`).
 - **Ask My Life** · **Ask Knole** · **Chat** · **Private Research** — answers drawn from your journal (quoted back by date with receipts), a private general assistant, a day-to-day thinking partner that remembers (anonymized every turn), and private web research (Qwen-Max on 0G).
 - **The Index** — every memory with source quotes, edit/forget controls, append-only history, and a `⬡ 0G` badge; plus **"what the model saw"** (the anonymized text) and **tamper-evident recall** (memory history anchored on-chain).
 - **Structure & momentum** — Guided **Programs** · evidence-quoted **Intentions** · **Therapy-prep** session briefs · **Correlations** and **Decision Replay** over your own words · **Themes** · in-the-moment **deepening**.
 - **Voice · Image · Capture** — **voice journaling** (Whisper on 0G) · reflective **image generation** (Z-Image) · **Chrome capture** from anywhere · ChatGPT/journal **import**.
-- **Ownership & money** — **Memory iNFT** (ERC-7857, un-sellable) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · full **export** and **restore-from-chain**.
+- **On your phone** — a real **installable app**: Add-to-Home-Screen on iOS, one-tap install on Android, an offline shell, app shortcuts, and web push. Voice-first — open, speak, done.
+- **Ownership & money** — **Memory iNFT** (ERC-7857, un-sellable) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · a signature-verified **Stripe** subscription · full **export** and **restore-from-chain**.
 - **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Remembered (a past entry resurfaces to answer your past self) · Mood Timeline · Omission Radar · retention loop (digest + push) · Night theme · Crisis Safety (SB243).
 
 ## Privacy by Architecture
@@ -134,7 +135,7 @@ You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and �
 
 ## Current Status
 
-**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): local anonymization before the model · encryption under your key · restore-from-chain · Memory iNFT (ERC-7857, un-sellable) · the memory engine · 14-Day Mirror · Life Canvas · reflection lenses · Ask My Life · private web research · voice journaling · the Index · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · 0G sealed inference — all served fully on 0G.
+**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): local anonymization before the model · encryption under your key · restore-from-chain · Memory iNFT (ERC-7857, un-sellable) · the memory engine · 14-Day Mirror · Life Canvas · a shareable "shape of my month" card · an installable mobile app (iOS + Android PWA) · reflection lenses · Ask My Life · private web research · voice journaling · the Index · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · 0G sealed inference — all served fully on 0G.
 
 **Before high-volume production:** an external security audit and KMS-backed key custody are recommended (the signing-key seam and rotation runbook are in place — see `HUMAN.md`).
 

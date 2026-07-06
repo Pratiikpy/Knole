@@ -42,5 +42,28 @@
       "url": "/insights?source=shortcut",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/today.png",
+      "sizes": "1170x1992",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Write a line — a reflection writes back"
+    },
+    {
+      "src": "/screenshots/canvas.png",
+      "sizes": "1170x1992",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Your whole life in one private view"
+    },
+    {
+      "src": "/screenshots/card.png",
+      "sizes": "1170x1992",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Share the shape of your month"
+    }
   ]
 }
