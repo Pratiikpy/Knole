@@ -18,16 +18,16 @@ Override targets with env vars: `DEMO_BASE_URL` (default `https://knole-app.verc
 
 ## The flow (≈3:05, or ≈2:35 sped 1.2×)
 
-| Beat                 | Screen             | What it proves                                       |
-| -------------------- | ------------------ | ---------------------------------------------------- |
-| 1 · Hook             | Landing            | the live "journal writes back" self-typing demo      |
-| 2 · The magic        | Onboarding         | a real entry → a real streamed reflection            |
-| 3 · The flagship     | Pattern Mirror     | the day-15 reveal: a pattern quoting a dated entry   |
-| 4 · It remembers     | Ask My Life        | answers from real entries, with receipts             |
-| 5 · Yours, on record | The Index          | every memory, ⬡ 0G badges, trace-to-source           |
-| 6 · The thesis       | Settings → recover | ciphertext rebuilds live from chain                  |
-| 7 · It's real        | Proof deck         | 21 evals, real on-chain roots                        |
-| 8 · Close            | Landing            | the tagline                                          |
+| Beat                 | Screen             | What it proves                                     |
+| -------------------- | ------------------ | -------------------------------------------------- |
+| 1 · Hook             | Landing            | the live "journal writes back" self-typing demo    |
+| 2 · The magic        | Onboarding         | a real entry → a real streamed reflection          |
+| 3 · The flagship     | Pattern Mirror     | the day-15 reveal: a pattern quoting a dated entry |
+| 4 · It remembers     | Ask My Life        | answers from real entries, with receipts           |
+| 5 · Yours, on record | The Index          | every memory, ⬡ 0G badges, trace-to-source         |
+| 6 · The thesis       | Settings → recover | ciphertext rebuilds live from chain                |
+| 7 · It's real        | Proof deck         | 21 evals, real on-chain roots                      |
+| 8 · Close            | Landing            | the tagline                                        |
 
 Beats 3 and 6 are the standouts: the Mirror's dated "your own words" receipt, and the encrypted blob
 decrypting live to "✓ recovered live from 0G".

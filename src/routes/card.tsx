@@ -16,7 +16,8 @@ export const Route = createFileRoute("/card")({
       { title: "The shape of my days — Knole" },
       {
         name: "description",
-        content: "The shape of your days — a private journal card. Only the shape, never the words.",
+        content:
+          "The shape of your days — a private journal card. Only the shape, never the words.",
       },
     ],
   }),
@@ -344,8 +345,8 @@ function CardPage() {
         </h1>
         <p className="mt-2 max-w-[46ch] text-[14px] leading-relaxed text-muted-foreground">
           A card only your own data can draw — your mood arc and the themes you circled.{" "}
-          <strong className="font-medium text-ink-soft">No words, no names</strong> — only the shape.
-          Post it anywhere; nothing you wrote leaves with it.
+          <strong className="font-medium text-ink-soft">No words, no names</strong> — only the
+          shape. Post it anywhere; nothing you wrote leaves with it.
         </p>
 
         {hasData ? (

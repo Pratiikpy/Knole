@@ -16,10 +16,10 @@
 
 <div align="center">
 
-| | | |
-|:---:|:---:|:---:|
-| <img src="public/proof-shots/today.webp" width="260"/><br/><sub>**Today** — a reflection from your past</sub> | <img src="public/proof-shots/mirror.webp" width="260"/><br/><sub>**The 14-Day Mirror** — patterns, dated</sub> | <img src="public/proof-shots/ask-receipts.webp" width="260"/><br/><sub>**Ask My Life** — quoted with receipts</sub> |
-| <img src="public/proof-shots/memory-index.webp" width="260"/><br/><sub>**The Index** — editable, ⬡ 0G-stamped</sub> | <img src="public/proof-shots/crisis.webp" width="260"/><br/><sub>**Crisis-safe** — real help, not a bot</sub> | <img src="public/proof-shots/night.webp" width="260"/><br/><sub>**Night** — a full dark theme</sub> |
+|                                                                                                                     |                                                                                                                |                                                                                                                     |
+| :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------: |
+|    <img src="public/proof-shots/today.webp" width="260"/><br/><sub>**Today** — a reflection from your past</sub>    | <img src="public/proof-shots/mirror.webp" width="260"/><br/><sub>**The 14-Day Mirror** — patterns, dated</sub> | <img src="public/proof-shots/ask-receipts.webp" width="260"/><br/><sub>**Ask My Life** — quoted with receipts</sub> |
+| <img src="public/proof-shots/memory-index.webp" width="260"/><br/><sub>**The Index** — editable, ⬡ 0G-stamped</sub> | <img src="public/proof-shots/crisis.webp" width="260"/><br/><sub>**Crisis-safe** — real help, not a bot</sub>  |         <img src="public/proof-shots/night.webp" width="260"/><br/><sub>**Night** — a full dark theme</sub>         |
 
 </div>
 
@@ -36,15 +36,15 @@ The missing piece isn't demand. It's **privacy, trust, and true ownership.** Tha
 The behaviour Knole productises already exists at scale. This is a validated market, researched end to end — not a hope.
 
 - **Therapy & companionship is the #1 generative-AI use case** — ~31% of all usage, up from 17% the year before (HBR, 2025); ~1 in 4 Americans would rather talk to an AI than a therapist. The center of consumer AI, not a wellness niche.
-- **People already hand-build this.** *"I fed 14 years of journals into Claude — it found a 4-month burnout cycle I never noticed"* (2k+ upvotes) · *"AI sees the patterns I refuse to accept; it's not sugarcoating."* The demand is here; the private, owned version isn't.
-- **The category is funded, so the bet is de-risked** — **Rosebud** $6M (Bessemer, Tim Ferriss) on ~10k payers · **Mindsera** 80k users · **PIN AI** $10M (a16z) on private, user-owned AI. Knole's edge is sharper differentiation and *real* privacy, not first-mover risk.
+- **People already hand-build this.** _"I fed 14 years of journals into Claude — it found a 4-month burnout cycle I never noticed"_ (2k+ upvotes) · _"AI sees the patterns I refuse to accept; it's not sugarcoating."_ The demand is here; the private, owned version isn't.
+- **The category is funded, so the bet is de-risked** — **Rosebud** $6M (Bessemer, Tim Ferriss) on ~10k payers · **Mindsera** 80k users · **PIN AI** $10M (a16z) on private, user-owned AI. Knole's edge is sharper differentiation and _real_ privacy, not first-mover risk.
 - **Retention is what the category lives or dies on** — AI apps retain **21% vs 30.7%** for non-AI (RevenueCat, 2026); Knole's 30-second daily check-in is the on-ramp built to beat that.
 
 **Every single feature maps to a demand people already voice.** The [feature-by-feature demand table on Notion](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db) ties each one to real evidence — Rosebud · Stoic · Daylio · Day One · Reddit · a court record · a16z. Nothing here is speculative.
 
 ## What Knole Does
 
-*One private memory engine behind ~30 features across 25 routes — the full product, not a demo.*
+_One private memory engine behind ~30 features across 25 routes — the full product, not a demo._
 
 - **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter. Reflections **stream token-by-token**, and each one leaves a tamper-evident on-chain receipt.
 - **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
@@ -74,11 +74,11 @@ Trust is minimized at every layer:
 
 ## Why 0G
 
-| Layer | How Knole uses it |
-| --- | --- |
-| **0G Compute** | Sealed AI inference inside a TEE |
-| **0G Storage** | Encrypted journal entries |
-| **0G Chain** | Integrity roots + memory ownership (iNFT) |
+| Layer          | How Knole uses it                         |
+| -------------- | ----------------------------------------- |
+| **0G Compute** | Sealed AI inference inside a TEE          |
+| **0G Storage** | Encrypted journal entries                 |
+| **0G Chain**   | Integrity roots + memory ownership (iNFT) |
 
 If the external model is ever unavailable, Knole **falls back to the 0G TEE** — an outage costs latency, never capability or privacy.
 
@@ -122,12 +122,12 @@ You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and �
 <details>
 <summary><b>Scripts & structure</b></summary>
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` / `npm run build` | dev server / production build (client + SSR) |
-| `npm run evals` | memory-engine release gate → `eval_runs` |
-| `npm run test:e2e` | Playwright — full-product sweep + real-wallet journey |
-| `npm run worker` | overnight Dreaming consolidation |
+| Command                         | Purpose                                               |
+| ------------------------------- | ----------------------------------------------------- |
+| `npm run dev` / `npm run build` | dev server / production build (client + SSR)          |
+| `npm run evals`                 | memory-engine release gate → `eval_runs`              |
+| `npm run test:e2e`              | Playwright — full-product sweep + real-wallet journey |
+| `npm run worker`                | overnight Dreaming consolidation                      |
 
 `src/routes` file-based routes · `src/components/knole` app shell · `src/server` the engine (embed · anonymise · sealed inference · 0G storage · restore · reflect · mirror · ask · iNFT) · `src/db` Drizzle schema + pgvector · `contracts/KnoleMemory.sol` the ERC-7857 iNFT.
 

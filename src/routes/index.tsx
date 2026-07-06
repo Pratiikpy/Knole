@@ -146,12 +146,17 @@ function LandingPage() {
               href="/the-index"
               className="group rounded-2xl border border-rule bg-card/40 p-5 transition-colors hover:border-tan/40"
             >
-              <div className="font-display text-[19px] italic text-ink">Anonymized before the model</div>
-              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                Every name is stripped to a token <strong className="text-ink-soft">on your device</strong>{" "}
-                before any AI reads a word — the model never receives your identity.
+              <div className="font-display text-[19px] italic text-ink">
+                Anonymized before the model
               </div>
-              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">See what the model saw →</div>
+              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                Every name is stripped to a token{" "}
+                <strong className="text-ink-soft">on your device</strong> before any AI reads a word
+                — the model never receives your identity.
+              </div>
+              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">
+                See what the model saw →
+              </div>
             </a>
             <a
               href="https://chainscan.0g.ai/tx/0x870749f28bb13807867b354f0030d2910e778d6718fcec21bbca13d8489ee115"
@@ -170,12 +175,17 @@ function LandingPage() {
               href="/settings"
               className="group rounded-2xl border border-rule bg-card/40 p-5 transition-colors hover:border-tan/40"
             >
-              <div className="font-display text-[19px] italic text-ink">Encrypted &amp; recoverable</div>
-              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                Your words are <strong className="text-ink-soft">AES-256-GCM</strong> ciphertext under
-                your own key on 0G — wipe the database and they rebuild byte-for-byte from chain.
+              <div className="font-display text-[19px] italic text-ink">
+                Encrypted &amp; recoverable
               </div>
-              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">Restore from 0G →</div>
+              <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                Your words are <strong className="text-ink-soft">AES-256-GCM</strong> ciphertext
+                under your own key on 0G — wipe the database and they rebuild byte-for-byte from
+                chain.
+              </div>
+              <div className="mt-3 text-[12px] text-tan group-hover:text-ink">
+                Restore from 0G →
+              </div>
             </a>
           </div>
         </div>

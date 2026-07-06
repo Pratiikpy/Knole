@@ -151,8 +151,9 @@ export function PwaSetup() {
                   <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
                 </svg>
               </span>{" "}
-              in the toolbar, then <strong className="font-medium text-ink">Add to Home Screen</strong>{" "}
-              — it opens full-screen, like an app.
+              in the toolbar, then{" "}
+              <strong className="font-medium text-ink">Add to Home Screen</strong> — it opens
+              full-screen, like an app.
             </div>
           </div>
           <button

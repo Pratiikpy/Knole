@@ -234,7 +234,10 @@ function TodayPage() {
     setRemembered(null);
     setReflected(false);
     // Scroll the reflection into view once it has mounted (next frame), so the wait is watched.
-    setTimeout(() => reflectRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    setTimeout(
+      () => reflectRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      60,
+    );
     setCrisis(false);
     // A fresh reflection starts a fresh thread.
     setEntryId(null);

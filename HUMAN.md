@@ -63,14 +63,14 @@ set the keys — the upgrade CTA says so honestly rather than dead-ending. To sw
 
 ## Phase 2 — the mainnet gate (harden, audit, validate)
 
-| #   | Item                              | Type | Notes                                                                                                                                                                 |
-| --- | --------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 15  | KMS / enclave for the KDF secret  | ☁️💳 | The key-provider code is pluggable; pick AWS KMS / GCP KMS / Vault and set its creds. Moves the master key out of `.env` so "only you can read it" is literally true. |
+| #   | Item                                       | Type | Notes                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------ | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 15  | KMS / enclave for the KDF secret           | ☁️💳 | The key-provider code is pluggable; pick AWS KMS / GCP KMS / Vault and set its creds. Moves the master key out of `.env` so "only you can read it" is literally true.                                                                                     |
 | 15b | KMS custody for the **wallet signing key** | ☁️💳 | `EVM_PRIVATE_KEY` signs every on-chain tx and controls the funds. `signerProvider.ts` is the pluggable seam: inject a KMS-backed Signer at boot (`signerProvider.injectSigner(...)`) so the raw key never sits in `.env`. See the rotation runbook below. |
-| 16  | Security audit                    | 🧭💳 | Pen-test the extension + API; the in-repo hardening pass is done, but a third-party review is a human call before real users.                                         |
-| 17  | Privacy policy + Terms of Service | 🧭   | A journal of personal data needs these before onboarding real humans. Legal, not code.                                                                                |
-| 18  | Redis (if >1 instance)            | ☁️💳 | Back the in-memory rate limiter with Redis when horizontally scaled.                                                                                                  |
-| 19  | Closed beta cohort                | 🧭   | Recruit real journalers; run the actual 14-Day Mirror; watch D30 / creepiness / aha.                                                                                  |
+| 16  | Security audit                             | 🧭💳 | Pen-test the extension + API; the in-repo hardening pass is done, but a third-party review is a human call before real users.                                                                                                                             |
+| 17  | Privacy policy + Terms of Service          | 🧭   | A journal of personal data needs these before onboarding real humans. Legal, not code.                                                                                                                                                                    |
+| 18  | Redis (if >1 instance)                     | ☁️💳 | Back the in-memory rate limiter with Redis when horizontally scaled.                                                                                                                                                                                      |
+| 19  | Closed beta cohort                         | 🧭   | Recruit real journalers; run the actual 14-Day Mirror; watch D30 / creepiness / aha.                                                                                                                                                                      |
 
 ---
 
