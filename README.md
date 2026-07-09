@@ -54,7 +54,7 @@ _One private memory engine behind ~30 features across 25 routes — the full pro
 - **Structure & momentum** — Guided **Programs** · evidence-quoted **Intentions** · **Therapy-prep** session briefs · **Correlations** and **Decision Replay** over your own words · **Themes** · in-the-moment **deepening**.
 - **Voice · Image · Capture** — **voice journaling** (Whisper on 0G) · reflective **image generation** (Z-Image) · **Chrome capture** from anywhere · ChatGPT/journal **import**.
 - **On your phone** — a real **installable app**: Add-to-Home-Screen on iOS, one-tap install on Android, an offline shell, app shortcuts, and web push. Voice-first — open, speak, done.
-- **Ownership & money** — **Memory iNFT** (ERC-7857, un-sellable) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · a signature-verified **Stripe** subscription · full **export** and **restore-from-chain**.
+- **Ownership & money** — **Memory iNFT** (a genuine **ERC-7857** Agentic ID, minted to your own wallet — yours to carry across wallets or grant a 0G agent scoped access) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · a signature-verified **Stripe** subscription · full **export** and **restore-from-chain**.
 - **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Remembered (a past entry resurfaces to answer your past self) · Mood Timeline · Omission Radar · retention loop (digest + push) · Night theme · Crisis Safety (SB243).
 
 ## Privacy by Architecture
@@ -63,12 +63,12 @@ Trust is minimized at every layer:
 
 1. Local **MiniLM** embeddings — the vectors never leave the machine
 2. Local **anonymization** before any prompt
-3. Reflection inside a **0G TEE** (sealed inference)
+3. Reflection **and live chat** inside a **0G TEE** — sealed inference, **attestation-verified** per response
 4. **AES-256-GCM** encryption under user-controlled keys
 5. Encrypted storage on **0G Storage**
 6. Memory roots anchored on **0G Chain**
 7. Deterministic **restore from 0G**
-8. **ERC-7857 Memory iNFT** — owned by the user's wallet, un-sellable
+8. **ERC-7857 Memory iNFT** — owned by the user's own wallet, portable and grantable
 
 > Even if the enclave were compromised, the model would still only ever see **anonymized text.**
 
@@ -80,27 +80,35 @@ Trust is minimized at every layer:
 | **0G Storage** | Encrypted journal entries                 |
 | **0G Chain**   | Integrity roots + memory ownership (iNFT) |
 
-If the external model is ever unavailable, Knole **falls back to the 0G TEE** — an outage costs latency, never capability or privacy.
+The **sealed 0G TEE is the primary inference path**, verified by hardware attestation on every response. If the enclave is ever unreachable, Knole falls back to the plain 0G model — honestly marked *not sealed*, never dressed up as the enclave — so an outage costs the seal, never your privacy (the text is already anonymized before any model) or capability.
 
 ## Proof, Not Promises
 
 Every major claim is verifiable — and here's the on-chain proof, live on the 0G explorer:
 
-<div align="center">
-<img src="public/proof-shots/onchain-mint.webp" width="640" alt="0G ChainScan — Mint 1 of Knole Memory, Success, ERC-721, TokenID 4" />
-<br/><sub><b>A real ERC-7857 mint on 0G mainnet</b> — <a href="https://chainscan.0g.ai/tx/0x870749f28bb13807867b354f0030d2910e778d6718fcec21bbca13d8489ee115">verify the transaction ↗</a> · <a href="https://chainscan.0g.ai/address/0xf5F6Ee304e8BfD94666a4AdeC171d116e55c267A">the contract ↗</a></sub>
-</div>
+The memory token is a **genuine ERC-7857 Agentic ID** — not an ERC-721 wearing the name. Don't take our word for it; call the deployed contract yourself. Every value below is read from `KnoleAgenticID` on 0G Aristotle mainnet and is live on the [**/verify**](https://knole.me/verify) page, re-checked on each load:
 
+| On-chain check (contract [`0x6A3200…6B813`](https://chainscan.0g.ai/address/0x6A3200aea59043cAb74e2077F3f446db0646B813)) | Result |
+| --- | --- |
+| `supportsInterface(0x4b396f04)` — **ERC-7857 (iNFT)** | **true** |
+| `supportsInterface(0x35d39512)` — ERC-7857 Authorize | **true** |
+| `supportsInterface(0xd79f01c7)` — ERC-7857 Cloneable | **true** |
+| `supportsInterface(0x80ac58cd)` — ERC-721 (compatible) | **true** |
+| `supportsInterface(0xdeadbeef)` — unknown id (control) | **false** |
+
+The control id returning **false** is the point: this is a real interface registry, not a stub that answers `true` to everything. **Mints go to the user, not a central wallet** — [token #2](https://chainscan.0g.ai/tx/0xbc9be373659865c80920902d40f7dd397a1ea7e9905a6392b66d1b8d79d94e1b) is owned by `0x45d6431D…`, a user's own embedded wallet, minted gas-free by the server. The encrypted memory snapshot lives on 0G Storage; the token records only its hash.
+
+- **Sealed inference is real, not a fallback** — reflection *and* live chat run through the 0G Compute serving broker inside a TEE (TeeML), and every response is gated on `processResponse()`, which verifies the enclave attestation before the "sealed" badge is ever shown
 - **21 automated evaluation suites** in CI — retrieval, groundedness, privacy-leak, crypto, isolation
 - **Restore-from-chain** verification with real mainnet roots
-- A **headless real-wallet end-to-end run** — inbox → Privy OTP → wallet-signed encryption → on-chain mint
+- A **real-wallet end-to-end run** — inbox → Privy OTP → wallet-signed encryption → on-chain mint
 - A public **[Proof Deck](https://knole.me/proof-deck.html)** documenting every feature with screenshots and commands
 
 Built entirely by a **solo developer** — every commit public.
 
 ## Built With
 
-TanStack Start · React 19 · Neon Postgres + pgvector · Drizzle · local `all-MiniLM` embeddings · `transformers.js` NER · **0G Sealed Inference (`glm-5.1`, TEE) → 0G fallback (fully on 0G, no external LLM)** · AES-256-GCM + wallet-derived keys · ERC-7857 iNFT · Privy · 0G Aristotle mainnet via `ethers`
+TanStack Start · React 19 · Neon Postgres + pgvector · Drizzle · local `all-MiniLM` embeddings · `transformers.js` NER · **0G Sealed Inference via the 0G Compute serving broker (TeeML, attestation-verified) → plain 0G model fallback (fully on 0G, no external LLM)** · AES-256-GCM + wallet-derived keys · ERC-7857 Agentic ID (`KnoleAgenticID`) · Privy · 0G Aristotle mainnet via `ethers`
 
 ---
 
@@ -115,7 +123,7 @@ npm run dev                    # http://localhost:3000
 npm run evals                  # the 21-suite memory gate
 ```
 
-You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and — for the on-chain features — a funded 0G mainnet wallet. Enable the TEE with `OG_SEALED_INFERENCE=on` + a [pc.0g.ai](https://pc.0g.ai) key; enable minting by deploying the iNFT (`node scripts/deploy-inft.mjs`) and setting `KNOLE_NFT_ADDRESS_MAINNET`.
+You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and — for the on-chain features — a funded 0G mainnet wallet. Enable the TEE with `OG_SEALED_INFERENCE=on` (inference then runs through the 0G Compute broker; set `OG_TEE_PROVIDER` to pick the TeeML provider); enable minting by deploying the iNFT (`node scripts/deploy-agentic-id.mjs`) and setting `KNOLE_NFT_ADDRESS_MAINNET`.
 
 </details>
 
@@ -129,13 +137,13 @@ You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and �
 | `npm run test:e2e`              | Playwright — full-product sweep + real-wallet journey |
 | `npm run worker`                | overnight Dreaming consolidation                      |
 
-`src/routes` file-based routes · `src/components/knole` app shell · `src/server` the engine (embed · anonymise · sealed inference · 0G storage · restore · reflect · mirror · ask · iNFT) · `src/db` Drizzle schema + pgvector · `contracts/KnoleMemory.sol` the ERC-7857 iNFT.
+`src/routes` file-based routes · `src/components/knole` app shell · `src/server` the engine (embed · anonymise · sealed inference via `ogCompute.ts` · 0G storage · restore · reflect · mirror · ask · iNFT) · `src/db` Drizzle schema + pgvector · `contracts/KnoleAgenticID.sol` the ERC-7857 Agentic ID.
 
 </details>
 
 ## Current Status
 
-**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): local anonymization before the model · encryption under your key · restore-from-chain · Memory iNFT (ERC-7857, un-sellable) · the memory engine · 14-Day Mirror · Life Canvas · a shareable "shape of my month" card · an installable mobile app (iOS + Android PWA) · reflection lenses · Ask My Life · private web research · voice journaling · the Index · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · 0G sealed inference — all served fully on 0G.
+**Live on 0G Aristotle mainnet** — [knole.me](https://knole.me): local anonymization before the model · encryption under your key · restore-from-chain · Memory iNFT (genuine ERC-7857, minted to your own wallet) · the memory engine · 14-Day Mirror · Life Canvas · a shareable "shape of my month" card · an installable mobile app (iOS + Android PWA) · reflection lenses · Ask My Life · private web research · voice journaling · the Index · reflection receipts · tamper-evident recall · proof-of-journaling · pay-with-0G · portable memory identity · retention loop · Crisis Safety (SB243) · 0G sealed inference — all served fully on 0G.
 
 **Before high-volume production:** an external security audit and KMS-backed key custody are recommended (the signing-key seam and rotation runbook are in place — see `HUMAN.md`).
 
