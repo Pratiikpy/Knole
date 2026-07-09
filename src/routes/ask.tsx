@@ -76,14 +76,26 @@ function AskPage() {
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let acc = "";
+      let live = privacy;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         acc += dec.decode(value, { stream: true });
+        // The answer text and a trailing \x1e{privacy} footer share the stream. Show only the text;
+        // once the footer arrives, upgrade the badge to the real (verified-sealed) per-call flags.
+        const sep = acc.indexOf("\x1e");
+        const body = sep >= 0 ? acc.slice(0, sep) : acc;
+        if (sep >= 0) {
+          try {
+            live = JSON.parse(acc.slice(sep + 1));
+          } catch {
+            /* footer still arriving in pieces — keep the last good flags */
+          }
+        }
         setResult((r) => ({
-          summary: acc,
+          summary: body,
           receipts: r?.receipts ?? receipts,
-          privacy: r?.privacy ?? privacy,
+          privacy: live,
         }));
       }
     } catch {

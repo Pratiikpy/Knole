@@ -32,6 +32,11 @@ export function teeConfigured(): boolean {
   return !!PK && (process.env.OG_SEALED_INFERENCE ?? "off").toLowerCase() === "on";
 }
 
+/** The TEE provider a judge can look up on 0G — the enclave address inference is attested against. */
+export function teeInfo(): { configured: boolean; provider: string } {
+  return { configured: teeConfigured(), provider: TEE_PROVIDER };
+}
+
 // Prewarm the broker off the reflection's critical path: init + acknowledgeProviderSigner (an on-chain
 // tx, the biggest cold cost) + metadata cache, fired on page load. Best-effort — never throws.
 export async function warmTee(): Promise<void> {

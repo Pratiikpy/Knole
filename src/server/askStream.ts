@@ -50,11 +50,24 @@ export async function handleAskStream(request: Request): Promise<Response> {
   const enc = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      // The real per-call privacy flags (sealed = TEE attestation verified) are only known once the
+      // generator finishes — after headers have flushed. So iterate manually to capture the return
+      // value and emit it as a trailing sentinel frame; the client splits it off the answer text.
+      let privacy = { sealed: false, anonymised: true };
       try {
-        for await (const delta of result.gen) controller.enqueue(enc.encode(delta));
+        const gen = result.gen;
+        let step = await gen.next();
+        while (!step.done) {
+          controller.enqueue(enc.encode(step.value));
+          step = await gen.next();
+        }
+        privacy = { sealed: step.value.sealed, anonymised: step.value.anonymised };
       } catch (e) {
         console.error("ask-stream reply failed:", (e as Error).message);
       } finally {
+        // \x1e (record separator) can't occur in the model's prose, so the client can safely split the
+        // JSON footer from the answer — surfacing the honest "sealed enclave" badge only when verified.
+        controller.enqueue(enc.encode("\x1e" + JSON.stringify(privacy)));
         controller.close();
       }
     },
@@ -66,8 +79,8 @@ export async function handleAskStream(request: Request): Promise<Response> {
       "cache-control": "no-cache, no-transform",
       "x-content-type-options": "nosniff",
       "x-knole-receipts": encodeURIComponent(JSON.stringify(result.receipts)),
-      // The streaming path always runs the anonymise gateway (sealed/TEE inference is off); the
-      // footer reflects that. The non-streaming askMyLife still reports the exact per-call flags.
+      // Optimistic default (anonymise gateway always runs); the trailing sentinel frame carries the
+      // real, per-call {sealed, anonymised} once the TEE attestation has been verified.
       "x-knole-privacy": encodeURIComponent(JSON.stringify({ sealed: false, anonymised: true })),
     },
   });

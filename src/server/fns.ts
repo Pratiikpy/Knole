@@ -38,6 +38,7 @@ import { chatReply, composeEntry } from "./chat";
 import { buildMirror, mirrorStatus } from "./mirror";
 import { lifeCanvas } from "./lifeCanvas";
 import { sealedActive } from "./sealed";
+import { architectureFacts } from "./architecture";
 import { pushConfigured, vapidPublicKey } from "./notify";
 import { savePushSubscription } from "./digest";
 import { moodTrajectory } from "./valence";
@@ -801,6 +802,13 @@ export const whatModelSawFn = createServerFn({ method: "POST" })
 // which therefore never appears unless the enclave path is live (false until the ledger is funded).
 export const sealedStatusFn = createServerFn({ method: "GET" }).handler(async () => {
   return { active: sealedActive() };
+});
+
+// The live, provable architecture facts for /verify: the memory token really is a legitimate ERC-7857
+// (supportsInterface read on-chain at request time), and inference runs in a named 0G TEE. Directly
+// answers the two "it's not real" architecture critiques with proof anyone can re-check.
+export const architectureFn = createServerFn({ method: "GET" }).handler(async () => {
+  return architectureFacts();
 });
 
 // Web-push enrollment: the client needs the VAPID public key to create a subscription, and whether

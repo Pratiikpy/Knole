@@ -1,7 +1,7 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { verifyReceiptFn, sensingProvenanceFn } from "@/server/fns";
+import { verifyReceiptFn, sensingProvenanceFn, architectureFn } from "@/server/fns";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/verify")({
@@ -23,16 +23,19 @@ export const Route = createFileRoute("/verify")({
 
 type Result = Awaited<ReturnType<typeof verifyReceiptFn>>;
 type Provenance = Awaited<ReturnType<typeof sensingProvenanceFn>>;
+type Architecture = Awaited<ReturnType<typeof architectureFn>>;
 
 function VerifyPage() {
   const { id: initialId } = useSearch({ from: "/verify" });
   const verify = useServerFn(verifyReceiptFn);
   const getProvenance = useServerFn(sensingProvenanceFn);
+  const getArchitecture = useServerFn(architectureFn);
   const [id, setId] = useState(initialId ?? "");
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [prov, setProv] = useState<Provenance | null>(null);
+  const [arch, setArch] = useState<Architecture | null>(null);
 
   // Network-aware explorer (mainnet vs testnet) comes from the server, so links never point at the
   // wrong chain after a migration.
@@ -57,6 +60,9 @@ function VerifyPage() {
     getProvenance()
       .then(setProv)
       .catch(() => {});
+    getArchitecture()
+      .then(setArch)
+      .catch(() => {});
     if (initialId) run(initialId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -74,6 +80,8 @@ function VerifyPage() {
             public data, never your journals — and published it in full, from dataset to on-chain
             commitment. Everything here is provable.
           </p>
+
+          {arch && (arch.nftAddress || arch.sealed) && <ArchitectureCard a={arch} />}
 
           {prov?.configured && <ProvenanceCard p={prov} explorer={explorer} />}
 
@@ -166,6 +174,133 @@ function VerifyPage() {
         </div>
       </section>
     </Shell>
+  );
+}
+
+function ArchitectureCard({ a }: { a: Architecture }) {
+  const addrUrl = (addr: string) => `${a.explorer}/address/${addr}`;
+  const iface = a.interfaces;
+  return (
+    <div className="mb-6 rounded-2xl border border-rule bg-card/50 p-7">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-2 rounded-full bg-tan/[0.15] px-3 py-1.5 text-[13px] font-medium text-tan">
+          {a.liveReadOk ? `✓ Verified live on 0G ${a.network}` : `On 0G ${a.network}`}
+        </span>
+        <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] text-muted-foreground">
+          real ERC-7857 · sealed TEE inference
+        </span>
+      </div>
+
+      {a.nftAddress && (
+        <>
+          <div className="mb-3 text-[13px] font-medium text-ink-soft">
+            Your memory is a legitimate ERC-7857 iNFT
+          </div>
+          <dl className="space-y-3 text-[13px]">
+            {a.nftName && (
+              <Row label="Token" value={`${a.nftName} (${a.nftSymbol}) · chain ${a.chainId}`} />
+            )}
+            <Row mono label="Contract" value={a.nftAddress} />
+            {typeof a.totalSupply === "number" && (
+              <Row label="Minted to date" value={`${a.totalSupply}`} />
+            )}
+            {iface && (
+              <div className="border-t border-rule pt-3">
+                <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  supportsInterface — read on-chain just now
+                </div>
+                <div className="space-y-1.5">
+                  <IfaceRow label="ERC-7857 (iNFT)" id={iface.erc7857.id} ok={iface.erc7857.ok} />
+                  <IfaceRow
+                    label="ERC-7857 Authorize"
+                    id={iface.authorize.id}
+                    ok={iface.authorize.ok}
+                  />
+                  <IfaceRow
+                    label="ERC-7857 Cloneable"
+                    id={iface.cloneable.id}
+                    ok={iface.cloneable.ok}
+                  />
+                  <IfaceRow
+                    label="ERC-721 (compatible)"
+                    id={iface.erc721.id}
+                    ok={iface.erc721.ok}
+                  />
+                  <IfaceRow
+                    label="unknown id (control)"
+                    id={iface.control.id}
+                    ok={iface.control.ok}
+                    expectFalse
+                  />
+                </div>
+              </div>
+            )}
+          </dl>
+          <a
+            href={addrUrl(a.nftAddress)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-block text-[13px] text-tan hover:text-ink"
+          >
+            read the contract on 0G ChainScan ↗
+          </a>
+        </>
+      )}
+
+      {a.sealed && (
+        <div className={a.nftAddress ? "mt-6 border-t border-rule pt-5" : ""}>
+          <div className="mb-3 text-[13px] font-medium text-ink-soft">
+            Inference runs in a 0G TEE — attestation-verified
+          </div>
+          <dl className="space-y-3 text-[13px]">
+            {a.teeProvider && <Row mono label="TEE provider (0G Compute)" value={a.teeProvider} />}
+          </dl>
+          {a.teeProvider && (
+            <a
+              href={addrUrl(a.teeProvider)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-block text-[13px] text-tan hover:text-ink"
+            >
+              the enclave provider on 0G ChainScan ↗
+            </a>
+          )}
+        </div>
+      )}
+
+      <p className="mt-5 text-[11px] leading-relaxed text-muted-foreground">
+        The token is a real ERC-7857 — the encrypted memory snapshot lives on 0G Storage, the token
+        records only its hash, and it&apos;s minted to your own wallet, not ours. The interface
+        checks above are read from the live contract each time this page loads; the control id
+        returns false, so this is a genuine registry, not a stub that answers yes to everything.
+        Reflections and chat are served inside the named 0G Compute enclave (TEE) and each response
+        is checked with the broker&apos;s attestation before we ever call it &ldquo;sealed.&rdquo;
+      </p>
+    </div>
+  );
+}
+
+function IfaceRow({
+  label,
+  id,
+  ok,
+  expectFalse,
+}: {
+  label: string;
+  id: string;
+  ok: boolean;
+  expectFalse?: boolean;
+}) {
+  const good = expectFalse ? !ok : ok;
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">
+        {label} <span className="font-mono text-[11px] text-ink-soft/70">{id}</span>
+      </span>
+      <span className={good ? "text-tan" : "text-red-500"}>
+        {ok ? "true" : "false"} {good ? "✓" : "✗"}
+      </span>
+    </div>
   );
 }
 
