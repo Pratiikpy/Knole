@@ -1,157 +1,50 @@
 import "dotenv/config";
 import { chat, chatStream, type ChatMsg } from "./llm";
 import { anonymiseMessages, deAnonymise } from "./anonymise";
+import { teeChat, teeChatStream, teeConfigured } from "./ogCompute";
 
-// 0G Sealed Inference — OpenAI-compatible call into 0G Private Compute (TEE).
-// "Even we can't read it" becomes provable for the inference path, not just storage.
-const SEALED_URL = process.env.ZG_SERVICE_URL ?? "";
-const SEALED_KEY = process.env.ZG_API_SECRET ?? "";
-const SEALED_MODEL = process.env.ZG_MODEL ?? "qwen/qwen-2.5-7b-instruct";
-const SEALED_PROVIDER = process.env.OG_COMPUTE_PROVIDER ?? "";
+// 0G Sealed Inference — genuine TEE, via the 0G Compute serving broker (see ogCompute.ts). Every
+// response is attestation-verified with broker.inference.processResponse(); `sealed: true` is set ONLY
+// when that verification passes. Reflection AND live chat run through this path. If the enclave is
+// truly unreachable it falls back to the plain 0G model, honestly labelled `sealed: false` — the
+// "sealed / even we can't read it" badge is never shown for a non-verified answer.
 
-// Read the flag dynamically so it can be toggled per-process (and in tests).
 const sealedOn = () => (process.env.OG_SEALED_INFERENCE ?? "off").toLowerCase() === "on";
-// The 0G Private Computer models are thinking/agentic models with slow first-content latency — fine
-// for the latency-tolerant background paths (mirror compose, dream, nudge) but a dead wait on
-// real-time streaming. So streaming has its OWN gate, default off; flip it on only with a fast TEE
-// model. Non-streaming sealed (the Pattern Mirror — the showcase) stays on via OG_SEALED_INFERENCE.
-const sealedStreamOn = () => (process.env.OG_SEALED_STREAMING ?? "off").toLowerCase() === "on";
 
-/**
- * Whether the 0G Sealed Inference (TEE) path is enabled AND configured — drives the honest "sealed"
- * UI badge. Activate via the 0G Private Computer: ZG_SERVICE_URL=https://router-api.0g.ai/v1 + a
- * pc.0g.ai key (ZG_API_SECRET — no KYC, no funded ledger) + OG_SEALED_INFERENCE=on. When false the
- * badge never shows, so the "composed where even we can't read it" claim is never made unless the
- * inference genuinely runs in the enclave.
- */
-export const sealedActive = (): boolean => sealedOn() && !!SEALED_URL && !!SEALED_KEY;
+/** The sealed (TEE) path is enabled AND the broker is configured — drives the honest "sealed" badge. */
+export const sealedActive = (): boolean => teeConfigured();
 
 export type PrivateResult = {
   content: string;
-  sealed: boolean; // true = served by 0G TEE; false = NVIDIA fallback
+  sealed: boolean; // true = served AND attestation-verified inside the 0G TEE
   model: string;
   provider?: string;
 };
 
+/** Non-streaming TEE completion. Throws on setup failure so rawInference can fall back. */
 export async function chatSealed(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number } = {},
 ): Promise<PrivateResult> {
-  if (!SEALED_URL || !SEALED_KEY) throw new Error("0G Sealed Inference is not configured");
-  const res = await fetch(`${SEALED_URL}/chat/completions`, {
-    method: "POST",
-    signal: AbortSignal.timeout(15_000), // a stalled TEE falls back to NVIDIA fast — no user-facing
-    // loader (e.g. the Pattern Mirror compose) should ever wait longer than this on the flaky enclave.
-    headers: {
-      Authorization: `Bearer ${SEALED_KEY}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      model: SEALED_MODEL,
-      messages,
-      temperature: opts.temperature ?? 0.7,
-      max_tokens: opts.maxTokens ?? 1024,
-      stream: false,
-    }),
-  });
-  if (!res.ok) {
-    // Log upstream detail server-side; surface only a generic error.
-    console.error(`0G compute upstream error ${res.status}:`, (await res.text()).slice(0, 300));
-    throw new Error(`0G compute request failed (${res.status})`);
-  }
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-    model?: string;
-  };
-  const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-  if (!content) throw new Error("0G compute returned empty content");
-  return { content, sealed: true, model: data.model ?? SEALED_MODEL, provider: SEALED_PROVIDER };
+  const r = await teeChat(messages, opts);
+  return { content: r.content, sealed: r.verified, model: r.model, provider: r.provider };
 }
 
-/**
- * Streaming sibling of chatSealed — the TEE path for the long reflection/chat/ask/mirror streams.
- * Yields raw (still-anonymised) content deltas and returns the attestation chatID (the `ZG-Res-Key`
- * header, response `id` as fallback) so the response can be settled + later cryptographically
- * verified via the broker's processResponse. Throws on SETUP failure (before any delta) so the
- * caller can fall back to NVIDIA; once streaming has begun it lets errors propagate rather than
- * double-emit from a second model.
- */
+/** Streaming TEE completion; returns whether the attestation verified. */
 async function* chatSealedStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number },
-): AsyncGenerator<string, { chatID: string | null }, void> {
-  if (!SEALED_URL || !SEALED_KEY) throw new Error("0G Sealed Inference is not configured");
-  // TTFT guard: abort the setup if the TEE stalls before the first byte, so rawInferenceStream can
-  // fall back to NVIDIA. Cleared once streaming actually begins, so a long reply is never cut off.
-  const ctrl = new AbortController();
-  const setupTimer = setTimeout(() => ctrl.abort(), 25_000);
-  let firstByte = false;
-  const res = await fetch(`${SEALED_URL}/chat/completions`, {
-    method: "POST",
-    signal: ctrl.signal,
-    headers: {
-      Authorization: `Bearer ${SEALED_KEY}`,
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    },
-    body: JSON.stringify({
-      model: SEALED_MODEL,
-      messages,
-      temperature: opts.temperature ?? 0.7,
-      max_tokens: opts.maxTokens ?? 1024,
-      stream: true,
-    }),
-  });
-  if (!res.ok || !res.body) {
-    clearTimeout(setupTimer);
-    const detail = await res.text().catch(() => "");
-    console.error(`0G compute stream error ${res.status}:`, detail.slice(0, 200));
-    throw new Error(`0G compute stream failed (${res.status})`);
+): AsyncGenerator<string, { sealed: boolean; chatID: string | null }, void> {
+  const gen = teeChatStream(messages, opts);
+  let step = await gen.next();
+  while (!step.done) {
+    yield step.value;
+    step = await gen.next();
   }
-  // The TEE attestation key for processResponse / on-chain verification — header first, body fallback.
-  let chatID = res.headers.get("ZG-Res-Key") ?? res.headers.get("zg-res-key");
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop() ?? ""; // keep the trailing partial line for the next chunk
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t.startsWith("data:")) continue;
-      const payload = t.slice(5).trim();
-      if (payload === "[DONE]") continue;
-      try {
-        const j = JSON.parse(payload) as {
-          id?: string;
-          choices?: { delta?: { content?: string } }[];
-        };
-        if (!chatID && j.id) chatID = j.id;
-        const d = j.choices?.[0]?.delta?.content;
-        if (d) {
-          if (!firstByte) {
-            firstByte = true;
-            clearTimeout(setupTimer);
-          }
-          yield d;
-        }
-      } catch {
-        /* a partial or non-JSON keepalive line — ignore */
-      }
-    }
-  }
-  clearTimeout(setupTimer);
-  return { chatID: chatID ?? null };
+  return { sealed: step.value.verified, chatID: step.value.chatID };
 }
 
-/**
- * Prefer 0G Sealed Inference (TEE) when enabled; fall back to NVIDIA so the app
- * never goes dark if the compute ledger is empty or the endpoint is unreachable.
- */
+/** Prefer the verified 0G TEE; fall back to the plain 0G model (honestly `sealed:false`) on outage. */
 async function rawInference(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number },
@@ -160,43 +53,32 @@ async function rawInference(
     try {
       return await chatSealed(messages, opts);
     } catch (e) {
-      console.error(
-        "0G sealed inference unavailable, falling back to NVIDIA:",
-        (e as Error).message,
-      );
+      console.error("0G TEE inference unavailable, falling back:", (e as Error).message);
     }
   }
   const content = await chat(messages, opts);
-  return {
-    content,
-    sealed: false,
-    model: process.env.NVIDIA_DEFAULT_MODEL ?? "nvidia",
-  };
+  return { content, sealed: false, model: process.env.ZG_MODEL ?? "glm-5.1" };
 }
 
-/**
- * The raw (still-anonymised) delta source for the streaming gateway: prefer the 0G TEE when enabled,
- * fall back to NVIDIA if the sealed SETUP fails before any delta is emitted (never go dark). Reports
- * whether the TEE actually served the stream + the attestation chatID for later verification.
- */
+/** Streaming sibling: the TEE stream when enabled, else the plain 0G stream (sealed:false). */
 async function* rawInferenceStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number },
 ): AsyncGenerator<string, { sealed: boolean; chatID: string | null }, void> {
-  if (sealedStreamOn()) {
+  if (sealedOn()) {
     let started = false;
     try {
       const gen = chatSealedStream(messages, opts);
       let next = await gen.next();
-      started = true; // the fetch + res.ok passed — committed to the sealed stream, no fallback now
+      started = true; // fetch + res.ok passed — committed to the TEE stream
       while (!next.done) {
         yield next.value;
         next = await gen.next();
       }
-      return { sealed: true, chatID: next.value.chatID };
+      return next.value;
     } catch (e) {
-      if (started) throw e; // a mid-stream failure — propagate rather than double-emit from NVIDIA
-      console.error("0G sealed stream unavailable, falling back to NVIDIA:", (e as Error).message);
+      if (started) throw e; // mid-stream failure — propagate rather than double-emit
+      console.error("0G TEE stream unavailable, falling back:", (e as Error).message);
     }
   }
   for await (const delta of chatStream(messages, opts)) yield delta;
@@ -204,10 +86,9 @@ async function* rawInferenceStream(
 }
 
 /**
- * The single inference gateway. Anonymises PII out of EVERY prompt before any model (TEE or NVIDIA
- * fallback) sees it, and restores the real names in the reply. So the "anonymised before the AI"
- * guarantee holds for every path — reflect, chat, ask, mirror, dream, nudge, resurface — not just
- * the ones that remembered to call it. `anonymised` reports whether the scrub actually ran.
+ * The single inference gateway. Anonymises PII out of EVERY prompt before any model (TEE or fallback)
+ * sees it, and restores the real names in the reply — so "anonymised before the AI" holds for every
+ * path (reflect, chat, ask, mirror, dream, nudge). `anonymised` reports whether the scrub actually ran.
  */
 export async function chatPrivate(
   messages: ChatMsg[],
@@ -219,15 +100,11 @@ export async function chatPrivate(
 }
 
 /**
- * Streaming sibling of chatPrivate, for TTFT on the long reflection/chat paths. Anonymises every
- * prompt, streams the model, and de-anonymises progressively: it only ever emits text up to the
- * last whitespace, so a placeholder (which has no internal whitespace — bracketed [PERSON_1] or
- * bare PERSON_1) can never be split across the emit boundary and reach the client un-restored. The
- * de-anonymised prefix grows monotonically because placeholders map deterministically, so each step
- * just yields the newly-completed suffix. Streams from the 0G TEE when sealed inference is active,
- * else the NVIDIA fallback. Yields de-anonymised deltas; returns {sealed, anonymised, chatID} —
- * sealed reports whether the enclave actually served it, chatID is the TEE attestation key (for
- * settlement + later verification).
+ * Streaming sibling of chatPrivate for TTFT on reflection/chat. Anonymises every prompt, streams the
+ * model, and de-anonymises progressively (only ever emits up to the last whitespace, so a placeholder
+ * can't be split across the boundary and reach the client un-restored). Streams from the verified 0G
+ * TEE when sealed inference is on, else the plain 0G stream. Returns {sealed, anonymised, chatID} —
+ * sealed = the enclave served it AND its attestation verified.
  */
 export async function* chatPrivateStream(
   messages: ChatMsg[],
@@ -255,24 +132,19 @@ export async function* chatPrivateStream(
     }
     ({ sealed, chatID } = step.value);
   } catch (e) {
-    // Both stream paths failed before completing (e.g. NVIDIA unreachable and the sealed stream stalled).
-    // Fall through to a non-streaming completion below rather than leaving the surface blank.
     console.error("stream path failed, falling back to non-stream:", (e as Error).message);
   }
 
   if (acc) {
-    // The stream produced content — final flush of the de-anonymised remainder.
     const finalText = deAnonymise(acc, map);
     if (finalText.startsWith(emitted)) {
       if (finalText.length > emitted.length) yield finalText.slice(emitted.length);
     } else {
-      // Should not happen with stable placeholders; correct to the authoritative text if it ever does.
-      console.warn("chatPrivateStream: de-anonymised prefix diverged from final; correcting tail");
+      console.warn("chatPrivateStream: de-anonymised prefix diverged; correcting tail");
       yield finalText.slice(Math.min(emitted.length, finalText.length));
     }
   } else {
-    // Nothing streamed — fall back to a NON-streaming completion so the reflection never goes blank.
-    // rawInference prefers the 0G TEE, so this keeps working when NVIDIA's streaming path is down.
+    // Nothing streamed — non-streaming completion so the surface never goes blank.
     const r = await rawInference(anon, opts);
     sealed = r.sealed;
     const text = deAnonymise(r.content, map);

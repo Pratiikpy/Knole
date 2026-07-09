@@ -64,6 +64,7 @@
     "setup:stripe": "node scripts/setup-stripe.mjs"
   },
   "dependencies": {
+    "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
     "@0gfoundation/0g-ts-sdk": "^1.2.8",
     "@fontsource/instrument-serif": "^5.2.8",
     "@fontsource/inter": "^5.2.8",

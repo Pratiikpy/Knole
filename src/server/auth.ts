@@ -32,14 +32,39 @@ export async function resolveUserFromToken(
   if (!privyId) return null;
 
   const found = await db
-    .select({ id: users.id })
+    .select({ id: users.id, wallet: users.walletAddress })
     .from(users)
     .where(eq(users.privyId, privyId))
     .limit(1);
-  if (found[0]) return found[0].id;
 
-  const ins = await db.insert(users).values({ privyId }).returning({ id: users.id });
-  return ins[0].id;
+  let userId: string;
+  let hasWallet: boolean;
+  if (found[0]) {
+    userId = found[0].id;
+    hasWallet = !!found[0].wallet;
+  } else {
+    const ins = await db.insert(users).values({ privyId }).returning({ id: users.id });
+    userId = ins[0].id;
+    hasWallet = false;
+  }
+
+  // Capture the user's own (embedded) Ethereum wallet on first login so their memory iNFT can be
+  // minted TO their own address, never a central one. Only when unset — never slows later logins.
+  if (!hasWallet) await captureWallet(privyId, userId).catch(() => {});
+  return userId;
+}
+
+/** Pull the user's embedded Ethereum wallet address from Privy into users.walletAddress. */
+async function captureWallet(privyId: string, userId: string): Promise<void> {
+  const u = (await privy().getUser(privyId)) as { linkedAccounts?: unknown[] };
+  const accts = (u?.linkedAccounts ?? []) as Record<string, unknown>[];
+  const eth = accts.find(
+    (a) => a.type === "wallet" && a.address && (a.chainType === "ethereum" || !a.chainType),
+  );
+  const addr = (eth?.address as string | undefined) ?? "";
+  if (/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+    await db.update(users).set({ walletAddress: addr }).where(eq(users.id, userId));
+  }
 }
 
 /**

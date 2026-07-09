@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 type Token = { tokenId: string; txHash: string; root: string; version: number; mintedAt: string };
 
 /**
- * The iNFT ownership card — mint your evolving memory as a token you truly own (ERC-7857 spirit on
- * 0G): encrypted on 0G Storage, portable across your own wallets, and impossible to list or sell.
- * Renders only once a KnoleMemory contract is deployed (KNOLE_NFT_ADDRESS set) — otherwise nothing,
- * so no half-built feature is ever shown.
+ * The iNFT ownership card — mint your evolving memory as a genuine ERC-7857 Agentic ID on 0G: the
+ * encrypted snapshot lives on 0G Storage, the token records only its Merkle-root hash, and it's minted
+ * to (owned by) your own wallet. Renders only once the KnoleAgenticID contract is deployed — otherwise
+ * nothing, so no half-built feature is ever shown.
  */
 export function INFTCard() {
   const getStatus = useServerFn(inftStatusFn);
@@ -71,7 +71,8 @@ export function INFTCard() {
       {token ? (
         <>
           <p className="font-display text-[18px] italic leading-snug text-ink-soft">
-            Minted. Your memory lives as an iNFT you hold — encrypted, evolving, and not for sale.
+            Minted. Your memory lives as an ERC-7857 iNFT owned by your wallet — encrypted on 0G,
+            evolving with you, yours to carry or grant.
           </p>
           <div className="mt-3 space-y-1 text-[12px] text-muted-foreground">
             <div>
@@ -110,8 +111,9 @@ export function INFTCard() {
       ) : (
         <>
           <p className="font-display text-[18px] italic leading-snug text-ink-soft">
-            Mint your memory as a token you truly own — encrypted on 0G, portable across your own
-            wallets, and impossible to list or sell. Your memory is sacred, not for sale.
+            Mint your memory as a genuine <strong className="font-medium">ERC-7857</strong> iNFT —
+            the encrypted snapshot on 0G Storage, the token owned by your own wallet, evolving with
+            you and yours to carry across wallets or grant a 0G agent scoped access.
           </p>
           <button
             onClick={mint}

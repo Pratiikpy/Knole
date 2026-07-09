@@ -22,6 +22,7 @@ import {
 import { embed, warmEmbed } from "./embed";
 import { warmNER, anonymise } from "./anonymise";
 import { warmInference } from "./llm";
+import { warmTee } from "./ogCompute";
 import {
   currentUserId,
   getSessionUserId,
@@ -325,7 +326,7 @@ export const warmupFn = createServerFn({ method: "GET" }).handler(async () => {
   // Warm the local models (embed + NER) AND the 0G inference path, so the first reflection's
   // time-to-first-token doesn't pay the cold-start. Inference warm is awaited (not fire-and-forget) so
   // it survives on serverless; all three are best-effort and never throw.
-  await Promise.all([warmEmbed(), warmNER(), warmInference()]);
+  await Promise.all([warmEmbed(), warmNER(), warmInference(), warmTee()]);
   return { ok: true };
 });
 

@@ -16,10 +16,17 @@ const { users, reflectionArtifacts } = schema;
 const NFT_ADDRESS = contractAddress("KNOLE_NFT_ADDRESS");
 const PK = process.env.EVM_PRIVATE_KEY ?? "";
 
+// The genuine ERC-7857 (KnoleAgenticID): the token carries encrypted IntelligentData (a pointer to
+// the AES-256-GCM-encrypted snapshot on 0G Storage + its Merkle-root hash). Minted straight to the
+// USER's own wallet — server-sponsored via iMintWithRole (owner = the user, never a central wallet),
+// or client-signed via the public iMint from the user's Privy wallet.
 const ABI = [
-  "function mint(address to, string encryptedURI, bytes32 dataRoot, bytes32 metadataHash) returns (uint256)",
-  "function evolve(uint256 tokenId, string newURI, bytes32 newRoot, bytes32 newHash)",
-  "event Minted(address indexed owner, uint256 indexed tokenId, bytes32 dataRoot)",
+  "function iMint(address to, (string dataDescription, bytes32 dataHash)[] datas) payable returns (uint256)",
+  "function iMintWithRole(address to, (string dataDescription, bytes32 dataHash)[] datas) returns (uint256)",
+  "function evolve(uint256 tokenId, (string dataDescription, bytes32 dataHash)[] datas)",
+  "function getIntelligentDatas(uint256 tokenId) view returns ((string dataDescription, bytes32 dataHash)[])",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
 ];
 
 export function inftConfigured(): boolean {
@@ -103,9 +110,11 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
 
   const json = JSON.stringify(snap);
   const key = keyForUser(userId);
-  const { rootHash } = await putData(json, { key }); // encrypted under the per-user key
-  const metadataHash = ethers.keccak256(ethers.toUtf8Bytes(json));
+  const { rootHash } = await putData(json, { key }); // encrypted under the per-user key → 0G Storage
   const uri = `0g://${rootHash}`;
+  // ERC-7857 IntelligentData: the on-chain dataHash IS the 0G Storage Merkle root of the encrypted
+  // blob (the plaintext never touches the chain; only a key the user controls decrypts it).
+  const datas = [{ dataDescription: uri, dataHash: rootHash }];
 
   const existing = await inftStatus(userId);
   const c = contract();
@@ -114,7 +123,7 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
   // testnet token after the mainnet migration; legacy records with no network tag are testnet) can't
   // be evolved on this contract — fall through to mint a fresh token here instead.
   if (existing && (existing.network ?? "testnet") === NET_NAME) {
-    const tx = await c.evolve(existing.tokenId, uri, rootHash, metadataHash);
+    const tx = await c.evolve(existing.tokenId, datas);
     const rcpt = await tx.wait();
     const rec: INFTRecord = {
       tokenId: existing.tokenId,
@@ -130,13 +139,16 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
     return rec;
   }
 
-  const tx = await c.mint(wallet, uri, rootHash, metadataHash);
+  // Server-sponsored mint straight to the user's own wallet (owner = the user). The client-signed
+  // path (the user's Privy wallet calling the public iMint) is offered in the UI as the primary flow.
+  const tx = await c.iMintWithRole(wallet, datas);
   const rcpt = await tx.wait();
   let tokenId = "1";
   try {
     for (const log of rcpt?.logs ?? []) {
       const parsed = c.interface.parseLog(log);
-      if (parsed?.name === "Minted") {
+      // ERC-721 mint = Transfer from the zero address.
+      if (parsed?.name === "Transfer" && parsed.args.from === ethers.ZeroAddress) {
         tokenId = String(parsed.args.tokenId);
         break;
       }
