@@ -22,6 +22,7 @@ import {
   receiptForEntryFn,
   relatedToDraftFn,
   entryMilestoneFn,
+  companionCommentFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
@@ -252,6 +253,10 @@ function TodayPage() {
   const checkMilestone = useServerFn(entryMilestoneFn);
   const [milestone, setMilestone] = useState<number | null>(null);
   const [milestoneCopied, setMilestoneCopied] = useState(false);
+  // The margin — a second, smaller voice that sometimes comments after the mirror. Fetched a beat
+  // late so it lands like someone chiming in, not part of the machine's output.
+  const getCompanion = useServerFn(companionCommentFn);
+  const [marginNote, setMarginNote] = useState<{ move: string | null; text: string } | null>(null);
   const [thread, setThread] = useState<{ role: "you" | "knole"; text: string }[]>([]);
   const [deepInput, setDeepInput] = useState("");
   const [deepMode, setDeepMode] = useState<"listen" | "reflect" | "push">("reflect");
@@ -323,6 +328,7 @@ function TodayPage() {
     // A fresh reflection starts a fresh thread.
     setMilestone(null);
     setMilestoneCopied(false);
+    setMarginNote(null);
     setEntryId(null);
     setThread([]);
     setDeepInput("");
@@ -390,6 +396,15 @@ function TodayPage() {
         checkMilestone({ data: { entryId: eid } })
           .then((r) => r.result?.milestone && setMilestone(r.result.ordinal))
           .catch(() => {});
+      }
+      // The margin arrives a beat later, if it chooses to speak at all.
+      if (eid) {
+        const capturedEid = eid;
+        window.setTimeout(() => {
+          getCompanion({ data: { entryId: capturedEid } })
+            .then((r) => r.comment && setMarginNote(r.comment))
+            .catch(() => {});
+        }, 2200);
       }
       // If this was a program day, advance the program (tags the entry, moves to the next day).
       if (activeProgramId && eid) {
@@ -1232,6 +1247,18 @@ function TodayPage() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* The margin — a smaller voice, when it has something worth saying. */}
+            {marginNote && reflected && !loading && !crisis && (
+              <div className="animate-fade-up mt-4 ml-6 border-l-2 border-rule pl-4">
+                <p className="max-w-[46ch] font-display text-[15px] italic leading-relaxed text-muted-foreground">
+                  {marginNote.text}
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
+                  — the margin
+                </p>
               </div>
             )}
 

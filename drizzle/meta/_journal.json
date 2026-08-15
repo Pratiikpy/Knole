@@ -169,6 +169,13 @@
       "when": 1786806854401,
       "tag": "0023_secret_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786808815324,
+      "tag": "0024_dazzling_night_nurse",
+      "breakpoints": true
     }
   ]
 }

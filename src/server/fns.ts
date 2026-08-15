@@ -92,6 +92,7 @@ import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
 import { entryMilestone, milestoneChips } from "./milestones";
 import { moodBaseline } from "./baseline";
 import { calendarMonth } from "./calendar";
+import { companionComment } from "./companion";
 import {
   createAutomation,
   listAutomations,
@@ -947,6 +948,15 @@ export const saveNudgePrefsFn = createServerFn({ method: "POST" })
     const { tz, ...prefs } = data;
     await saveNudgePrefs(userId, prefs, tz);
     return getNudgePrefs(userId);
+  });
+
+// The margin's comment on an entry - generated once, skipped freely (silence is a feature).
+export const companionCommentFn = createServerFn({ method: "POST" })
+  .validator(z.object({ entryId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("companion", 30, 60_000);
+    return { comment: await companionComment(userId, data.entryId) };
   });
 
 // The emotions calendar: a month of local days with count, valence, and label — plus streaks.

@@ -448,3 +448,25 @@ export const automations = pgTable(
   },
   (t) => [index("automations_user_idx").on(t.userId), index("automations_due_idx").on(t.nextRunAt)],
 );
+
+// ── companion comments (the memex persona) ───────────────
+// A second, smaller voice that sometimes leaves 1-2 in-character sentences under a reflection.
+// The persona may SKIP (most ordinary entries get silence - that's the anti-slop rule working);
+// when it speaks, the row records which single "move" it made so tone stays auditable.
+export const entryComments = pgTable(
+  "entry_comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => entries.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    persona: text("persona").default("margin").notNull(),
+    move: text("move"), // witness | protect | tease | celebrate | sit-with | poetic-echo | practical-nudge | safety-boundary
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("entry_comments_entry_uniq").on(t.entryId)],
+);
