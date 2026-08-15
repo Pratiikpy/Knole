@@ -3,6 +3,7 @@ import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { putData, signerFor, contractAddress, NET_NAME } from "./og";
 import { keyForUser, retrieveIdentityMemories } from "./engine";
+import { ensureWalletCaptured } from "./auth";
 
 const { users, reflectionArtifacts } = schema;
 
@@ -99,6 +100,7 @@ export async function inftStatus(userId: string): Promise<INFTRecord | null> {
 /** Mint (or evolve, if already minted) the user's memory iNFT to their own wallet. */
 export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { error: string }> {
   if (!inftConfigured()) return { error: "not-configured" };
+  await ensureWalletCaptured(userId); // heal a lost login-time capture race before deciding no-wallet
   const [u] = await db
     .select({ wallet: users.walletAddress, clientKey: users.clientKeyAddr })
     .from(users)

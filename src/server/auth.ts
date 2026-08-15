@@ -54,6 +54,23 @@ export async function resolveUserFromToken(
   return userId;
 }
 
+/**
+ * Point-of-need retry for wallet capture. The login-time capture races Privy's wallet linkage (the
+ * SIWE link can land milliseconds after the first token verification), and every later request rides
+ * the app's own session cookie — so a lost race would otherwise never heal. Callers that need the
+ * wallet (mint, day-anchor) call this first; it's a no-op once the address is stored.
+ */
+export async function ensureWalletCaptured(userId: string): Promise<void> {
+  const found = await db
+    .select({ privyId: users.privyId, wallet: users.walletAddress })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const row = found[0];
+  if (!row || row.wallet || !row.privyId) return;
+  await captureWallet(row.privyId, userId).catch(() => {});
+}
+
 /** Pull the user's embedded Ethereum wallet address from Privy into users.walletAddress. */
 async function captureWallet(privyId: string, userId: string): Promise<void> {
   const u = (await privy().getUser(privyId)) as { linkedAccounts?: unknown[] };

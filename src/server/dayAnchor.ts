@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { contractAddress, signerFor } from "./og";
 import { background } from "./background";
+import { ensureWalletCaptured } from "./auth";
 
 const { users } = schema;
 
@@ -32,6 +33,7 @@ function anchor(): ethers.Contract {
  */
 export async function recordJournaledDay(userId: string): Promise<void> {
   if (!dayAnchorConfigured()) return;
+  await ensureWalletCaptured(userId); // heal a lost login-time capture race
   const found = await db
     .select({ wallet: users.walletAddress })
     .from(users)
