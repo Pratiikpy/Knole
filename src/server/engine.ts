@@ -5,6 +5,7 @@ import { embed, toVectorLiteral } from "./embed";
 import { chatPrivate } from "./sealed";
 import { putData } from "./og";
 import { keyProvider } from "./keyProvider";
+import { upsertEntities, matchEntities, entityBoostWeight } from "./entities";
 
 const { users, entries, replies, memories, memoryHistory } = schema;
 
@@ -177,6 +178,47 @@ export async function retrieveMemories(
     createdAt: r.created_at == null ? null : String(r.created_at),
     score: Number(r.score),
   }));
+
+  // Entity arm (mem0): when the query resembles a stored entity ("how's Mara?"), that entity's
+  // memories get a crowd-damped boost - and its strongest links join the candidate set even if
+  // the semantic/lexical arms missed them. Damping keeps broad entities from dominating.
+  try {
+    const ents = await matchEntities(userId, queryVec, 3);
+    if (ents.length) {
+      const byId = new Map(result.map((r) => [r.id, r]));
+      const pullIds: string[] = [];
+      for (const ent of ents) {
+        const w = entityBoostWeight(ent.sim, ent.memoryIds.length);
+        for (const mid of ent.memoryIds) {
+          const hit = byId.get(mid);
+          if (hit) hit.score += w;
+          else if (pullIds.length < 6) pullIds.push(mid);
+        }
+      }
+      if (pullIds.length) {
+        const pulled = (await db.execute(sql`
+          SELECT id, content, source_quote, created_at FROM memories
+          WHERE user_id = ${userId} AND id = ANY(${pullIds}::uuid[]) AND status IN ('active', 'pinned')
+        `)) as unknown as Record<string, unknown>[];
+        for (const r of pulled) {
+          const ent = ents.find((e) => e.memoryIds.includes(String(r.id)));
+          if (!ent) continue;
+          result.push({
+            id: String(r.id),
+            content: String(r.content),
+            sourceQuote: r.source_quote == null ? null : String(r.source_quote),
+            createdAt: r.created_at == null ? null : String(r.created_at),
+            score: entityBoostWeight(ent.sim, ent.memoryIds.length),
+          });
+        }
+      }
+      result.sort((a, b) => b.score - a.score);
+      result.splice(k);
+    }
+  } catch {
+    /* the entity arm is an enhancement - the fused base ranking stands */
+  }
+
   // recall-driven importance (OpenClaw): a memory earns importance by being recalled.
   if (result.length)
     void bumpRecall(
@@ -250,7 +292,9 @@ CHECKLIST - sweep ALL of these before finishing: facts about their life and circ
 
 LINKING: You may be given EXISTING MEMORIES as a numbered list. When a new memory continues, updates, or relates to one of them (same person, same project, a change from that state), include the numbers in "linked". Use ONLY numbers from the list. Omit or use [] when nothing relates.
 
-Return a JSON array; each item: {"content": "<self-contained memory, second person, 15-80 words>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>", "confidence": <0.0-1.0 - ~0.9 stated plainly, ~0.6 fair inference, ~0.4 tentative read>, "linked": [<numbers of related EXISTING MEMORIES, or []>]}.
+ENTITIES: For each memory, also list the distinct named entities it mentions - people, places, organizations, named projects. Proper names only ("Mara", "Meridian Labs"), never generic words ("work", "the gym", "my sister" without a name). [] when none.
+
+Return a JSON array; each item: {"content": "<self-contained memory, second person, 15-80 words>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>", "confidence": <0.0-1.0 - ~0.9 stated plainly, ~0.6 fair inference, ~0.4 tentative read>, "linked": [<numbers of related EXISTING MEMORIES, or []>], "entities": ["<proper names mentioned, or []>"]}.
 Return [] if nothing durable. Output ONLY the JSON array, no prose.`;
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -331,6 +375,7 @@ export async function extractMemories(userId: string, entryId: string, entryText
     quote?: string;
     confidence?: number;
     linked?: number[];
+    entities?: string[];
   }[] = [];
   try {
     const m = raw.match(/\[[\s\S]*\]/);
@@ -419,7 +464,17 @@ export async function extractMemories(userId: string, entryId: string, entryText
       `);
       await logHistory(supersededId, userId, "superseded", null, { by: newId });
     }
-    if (row) saved.push({ id: String(row.id), content: String(row.content) });
+    if (row) {
+      saved.push({ id: String(row.id), content: String(row.content) });
+      // Entity store (mem0): record proper names this memory mentions - the third retrieval arm.
+      if (Array.isArray(it.entities) && it.entities.length) {
+        await upsertEntities(
+          userId,
+          String(row.id),
+          it.entities.filter((e): e is string => typeof e === "string").slice(0, 6),
+        ).catch(() => {});
+      }
+    }
   }
   return saved;
 }

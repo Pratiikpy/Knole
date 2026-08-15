@@ -470,3 +470,27 @@ export const entryComments = pgTable(
   },
   (t) => [uniqueIndex("entry_comments_entry_uniq").on(t.entryId)],
 );
+
+// ── entity store (mem0) ──────────────────────────────────
+// One row per distinct person/place/project a user's memories mention. Near-duplicate names merge
+// at write time (>=0.95 name-embedding cosine), and retrieval uses entities as a third arm: a
+// query that resembles an entity pulls in that entity's memories with a crowd-damped boost.
+export const memoryEntities = pgTable(
+  "memory_entities",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    embedding: vector("embedding", { dimensions: EMBED_DIM }),
+    memoryIds: jsonb("memory_ids").$type<string[]>().default([]).notNull(),
+    mentionCount: integer("mention_count").default(1).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("memory_entities_user_idx").on(t.userId),
+    index("memory_entities_emb_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);

@@ -176,6 +176,13 @@
       "when": 1786808815324,
       "tag": "0024_dazzling_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1786809409880,
+      "tag": "0025_volatile_professor_monster",
+      "breakpoints": true
     }
   ]
 }
