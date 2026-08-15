@@ -221,9 +221,23 @@ export async function retrieveEntries(
 }
 
 // ── extract durable memories from an entry (+ dedup) ─────
-const EXTRACT_SYS = `Extract durable, useful long-term memories about the user from their journal entry. Only keep things worth remembering across future sessions: facts, people, goals, recurring feelings or patterns, commitments, preferences, values. Ignore fleeting detail.
-Write each memory in the second person, addressed to them — "You…" / "Your…" (e.g. "You're training for the Chicago marathon", "Your sister Mara is a steady support"). Never write "the user" or "they".
-Return a JSON array; each item: {"content": "<concise fact about them, in second person>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>", "confidence": <0.0-1.0 — how sure you are this is true and lasting: ~0.9 for something they state plainly, ~0.6 for a fair inference, ~0.4 for a tentative read you're guessing at>}.
+// The extraction prompt - upgraded with mem0 V3's rules (their prompts.py, adapted to a journal):
+// observation-date grounding (relative dates resolve against the ENTRY's date, not today's),
+// the capture-the-transition rule, self-contained 15-80-word memories, an exhaustive checklist,
+// and linking to existing memories via small int handles (never raw ids - anti-hallucination).
+const EXTRACT_SYS = `Extract durable, useful long-term memories about the user from their journal entry. Only keep things worth remembering across future sessions. Ignore fleeting detail.
+
+DATES: The entry was written on the date given as ENTRY DATE. Resolve every relative reference against THAT date, never today's - "yesterday" in an entry dated 2026-03-10 means 2026-03-09. When a memory involves time, state the absolute date or month in the content ("In March 2026 you...").
+
+TRANSITIONS: When the entry reveals a CHANGE - a job left, a move, a relationship shift, a habit started or abandoned, a decision reversed - capture the transition itself as its own memory ("You left the startup in August 2026 after two years"), not merely the new state. The change carries the story.
+
+CONTENT: Write each memory in the second person - "You..." / "Your..." - never "the user" or "they". Make it self-contained and contextual: 15-80 words carrying enough who/what/when that it stands alone months later. A bare fragment ("likes coffee") is worthless; a situated fact ("You switched to decaf in mid-2026 because afternoon coffee was wrecking your sleep") is a memory.
+
+CHECKLIST - sweep ALL of these before finishing: facts about their life and circumstances / people and relationships (names, roles, how they matter) / goals and commitments (with deadlines when given) / recurring feelings or patterns / preferences and habits / values and beliefs / transitions and changes / health and wellbeing signals.
+
+LINKING: You may be given EXISTING MEMORIES as a numbered list. When a new memory continues, updates, or relates to one of them (same person, same project, a change from that state), include the numbers in "linked". Use ONLY numbers from the list. Omit or use [] when nothing relates.
+
+Return a JSON array; each item: {"content": "<self-contained memory, second person, 15-80 words>", "type": "fact|pattern|commitment|relationship|preference|value|emotion", "quote": "<short verbatim quote from the entry supporting it>", "confidence": <0.0-1.0 - ~0.9 stated plainly, ~0.6 fair inference, ~0.4 tentative read>, "linked": [<numbers of related EXISTING MEMORIES, or []>]}.
 Return [] if nothing durable. Output ONLY the JSON array, no prose.`;
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -257,20 +271,54 @@ async function judgeMemory(
 }
 
 export async function extractMemories(userId: string, entryId: string, entryText: string) {
+  // Observation-date grounding: relative dates in the entry resolve against the entry's own date
+  // (a backfilled entry keeps its day), so "yesterday" never silently means "yesterday at extract
+  // time". Linking context: the most similar existing memories ride along as INT handles - the
+  // model links by small number, we map back to UUIDs (mem0's anti-hallucination remap).
+  const [entryRow] = await db
+    .select({ createdAt: entries.createdAt })
+    .from(entries)
+    .where(eq(entries.id, entryId));
+  const entryDate = (entryRow?.createdAt ?? new Date()).toISOString().slice(0, 10);
+  let linkCandidates: { id: string; content: string }[] = [];
+  try {
+    const qv = toVectorLiteral(await embed(entryText.slice(0, 1000)));
+    const cand = (await db.execute(sql`
+      SELECT id, content FROM memories
+      WHERE user_id = ${userId} AND status IN ('active', 'pinned') AND embedding IS NOT NULL
+      ORDER BY embedding <=> ${qv}::vector LIMIT 8
+    `)) as unknown as Record<string, unknown>[];
+    linkCandidates = cand.map((r) => ({ id: String(r.id), content: String(r.content) }));
+  } catch {
+    /* linking is an enhancement - extraction proceeds without it */
+  }
+  const contextBlock = linkCandidates.length
+    ? `\n\nEXISTING MEMORIES:\n${linkCandidates.map((c, i) => `${i + 1}. ${c.content}`).join("\n")}`
+    : "";
+
   // chatPrivate scrubs names before the model sees the entry and restores them in the reply, so
-  // extracted memories keep real names while the model only ever saw placeholders — and the call
+  // extracted memories keep real names while the model only ever saw placeholders - and the call
   // rides the funded TEE broker first instead of dying with the router balance.
   const raw = (
     await chatPrivate(
       [
         { role: "system", content: EXTRACT_SYS },
-        { role: "user", content: entryText },
+        {
+          role: "user",
+          content: `ENTRY DATE: ${entryDate}\n\nENTRY:\n${entryText}${contextBlock}`,
+        },
       ],
-      { temperature: 0.2, maxTokens: 700 },
+      { temperature: 0.2, maxTokens: 1000 },
     )
   ).content;
 
-  let items: { content?: string; type?: string; quote?: string; confidence?: number }[] = [];
+  let items: {
+    content?: string;
+    type?: string;
+    quote?: string;
+    confidence?: number;
+    linked?: number[];
+  }[] = [];
   try {
     const m = raw.match(/\[[\s\S]*\]/);
     // No array at all (model wrapped/refused) is a real extraction miss — surface it, don't vanish.
@@ -327,11 +375,22 @@ export async function extractMemories(userId: string, entryId: string, entryText
     }
 
     // content-hash UPSERT dedup (memori): reinforce on conflict instead of duplicating
+    // Map the model's int handles back to real memory ids (only in-range handles survive).
+    const linkedIds = Array.isArray(it.linked)
+      ? Array.from(
+          new Set(
+            it.linked
+              .map((n) => linkCandidates[Number(n) - 1]?.id)
+              .filter((id): id is string => !!id),
+          ),
+        )
+      : [];
+    const linkedJson = linkedIds.length ? JSON.stringify(linkedIds) : null;
     const res = await db.execute(sql`
       INSERT INTO memories
-        (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance)
+        (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance, linked_ids)
       VALUES
-        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, ${conf}, 0.6)
+        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, ${conf}, 0.6, ${linkedJson}::jsonb)
       ON CONFLICT (user_id, content_hash)
         DO UPDATE SET recall_count = memories.recall_count + 1, updated_at = now()
       RETURNING id, content

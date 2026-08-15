@@ -208,6 +208,9 @@ export const memories = pgTable(
     sourceQuote: text("source_quote"),
     lastUsedInReplyId: uuid("last_used_in_reply_id"),
     provenance: jsonb("provenance"),
+    // mem0 V3 linking: ids of existing memories this one relates to (same person, same thread,
+    // a transition from a prior state). Written at extraction time from int-handle references.
+    linkedIds: jsonb("linked_ids"),
     // recall-stats (importance earned by use — OpenClaw)
     recallCount: integer("recall_count").default(0),
     distinctQueryCount: integer("distinct_query_count").default(0),
