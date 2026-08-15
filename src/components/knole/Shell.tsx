@@ -27,6 +27,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Insights",
     items: [
       { to: "/insights", label: "Pattern Mirror", hint: "Recurring patterns, dated" },
+      { to: "/calendar", label: "Calendar", hint: "Your days, colored by feeling" },
       { to: "/canvas", label: "Life Canvas", hint: "Your whole life, visualized" },
       { to: "/future", label: "Future Self", hint: "A letter from who you're becoming" },
       { to: "/programs", label: "Programs", hint: "Guided reflection tracks" },

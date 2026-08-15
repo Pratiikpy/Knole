@@ -32,6 +32,7 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CardRouteImport } from './routes/card'
 import { Route as CanvasRouteImport } from './routes/canvas'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as IndexRouteImport } from './routes/index'
@@ -151,6 +152,11 @@ const CanvasRoute = CanvasRouteImport.update({
   path: '/canvas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AssistantRoute = AssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
+  '/calendar': typeof CalendarRoute
   '/canvas': typeof CanvasRoute
   '/card': typeof CardRoute
   '/chat': typeof ChatRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
+  '/calendar': typeof CalendarRoute
   '/canvas': typeof CanvasRoute
   '/card': typeof CardRoute
   '/chat': typeof ChatRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
+  '/calendar': typeof CalendarRoute
   '/canvas': typeof CanvasRoute
   '/card': typeof CardRoute
   '/chat': typeof ChatRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ask'
     | '/assistant'
+    | '/calendar'
     | '/canvas'
     | '/card'
     | '/chat'
@@ -286,6 +296,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ask'
     | '/assistant'
+    | '/calendar'
     | '/canvas'
     | '/card'
     | '/chat'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ask'
     | '/assistant'
+    | '/calendar'
     | '/canvas'
     | '/card'
     | '/chat'
@@ -343,6 +355,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AskRoute: typeof AskRoute
   AssistantRoute: typeof AssistantRoute
+  CalendarRoute: typeof CalendarRoute
   CanvasRoute: typeof CanvasRoute
   CardRoute: typeof CardRoute
   ChatRoute: typeof ChatRoute
@@ -531,6 +544,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CanvasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/assistant': {
       id: '/assistant'
       path: '/assistant'
@@ -559,6 +579,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AskRoute: AskRoute,
   AssistantRoute: AssistantRoute,
+  CalendarRoute: CalendarRoute,
   CanvasRoute: CanvasRoute,
   CardRoute: CardRoute,
   ChatRoute: ChatRoute,

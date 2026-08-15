@@ -91,6 +91,7 @@ import { generateNudge, hourInTz } from "./proactivity";
 import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
 import { entryMilestone, milestoneChips } from "./milestones";
 import { moodBaseline } from "./baseline";
+import { calendarMonth } from "./calendar";
 import {
   createAutomation,
   listAutomations,
@@ -946,6 +947,19 @@ export const saveNudgePrefsFn = createServerFn({ method: "POST" })
     const { tz, ...prefs } = data;
     await saveNudgePrefs(userId, prefs, tz);
     return getNudgePrefs(userId);
+  });
+
+// The emotions calendar: a month of local days with count, valence, and label — plus streaks.
+export const calendarMonthFn = createServerFn({ method: "GET" })
+  .validator(
+    z.object({
+      year: z.number().int().min(2000).max(2100),
+      month: z.number().int().min(1).max(12),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await currentUserId();
+    return calendarMonth(userId, data.year, data.month);
   });
 
 // ── proactive automations: a saved question the journal asks itself on a schedule ──
