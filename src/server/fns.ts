@@ -88,7 +88,7 @@ import {
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { latestAnchor } from "./anchor";
 import { generateNudge, hourInTz } from "./proactivity";
-import { getNudgePrefs, saveNudgePrefs } from "./nudgeEngine";
+import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
 import { resurface, resurfaceNote } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -908,13 +908,25 @@ export const saveNudgePrefsFn = createServerFn({ method: "POST" })
       fixedTimeMin: z.number().int().min(0).max(1439),
       alwaysRemind: z.boolean(),
       otdTimeMin: z.number().int().min(0).max(1439).nullable(),
+      tz: z.string().min(1).max(64).optional(),
     }),
   )
   .handler(async ({ data }) => {
     const userId = await requireUserId();
     enforceRate("nudge-prefs", 20, 60_000);
-    await saveNudgePrefs(userId, data);
+    const { tz, ...prefs } = data;
+    await saveNudgePrefs(userId, prefs, tz);
     return getNudgePrefs(userId);
+  });
+
+// Browser-reported IANA timezone, called once a day from the Shell. Without it users.timezone
+// stays 'UTC' and every wall-clock feature (nudges, digest quiet hours, on-this-day) misfires.
+export const reportTimezoneFn = createServerFn({ method: "POST" })
+  .validator(z.object({ tz: z.string().min(1).max(64) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("report-tz", 10, 60_000);
+    return { ok: await setUserTimezone(userId, data.tz) };
   });
 
 export const pushConfigFn = createServerFn({ method: "GET" }).handler(async () => {

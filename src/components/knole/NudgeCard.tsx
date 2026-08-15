@@ -116,7 +116,13 @@ export function NudgeCard() {
     setPrefs(next);
     setStatus("saving");
     const seq = ++saveSeq.current;
-    save({ data: next })
+    let tz: string | undefined;
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      /* keep server-stored zone */
+    }
+    save({ data: { ...next, tz } })
       .then((p) => {
         if (seq !== saveSeq.current) return; // a newer save is in flight
         setNextFireAt(p.nextFireAt);
@@ -146,7 +152,7 @@ export function NudgeCard() {
   return (
     <div>
       <Toggle
-        label="Daily reminder"
+        label="Remind me to write"
         detail="One nudge a day — and only on days you haven't written. Journal first, and it stays quiet."
         checked={prefs.enabled}
         onChange={(v) => persist({ ...prefs, enabled: v })}

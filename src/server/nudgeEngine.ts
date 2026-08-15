@@ -91,7 +91,51 @@ export async function getNudgePrefs(
   };
 }
 
-export async function saveNudgePrefs(userId: string, prefs: NudgePrefs): Promise<void> {
+/** True iff the string is an IANA zone this runtime can actually compute in. */
+export function isValidTimezone(tz: string): boolean {
+  if (!tz || tz.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Persist the browser-reported IANA timezone. Every wall-clock feature (nudges, digest quiet
+ * hours, on-this-day, entry day-bucketing) reads users.timezone — without this report the column
+ * stays at its 'UTC' default and every reminder lands at the wrong local hour. */
+export async function setUserTimezone(userId: string, tz: string): Promise<boolean> {
+  if (!isValidTimezone(tz)) return false;
+  await db.update(users).set({ timezone: tz }).where(eq(users.id, userId));
+  // A changed zone shifts the meaning of an already-armed next_fire_at; re-arm from fresh prefs.
+  const [row] = await db.select().from(nudgeSettings).where(eq(nudgeSettings.userId, userId));
+  if (row?.enabled) {
+    const prefs: NudgePrefs = {
+      enabled: row.enabled,
+      mode: (row.mode as "random" | "fixed") ?? "random",
+      windowStartMin: row.windowStartMin,
+      windowEndMin: row.windowEndMin,
+      fixedTimeMin: row.fixedTimeMin,
+      alwaysRemind: row.alwaysRemind,
+      otdTimeMin: row.otdTimeMin,
+    };
+    await db
+      .update(nudgeSettings)
+      .set({ nextFireAt: computeNextFire(prefs, tz, { clampToNow: true }), updatedAt: new Date() })
+      .where(eq(nudgeSettings.userId, userId));
+  }
+  return true;
+}
+
+export async function saveNudgePrefs(
+  userId: string,
+  prefs: NudgePrefs,
+  clientTz?: string,
+): Promise<void> {
+  if (clientTz && isValidTimezone(clientTz)) {
+    await db.update(users).set({ timezone: clientTz }).where(eq(users.id, userId));
+  }
   const [u] = await db.select({ tz: users.timezone }).from(users).where(eq(users.id, userId));
   const tz = u?.tz || "UTC";
   const nextFireAt = prefs.enabled ? computeNextFire(prefs, tz, { clampToNow: true }) : null;

@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { whoamiFn, settingsFn, affirmAgeFn } from "@/server/fns";
+import { whoamiFn, settingsFn, affirmAgeFn, reportTimezoneFn } from "@/server/fns";
 import { ThemeToggle } from "./ThemeToggle";
 import { PwaSetup } from "./PwaSetup";
 
@@ -81,6 +81,24 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
   const whoami = useServerFn(whoamiFn);
   const getSettings = useServerFn(settingsFn);
   const doAffirmAge = useServerFn(affirmAgeFn);
+  const reportTz = useServerFn(reportTimezoneFn);
+  // Report the browser's IANA timezone once a day (or when it changes — travel, DST-region moves).
+  // users.timezone drives every wall-clock feature; without this it stays at the 'UTC' default.
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (!tz) return;
+      const key = "knole.tz.reported";
+      const today = new Date().toDateString();
+      if (localStorage.getItem(key) === `${tz}|${today}`) return;
+      void reportTz({ data: { tz } })
+        .then(() => localStorage.setItem(key, `${tz}|${today}`))
+        .catch(() => {});
+    } catch {
+      /* Intl/localStorage unavailable — the UTC default stands */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     let alive = true;
     whoami()
