@@ -1,6 +1,7 @@
 import { type ChatMsg } from "./llm";
 import { chatPrivate, chatPrivateStream } from "./sealed";
-import { retrieveMemories } from "./engine";
+import { retrieveMemories, retrieveEntries, type EntryHit } from "./engine";
+import { embed } from "./embed";
 
 const CHAT_SYS = `You are Knole — a private, warm, sharp thinking-partner the user talks to. Not a yes-man, not a generic assistant.
 - You remember this person across time. Weave in what you genuinely know about them when it helps, naturally — never list facts, never say "according to my notes".
@@ -10,16 +11,90 @@ const CHAT_SYS = `You are Knole — a private, warm, sharp thinking-partner the 
 
 export type Turn = { role: "user" | "assistant"; content: string };
 
+// ── multi-step retrieval (freenote): the model searches the journal before answering ──
+// Instead of native function-calling (model-dependent on the 0G/TEE stack), a tiny JSON protocol:
+// a planner call may request up to two focused searches — reformulating its own query, which is
+// the whole trick: "what happened in March" becomes a search for "March", not for the user's
+// literal phrasing. Results feed the final streamed answer as dated journal excerpts.
+const SEARCH_SYS = `You decide whether you need to SEARCH the user's journal before answering their message. You may search when the answer depends on their past - events, dates, people, feelings, commitments, "when did I", "what happened", "have I ever".
+Reply with ONLY one JSON object, nothing else:
+{"search": "<one focused search query - name the month/person/topic directly>"} - to look something up
+{"ready": true} - when the conversation alone is enough (greetings, opinions, the present moment)`;
+
+export type ChatSearchHit = { query: string; date: string; text: string };
+
+export async function gatherChatContext(
+  userId: string,
+  history: Turn[],
+  message: string,
+): Promise<ChatSearchHit[]> {
+  const found: ChatSearchHit[] = [];
+  const seenQueries = new Set<string>();
+  for (let step = 0; step < 2; step++) {
+    let decision = "";
+    try {
+      decision = (
+        await chatPrivate(
+          [
+            { role: "system", content: SEARCH_SYS },
+            {
+              role: "user",
+              content:
+                `Conversation so far:\n${history
+                  .slice(-4)
+                  .map((t) => `${t.role}: ${t.content.slice(0, 300)}`)
+                  .join("\n")}\nuser: ${message}` +
+                (found.length
+                  ? `\n\nAlready found in the journal:\n${found.map((f) => `- [${f.date}] ${f.text.slice(0, 120)}`).join("\n")}`
+                  : ""),
+            },
+          ],
+          { temperature: 0, maxTokens: 80 },
+        )
+      ).content;
+    } catch {
+      break; // planner down — answer from base context
+    }
+    const m = decision.match(/\{[\s\S]*\}/);
+    if (!m) break;
+    let query = "";
+    try {
+      const parsed = JSON.parse(m[0]) as { search?: unknown; ready?: unknown };
+      if (typeof parsed.search === "string" && parsed.search.trim()) query = parsed.search.trim();
+    } catch {
+      break;
+    }
+    if (!query || seenQueries.has(query.toLowerCase())) break;
+    seenQueries.add(query.toLowerCase());
+    const qv = await embed(query);
+    const hits: EntryHit[] = await retrieveEntries(userId, qv, 4);
+    for (const h of hits) {
+      const date = new Date(h.createdAt).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+      if (!found.some((f) => f.text === h.text)) found.push({ query, date, text: h.text });
+    }
+    if (!hits.length) break;
+  }
+  return found.slice(0, 8);
+}
+
 function buildMessages(
   history: Turn[],
   message: string,
   memories: { content: string }[],
+  searched: ChatSearchHit[] = [],
 ): ChatMsg[] {
   const memBlock = memories.length
     ? `\n\nThings you remember about this person:\n${memories.map((m) => `- ${m.content}`).join("\n")}`
     : "";
+  const searchBlock = searched.length
+    ? `\n\nFrom their journal (dated — ground any claims about their past in these, and say the date when it helps):\n${searched.map((s) => `- [${s.date}] ${s.text.slice(0, 260)}`).join("\n")}`
+    : "";
   return [
-    { role: "system", content: CHAT_SYS + memBlock },
+    { role: "system", content: CHAT_SYS + memBlock + searchBlock },
     ...history.slice(-10).map((t) => ({ role: t.role, content: t.content }) as ChatMsg),
     { role: "user", content: message },
   ];
@@ -45,8 +120,13 @@ export async function chatReply(
  * pre-retrieved by the caller (the streaming endpoint embeds once and reuses the vector for the
  * saved entry), so this just builds the prompt and streams.
  */
-export function chatReplyStream(history: Turn[], message: string, memories: { content: string }[]) {
-  return chatPrivateStream(buildMessages(history, message, memories), {
+export function chatReplyStream(
+  history: Turn[],
+  message: string,
+  memories: { content: string }[],
+  searched: ChatSearchHit[] = [],
+) {
+  return chatPrivateStream(buildMessages(history, message, memories, searched), {
     temperature: 0.8,
     maxTokens: 500,
   });

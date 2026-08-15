@@ -73,7 +73,20 @@ export async function saveEntry(
     createdAt?: Date;
   },
 ) {
-  const v = vec ?? (await embed(text));
+  // Date-prefixed embedding (freenote): the stored vector carries the entry's human-readable date
+  // ("Saturday, 15 August 2026") so time-referencing queries ("what happened in March") actually
+  // land. The caller's vec (raw-text embedding) still serves ITS retrieval; storage gets the dated
+  // one. Re-embedding is local MiniLM - microseconds, not a network call.
+  const when = meta?.createdAt ?? new Date();
+  const dateLine = when.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const v = await embed(`${dateLine}
+${text}`).catch(async () => vec ?? (await embed(text)));
   const [row] = await db
     .insert(entries)
     .values({
