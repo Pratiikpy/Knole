@@ -1,13 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { PrivyProvider, useWallets } from "@privy-io/react-auth";
 import { Shell } from "@/components/knole/Shell";
+import { ogChain } from "@/lib/ogChain";
 import {
   identityCapsuleFn,
   createIdentityGrantFn,
   listIdentityGrantsFn,
   revokeIdentityGrantFn,
+  onchainGrantContextFn,
+  encodeGrantCallFn,
+  listOnchainGrantsFn,
+  sponsorGrantGasFn,
 } from "@/server/fns";
 import { useEffect, useState } from "react";
+
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 
 export const Route = createFileRoute("/identity")({
   head: () => ({
@@ -19,8 +27,26 @@ export const Route = createFileRoute("/identity")({
       },
     ],
   }),
-  component: IdentityPage,
+  component: IdentityRoute,
 });
+
+// Privy scoped to this route (same code-split reasoning as settings): on-chain grants are signed by
+// the USER's own wallet — the server encodes and reads, but only the token owner can grant.
+function IdentityRoute() {
+  return (
+    <PrivyProvider
+      appId={PRIVY_APP_ID}
+      config={{
+        appearance: { theme: "light", accentColor: "#7c6545" },
+        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
+        supportedChains: [ogChain],
+        defaultChain: ogChain,
+      }}
+    >
+      <IdentityPage />
+    </PrivyProvider>
+  );
+}
 
 type Capsule = {
   values: string[];
@@ -181,8 +207,195 @@ function IdentityPage() {
               </div>
             </div>
           )}
+
+          <OnchainGrantsCard />
         </div>
       </section>
     </Shell>
+  );
+}
+
+type GrantCtx =
+  | { available: false; reason: "no-wallet" | "no-token" }
+  | { available: true; tokenId: string; contract: string; chainId: number; wallet: string };
+
+/**
+ * ERC-7857 grants, for real: the user's OWN wallet signs authorizeUsage/revokeAuthorization on the
+ * KnoleAgenticID contract. The list below is read live from the chain — the registry is the
+ * contract, not our database — and anyone can re-check it on ChainScan.
+ */
+function OnchainGrantsCard() {
+  const getCtx = useServerFn(onchainGrantContextFn);
+  const encode = useServerFn(encodeGrantCallFn);
+  const listOnchain = useServerFn(listOnchainGrantsFn);
+  const sponsor = useServerFn(sponsorGrantGasFn);
+  const { wallets } = useWallets();
+
+  const [ctx, setCtx] = useState<GrantCtx | null>(null);
+  const [grants, setGrants] = useState<string[]>([]);
+  const [grantee, setGrantee] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string; tx?: string } | null>(null);
+
+  const refresh = () =>
+    listOnchain()
+      .then((r) => setGrants(r.grants))
+      .catch(() => {});
+  useEffect(() => {
+    getCtx()
+      .then((c) => {
+        setCtx(c);
+        if (c.available) void refresh();
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function sendCall(target: string, revoke: boolean) {
+    if (!ctx?.available || busy) return;
+    setBusy(revoke ? `revoke:${target}` : "grant");
+    setMsg(null);
+    try {
+      const call = await encode({ data: { grantee: target, revoke } });
+      if ("error" in call) {
+        setMsg({
+          kind: "err",
+          text:
+            call.error === "bad-address"
+              ? "That doesn't look like a wallet address."
+              : "Grant isn't available yet.",
+        });
+        return;
+      }
+      await sponsor().catch(() => {}); // dust gas for a fresh wallet; no-op when funded
+      const w = wallets.find((x) => x.address.toLowerCase() === ctx.wallet.toLowerCase());
+      if (!w) {
+        setMsg({
+          kind: "err",
+          text: "Sign in with your wallet in Settings first — grants are signed by you.",
+        });
+        return;
+      }
+      await w.switchChain(ctx.chainId).catch(() => {});
+      const provider = await w.getEthereumProvider();
+      const tx = (await provider.request({
+        method: "eth_sendTransaction",
+        params: [{ from: ctx.wallet, to: call.to, data: call.data }],
+      })) as string;
+      // Poll the live registry until the change lands, so the list is honest, not optimistic.
+      for (let i = 0; i < 12; i++) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const now = await listOnchain();
+        const has = now.grants.some((g) => g.toLowerCase() === target.toLowerCase());
+        if (revoke ? !has : has) {
+          setGrants(now.grants);
+          break;
+        }
+      }
+      setMsg({
+        kind: "ok",
+        text: revoke ? "Grant revoked on-chain." : "Granted on-chain — signed by your wallet.",
+        tx,
+      });
+      if (!revoke) setGrantee("");
+    } catch {
+      setMsg({ kind: "err", text: "The transaction didn't go through — try again." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!ctx) return null;
+
+  return (
+    <div className="mt-10 rounded-2xl border border-tan/30 bg-tan/[0.04] p-6">
+      <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-tan">
+        On-chain grants · ERC-7857
+      </div>
+      {!ctx.available ? (
+        <p className="text-[14px] leading-relaxed text-muted-foreground">
+          {ctx.reason === "no-wallet"
+            ? "Sign in with a wallet in Settings to grant on-chain — grants are signed by you, never by us."
+            : "Mint your memory iNFT first — on-chain grants attach to your token."}{" "}
+          <Link
+            to={ctx.reason === "no-wallet" ? "/settings" : "/the-index"}
+            className="text-tan hover:text-ink"
+          >
+            {ctx.reason === "no-wallet" ? "open settings →" : "mint it →"}
+          </Link>
+        </p>
+      ) : (
+        <>
+          <p className="mb-4 text-[14px] leading-relaxed text-ink-soft">
+            Grant a 0G agent scoped access to token&nbsp;#{ctx.tokenId} — written to the contract by{" "}
+            <span className="font-mono text-[12px]">
+              {ctx.wallet.slice(0, 6)}…{ctx.wallet.slice(-4)}
+            </span>
+            , your wallet. Revocable any time; anyone can verify the registry on ChainScan.
+          </p>
+          <div className="flex gap-2">
+            <label htmlFor="grantee" className="sr-only">
+              Agent wallet address
+            </label>
+            <input
+              id="grantee"
+              value={grantee}
+              onChange={(e) => setGrantee(e.target.value)}
+              placeholder="agent wallet address (0x…)"
+              autoComplete="off"
+              spellCheck={false}
+              className="flex-1 rounded-xl border border-rule bg-card/60 px-3 py-2 font-mono text-[12px] text-ink placeholder:text-muted-foreground/60 focus:border-tan/40 focus:outline-none"
+            />
+            <button
+              onClick={() => sendCall(grantee.trim(), false)}
+              disabled={!grantee.trim() || busy !== null}
+              className="rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper disabled:opacity-40"
+            >
+              {busy === "grant" ? "Granting…" : "Grant"}
+            </button>
+          </div>
+          {grants.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Live from the contract
+              </div>
+              {grants.map((g) => (
+                <div
+                  key={g}
+                  className="flex items-center justify-between rounded-xl border border-rule/60 px-4 py-3"
+                >
+                  <span className="font-mono text-[11px] text-ink-soft">{g}</span>
+                  <button
+                    onClick={() => sendCall(g, true)}
+                    disabled={busy !== null}
+                    className="text-[12px] text-tan hover:text-ink disabled:opacity-40"
+                  >
+                    {busy === `revoke:${g}` ? "revoking…" : "revoke"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {msg && (
+            <p
+              aria-live="polite"
+              className={`mt-3 text-[12px] ${msg.kind === "ok" ? "text-tan" : "text-destructive"}`}
+            >
+              {msg.text}{" "}
+              {msg.tx && (
+                <a
+                  href={`https://chainscan.0g.ai/tx/${msg.tx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-ink"
+                >
+                  view tx ↗
+                </a>
+              )}
+            </p>
+          )}
+        </>
+      )}
+    </div>
   );
 }

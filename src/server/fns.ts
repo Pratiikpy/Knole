@@ -39,6 +39,12 @@ import { buildMirror, mirrorStatus } from "./mirror";
 import { lifeCanvas } from "./lifeCanvas";
 import { sealedActive } from "./sealed";
 import { architectureFacts } from "./architecture";
+import {
+  onchainGrantContext,
+  encodeGrantCall,
+  listOnchainGrants,
+  sponsorGrantGas,
+} from "./onchainGrants";
 import { pushConfigured, vapidPublicKey } from "./notify";
 import { savePushSubscription } from "./digest";
 import { moodTrajectory } from "./valence";
@@ -737,6 +743,32 @@ export const revokeIdentityGrantFn = createServerFn({ method: "POST" })
 export const listIdentityGrantsFn = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await currentUserId();
   return { grants: await listGrants(userId) };
+});
+
+// ── On-chain grants (ERC-7857 Authorize) — the user's own wallet signs; the server only encodes,
+// reads the live registry from the chain, and sponsors dust gas for a fresh wallet's first grant.
+
+export const onchainGrantContextFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return onchainGrantContext(userId);
+});
+
+export const encodeGrantCallFn = createServerFn({ method: "POST" })
+  .validator(z.object({ grantee: z.string().max(64), revoke: z.boolean().optional() }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    return encodeGrantCall(userId, data);
+  });
+
+export const listOnchainGrantsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return listOnchainGrants(userId);
+});
+
+export const sponsorGrantGasFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  enforceRate("gas-sponsor", 4, 60_000);
+  return sponsorGrantGas(userId);
 });
 
 // Tamper-evident recall (#12) — a memory's on-chain-anchored audit trail + public verification.
