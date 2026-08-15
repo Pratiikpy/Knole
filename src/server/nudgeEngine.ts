@@ -150,7 +150,10 @@ export async function saveNudgePrefs(
     });
 }
 
-async function pushToUser(userId: string, payload: { title: string; body: string; url?: string }) {
+export async function pushToUser(
+  userId: string,
+  payload: { title: string; body: string; url?: string },
+) {
   const subs = await db
     .select()
     .from(pushSubscriptions)

@@ -423,3 +423,28 @@ export const nudgeSettings = pgTable("nudge_settings", {
   lastFiredAt: timestamp("last_fired_at"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ── proactive automations (the khoj loop) ────────────────
+// A saved question the journal asks itself on a schedule: NL instruction → cron + query + subject
+// (LLM-translated), the runner re-asks the query through the normal ask pipeline (RAG for free),
+// an LLM judge decides notify-or-not, and delivery rides push (+ email when configured).
+export const automations = pgTable(
+  "automations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    instruction: text("instruction").notNull(), // the user's own words, kept verbatim
+    query: text("query").notNull(), // what gets asked of the journal each run
+    subject: text("subject").notNull(), // notification title
+    crontab: text("crontab").notNull(), // standard 5-field cron, evaluated in the user's timezone
+    active: boolean("active").default(true).notNull(),
+    nextRunAt: timestamp("next_run_at"),
+    lastRunAt: timestamp("last_run_at"),
+    lastResult: text("last_result"), // truncated last answer (surfaced in settings)
+    lastNotified: boolean("last_notified"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("automations_user_idx").on(t.userId), index("automations_due_idx").on(t.nextRunAt)],
+);

@@ -91,6 +91,12 @@ import { generateNudge, hourInTz } from "./proactivity";
 import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
 import { entryMilestone, milestoneChips } from "./milestones";
 import { moodBaseline } from "./baseline";
+import {
+  createAutomation,
+  listAutomations,
+  deleteAutomation,
+  toggleAutomation,
+} from "./automations";
 import { resurface, resurfaceNote } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -940,6 +946,35 @@ export const saveNudgePrefsFn = createServerFn({ method: "POST" })
     const { tz, ...prefs } = data;
     await saveNudgePrefs(userId, prefs, tz);
     return getNudgePrefs(userId);
+  });
+
+// ── proactive automations: a saved question the journal asks itself on a schedule ──
+
+export const listAutomationsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return { automations: await listAutomations(userId) };
+});
+
+export const createAutomationFn = createServerFn({ method: "POST" })
+  .validator(z.object({ instruction: z.string().min(8).max(500) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("automation-create", 10, 60_000);
+    return createAutomation(userId, data.instruction);
+  });
+
+export const deleteAutomationFn = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    return { ok: await deleteAutomation(userId, data.id) };
+  });
+
+export const toggleAutomationFn = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid(), active: z.boolean() }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    return { ok: await toggleAutomation(userId, data.id, data.active) };
   });
 
 // Browser-reported IANA timezone, called once a day from the Shell. Without it users.timezone

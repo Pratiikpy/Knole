@@ -21,6 +21,7 @@ import { useState, useEffect } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { NotifyButton } from "@/components/knole/NotifyButton";
 import { NudgeCard } from "@/components/knole/NudgeCard";
+import { AutomationsCard } from "@/components/knole/AutomationsCard";
 import { useClientKey } from "@/lib/useClientKey";
 
 export const Route = createFileRoute("/settings")({
@@ -426,6 +427,11 @@ function SettingsPage() {
           {/* Daily reminder — the nudge engine */}
           <Group title="Daily reminder">
             <NudgeCard />
+          </Group>
+
+          {/* Proactive check-ins — scheduled questions the journal asks itself */}
+          <Group title="Proactive check-ins">
+            <AutomationsCard />
           </Group>
 
           {/* Voice */}

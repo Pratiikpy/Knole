@@ -19,3 +19,8 @@ jobs:
           code=$(curl -s -o /tmp/out -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://www.knole.me/cron/nudge)
           cat /tmp/out
           [ "$code" = "200" ] || { echo "dispatch failed ($code)"; exit 1; }
+      - name: Run due automations
+        run: |
+          code=$(curl -s -o /tmp/out2 -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://www.knole.me/cron/automations)
+          cat /tmp/out2
+          [ "$code" = "200" ] || { echo "automations failed ($code)"; exit 1; }

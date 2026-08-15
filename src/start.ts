@@ -137,12 +137,19 @@ const stripeWebhookMiddleware = createMiddleware().server(async ({ next }) => {
 // are daily-only). Bearer CRON_SECRET, same auth model as the dream cron; idempotent and cheap.
 const nudgeCronMiddleware = createMiddleware().server(async ({ next }) => {
   const request = getRequest();
-  if (new URL(request.url).pathname !== "/cron/nudge") return next();
+  const path = new URL(request.url).pathname;
+  if (path !== "/cron/nudge" && path !== "/cron/automations") return next();
   const secret = process.env.CRON_SECRET ?? "";
   const auth = request.headers.get("authorization") ?? "";
   if (!secret || auth !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
-  const { dispatchDueNudges } = await import("./server/nudgeEngine");
-  const result = await dispatchDueNudges();
+  let result: Record<string, number>;
+  if (path === "/cron/nudge") {
+    const { dispatchDueNudges } = await import("./server/nudgeEngine");
+    result = await dispatchDueNudges();
+  } else {
+    const { runDueAutomations } = await import("./server/automations");
+    result = await runDueAutomations();
+  }
   return new Response(JSON.stringify({ ok: true, ...result }), {
     headers: { "content-type": "application/json" },
   });

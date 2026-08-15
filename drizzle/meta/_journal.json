@@ -162,6 +162,13 @@
       "when": 1786806209224,
       "tag": "0022_free_proemial_gods",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786806854401,
+      "tag": "0023_secret_roulette",
+      "breakpoints": true
     }
   ]
 }
