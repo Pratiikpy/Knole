@@ -284,18 +284,39 @@ function SettingsPage() {
   // Keep the server session in step with Privy: exchange the access token for a
   // sealed session cookie on login (clear on logout), then re-run loaders so the
   // page immediately reflects the now-authenticated (or demo) user — no stale data.
+  // `synced` gates the "Signed in / Sign out" UI: until the cookie exchange for the CURRENT
+  // Privy DID has completed, the account still reads as in-progress. Without the gate, a user
+  // (or a test) can see "Sign out", navigate away, abort the Set-Cookie response mid-flight,
+  // and leave the server session pinned to a wallet-less intermediate identity — entries then
+  // land on one user while the wallet lives on another.
+  const [synced, setSynced] = useState<"pending" | "done" | "failed">("pending");
   useEffect(() => {
     if (!ready) return;
-    if (authenticated) {
-      void getAccessToken()
-        .then((token) => (token ? doSync({ data: { token } }) : null))
-        .then(() => router.invalidate())
-        .catch(() => {});
-    } else {
-      void doClear()
-        .then(() => router.invalidate())
-        .catch(() => {});
-    }
+    let alive = true;
+    setSynced("pending");
+    const run = async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (authenticated) {
+            const token = await getAccessToken();
+            if (token) await doSync({ data: { token } });
+          } else {
+            await doClear();
+          }
+          if (!alive) return;
+          setSynced("done");
+          void router.invalidate();
+          return;
+        } catch {
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+      if (alive) setSynced("failed");
+    };
+    void run();
+    return () => {
+      alive = false;
+    };
     // user?.id is load-bearing: a wallet login can REPLACE the Privy identity mid-session (guest
     // DID → wallet DID) without `authenticated` ever flipping — without re-keying on the DID, the
     // server session stays pinned to the wallet-less guest and mint/day-anchor see no wallet.
@@ -765,6 +786,14 @@ function SettingsPage() {
             <div className="rounded-xl border border-rule bg-card/50 p-6">
               {!ready ? (
                 <Row label="Account" detail="Checking your session…" value="" />
+              ) : authenticated && synced === "pending" ? (
+                <Row label="Account" detail="Finishing sign-in…" value="" />
+              ) : authenticated && synced === "failed" ? (
+                <Row
+                  label="Account"
+                  detail="Sign-in didn't finish — reload this page to complete it."
+                  value=""
+                />
               ) : authenticated ? (
                 <div className="flex items-start justify-between gap-4">
                   <div>
