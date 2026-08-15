@@ -1,4 +1,5 @@
 import { askMyLifeStream } from "./ask";
+import { gateAsk } from "./askPresets";
 import { currentUserId } from "./session";
 import { enforceRate } from "./rateLimit";
 
@@ -22,15 +23,37 @@ export async function handleAskStream(request: Request): Promise<Response> {
   }
 
   let question = "";
+  let presetId: string | undefined;
   try {
-    const body = (await request.json()) as { question?: string };
+    const body = (await request.json()) as { question?: string; presetId?: string };
     question = String(body.question ?? "").trim();
+    if (typeof body.presetId === "string") presetId = body.presetId;
   } catch {
     /* invalid JSON → caught by the length check */
   }
   if (question.length < 1 || question.length > 500) return txt(400, "question must be 1–500 chars");
 
   const userId = await currentUserId();
+
+  // The free-tier gate (gnothi): presets always pass and use the SERVER's canonical text; custom
+  // questions are unlimited on Deep / for iNFT holders, else draw from a small daily allowance.
+  let gate: Awaited<ReturnType<typeof gateAsk>>;
+  try {
+    gate = await gateAsk(userId, question, presetId);
+  } catch {
+    gate = { allowed: true, question, custom: true, remaining: null }; // gate down → never block asking
+  }
+  if (!gate.allowed) {
+    return new Response(
+      JSON.stringify({
+        gated: true,
+        message:
+          "You've used today's three custom questions. The preset questions stay open - or go Deep for unlimited asking.",
+      }),
+      { status: 402, headers: { "content-type": "application/json" } },
+    );
+  }
+  question = gate.question;
 
   let result: Awaited<ReturnType<typeof askMyLifeStream>>;
   try {

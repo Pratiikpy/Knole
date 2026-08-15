@@ -7,28 +7,47 @@ import { chatPrivate } from "./sealed";
 // trend is the rare Knole surface that's visual + screenshot-worthy, and it's only possible because
 // Knole owns long, durable memory — a numeric series over weeks no rival can show.
 
-const VALENCE_SYS = `Rate the emotional valence of this journal entry on a scale from -1.0 (deep distress/grief/despair) through 0.0 (neutral/factual) to +1.0 (joy/peace/hope). Judge the writer's felt state, not the topic. Return ONLY JSON: {"valence": <float -1..1>, "label": "<one lowercase word for the mood>"}.`;
+// The gnothi insight contract, folded into the existing scoring call (temp 0, strict JSON,
+// non-throwing fallback parse): valence + one-word emotion + an evocative title + <=3 themes,
+// all from a single pass so ordinary entries get a scannable timeline for free.
+const VALENCE_SYS = `Read this journal entry and return ONLY JSON:
+{"valence": <float -1.0 (deep distress) .. 0.0 (neutral) .. +1.0 (joy/peace)>, "label": "<one lowercase word for the mood>", "title": "<an evocative title in the writer's register, 3-7 words, never generic>", "themes": ["<1-3 lowercase life-domain themes, single words or short phrases>"]}
+Judge the writer's felt state, not the topic.`;
 
 export async function scoreValence(
   text: string,
-): Promise<{ valence: number; label: string } | null> {
+): Promise<{ valence: number; label: string; title: string | null; themes: string[] } | null> {
   const r = await chatPrivate(
     [
       { role: "system", content: VALENCE_SYS },
       { role: "user", content: text },
     ],
-    { temperature: 0, maxTokens: 24 },
+    { temperature: 0, maxTokens: 90 },
   ).catch(() => null);
   if (!r) return null;
   try {
     const m = r.content.match(/\{[\s\S]*\}/);
     if (!m) return null;
-    const j = JSON.parse(m[0]) as { valence?: unknown; label?: unknown };
+    const j = JSON.parse(m[0]) as {
+      valence?: unknown;
+      label?: unknown;
+      title?: unknown;
+      themes?: unknown;
+    };
     const v = Number(j.valence);
     if (!Number.isFinite(v)) return null;
     const valence = Math.max(-1, Math.min(1, v));
     const label = typeof j.label === "string" ? j.label.trim().toLowerCase().slice(0, 24) : "";
-    return { valence, label };
+    const title =
+      typeof j.title === "string" && j.title.trim() ? j.title.trim().slice(0, 80) : null;
+    const themes = Array.isArray(j.themes)
+      ? j.themes
+          .filter((t): t is string => typeof t === "string")
+          .map((t) => t.trim().toLowerCase().slice(0, 40))
+          .filter(Boolean)
+          .slice(0, 3)
+      : [];
+    return { valence, label, title, themes };
   } catch {
     return null;
   }
@@ -42,8 +61,12 @@ export async function scoreEntryValence(
 ): Promise<void> {
   const s = await scoreValence(text);
   if (!s) return;
+  // The insight contract's title lands only where the user hasn't set one - theirs always wins.
   await db.execute(sql`
-    UPDATE entries SET valence = ${s.valence}, valence_label = ${s.label}
+    UPDATE entries SET
+      valence = ${s.valence},
+      valence_label = ${s.label},
+      title = COALESCE(title, ${s.title})
     WHERE id = ${entryId} AND user_id = ${userId}
   `);
 }

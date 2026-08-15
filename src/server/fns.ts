@@ -93,6 +93,7 @@ import { entryMilestone, milestoneChips } from "./milestones";
 import { moodBaseline } from "./baseline";
 import { calendarMonth } from "./calendar";
 import { companionComment } from "./companion";
+import { ASK_PRESETS, FREE_CUSTOM_PER_DAY } from "./askPresets";
 import {
   createAutomation,
   listAutomations,
@@ -949,6 +950,14 @@ export const saveNudgePrefsFn = createServerFn({ method: "POST" })
     await saveNudgePrefs(userId, prefs, tz);
     return getNudgePrefs(userId);
   });
+
+// The preset question library for /ask + the free-tier custom-question allowance.
+export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  const { plan } = await getBilling(userId);
+  const unlimited = plan === "deep" || !!(await inftStatus(userId));
+  return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
+});
 
 // The margin's comment on an entry - generated once, skipped freely (silence is a feature).
 export const companionCommentFn = createServerFn({ method: "POST" })

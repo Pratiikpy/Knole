@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { useState } from "react";
+import { askPresetsFn } from "@/server/fns";
+import type { AskPreset } from "@/server/askPresets";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/ask")({
   head: () => ({
@@ -15,13 +18,9 @@ export const Route = createFileRoute("/ask")({
   component: AskPage,
 });
 
-const suggestions = [
-  "When was I last this stressed?",
-  "What was I saying about work in March?",
-  "How do I usually talk about my mother?",
-  "What did I say I'd do this summer?",
-  "When did I last feel proud of myself?",
-];
+// Category order for the preset library (gnothi): the curated questions are always free;
+// free-tier custom questions draw from a small daily allowance.
+const CATEGORY_ORDER = ["feelings", "patterns", "people", "decisions", "reframe", "growth"];
 
 type Receipt = { date: string; quote: string; tag: string };
 type AskResult = {
@@ -35,13 +34,32 @@ function AskPage() {
   const [asked, setAsked] = useState<string | null>(null);
   const [result, setResult] = useState<AskResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [gated, setGated] = useState<string | null>(null);
+  const getPresets = useServerFn(askPresetsFn);
+  const [presets, setPresets] = useState<AskPreset[]>([]);
+  const [unlimited, setUnlimited] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    getPresets()
+      .then((r) => {
+        if (!alive) return;
+        setPresets(r.presets);
+        setUnlimited(r.unlimited);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const submit = async (text: string) => {
+  const submit = async (text: string, presetId?: string) => {
     if (!text.trim() || loading) return;
     setAsked(text);
     setQ(text);
     setLoading(true);
     setResult(null);
+    setGated(null);
     const fail = () =>
       setResult({
         summary: "Something interrupted the search — try again in a moment.",
@@ -52,8 +70,15 @@ function AskPage() {
       const res = await fetch("/ask/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({ question: text, presetId }),
       });
+      if (res.status === 402) {
+        const j = (await res.json().catch(() => null)) as { message?: string } | null;
+        setGated(j?.message ?? "Today's custom questions are used up - presets stay open.");
+        setResult(null);
+        setAsked(null);
+        return;
+      }
       if (!res.ok || !res.body) {
         fail();
         return;
@@ -154,17 +179,45 @@ function AskPage() {
             )}
           </form>
 
-          {!asked && (
-            <div className="mt-8 flex flex-wrap gap-2">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => submit(s)}
-                  className="rounded-full border border-rule px-3.5 py-1.5 text-[12px] italic text-muted-foreground hover:border-ink/20 hover:text-ink"
-                >
-                  {s}
-                </button>
+          {gated && (
+            <div className="animate-fade-up mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-5">
+              <p className="text-[13px] leading-relaxed text-ink-soft">{gated}</p>
+              <Link
+                to="/upgrade"
+                className="mt-2 inline-block text-[13px] text-tan underline-offset-2 hover:text-ink hover:underline"
+              >
+                see Deep →
+              </Link>
+            </div>
+          )}
+
+          {!asked && presets.length > 0 && (
+            <div className="mt-8 space-y-4">
+              {CATEGORY_ORDER.filter((c) => presets.some((p) => p.category === c)).map((cat) => (
+                <div key={cat}>
+                  <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
+                    {cat}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {presets
+                      .filter((p) => p.category === cat)
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => submit(p.label, p.id)}
+                          className="rounded-full border border-rule px-3.5 py-1.5 text-[12px] italic text-muted-foreground hover:border-ink/20 hover:text-ink"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                  </div>
+                </div>
               ))}
+              {!unlimited && (
+                <p className="text-[11px] text-muted-foreground/80">
+                  Presets are always free · custom questions: three a day on the free plan.
+                </p>
+              )}
             </div>
           )}
 
