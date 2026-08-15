@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PrivyProvider, useWallets } from "@privy-io/react-auth";
 import { Shell } from "@/components/knole/Shell";
 import { ogChain } from "@/lib/ogChain";
+import { resolveSigner } from "@/lib/walletSigner";
 import {
   identityCapsuleFn,
   createIdentityGrantFn,
@@ -268,32 +269,7 @@ function OnchainGrantsCard() {
         return;
       }
       await sponsor().catch(() => {}); // dust gas for a fresh wallet; no-op when funded
-      // Prefer Privy's wallet handle (covers embedded wallets); fall back to the raw injected
-      // EIP-1193 provider when it already holds the right address — Privy's wallet list can lag a
-      // page load behind an injected wallet that is otherwise perfectly able to sign.
-      type Eip1193 = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> };
-      let provider: Eip1193 | null = null;
-      const w = wallets.find((x) => x.address.toLowerCase() === ctx.wallet.toLowerCase());
-      if (w) {
-        await w.switchChain(ctx.chainId).catch(() => {});
-        provider = await w.getEthereumProvider();
-      } else {
-        const injected = (window as { ethereum?: Eip1193 }).ethereum;
-        if (injected) {
-          const accounts = (await injected
-            .request({ method: "eth_requestAccounts" })
-            .catch(() => [])) as string[];
-          if (accounts.some((a) => a.toLowerCase() === ctx.wallet.toLowerCase())) {
-            await injected
-              .request({
-                method: "wallet_switchEthereumChain",
-                params: [{ chainId: `0x${ctx.chainId.toString(16)}` }],
-              })
-              .catch(() => {});
-            provider = injected;
-          }
-        }
-      }
+      const provider = await resolveSigner(wallets, ctx.wallet, ctx.chainId);
       if (!provider) {
         setMsg({
           kind: "err",

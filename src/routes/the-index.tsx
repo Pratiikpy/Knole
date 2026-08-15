@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { PrivyProvider } from "@privy-io/react-auth";
 import { Shell } from "@/components/knole/Shell";
 import { INFTCard } from "@/components/knole/INFTCard";
 import { isAuthRequired } from "@/lib/authError";
+import { ogChain } from "@/lib/ogChain";
 import {
   listMemoriesFn,
   setMemoryStatusFn,
@@ -11,6 +13,8 @@ import {
   settingsFn,
 } from "@/server/fns";
 import { useState } from "react";
+
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 
 export const Route = createFileRoute("/the-index")({
   head: () => ({
@@ -27,8 +31,26 @@ export const Route = createFileRoute("/the-index")({
     memories: (await listMemoriesFn()).memories,
     settings: await settingsFn(),
   }),
-  component: TheIndex,
+  component: TheIndexRoute,
 });
+
+// Privy scoped to this route (code-splits with the chunk, like settings/identity): the self-custody
+// mint on the iNFT card is signed by the USER's own wallet on the 0G chain.
+function TheIndexRoute() {
+  return (
+    <PrivyProvider
+      appId={PRIVY_APP_ID}
+      config={{
+        appearance: { theme: "light", accentColor: "#7c6545" },
+        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
+        supportedChains: [ogChain],
+        defaultChain: ogChain,
+      }}
+    >
+      <TheIndex />
+    </PrivyProvider>
+  );
+}
 
 type Memory = {
   id: string;

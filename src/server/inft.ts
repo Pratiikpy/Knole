@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { putData, signerFor, contractAddress, NET_NAME } from "./og";
+import { putData, signerFor, providerFor, contractAddress, NET_NAME, OG_NET } from "./og";
 import { keyForUser, retrieveIdentityMemories } from "./engine";
 import { ensureWalletCaptured } from "./auth";
 
@@ -169,6 +169,97 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
     tokenId,
     txHash: rcpt?.hash ?? tx.hash,
     root: rootHash,
+    version: 1,
+    mintedAt: new Date().toISOString(),
+    network: NET_NAME,
+    contract: NFT_ADDRESS,
+  };
+  await db
+    .insert(reflectionArtifacts)
+    .values({ userId, type: "pattern", threadKey: "inft", content: rec });
+  return rec;
+}
+
+// ── Self-custody mint: the USER's wallet calls the public iMint — they are minter AND owner ──────
+
+export type ClientMintPrep =
+  | { to: string; data: string; wallet: string; chainId: number }
+  | { error: string };
+
+/** Build everything the user's wallet needs to sign its own mint: snapshot → encrypt → 0G Storage,
+ * then the encoded iMint(wallet, datas) calldata. The server never signs this path. */
+export async function prepareClientMint(userId: string): Promise<ClientMintPrep> {
+  if (!inftConfigured()) return { error: "not-configured" };
+  await ensureWalletCaptured(userId);
+  const [u] = await db
+    .select({ wallet: users.walletAddress, clientKey: users.clientKeyAddr })
+    .from(users)
+    .where(eq(users.id, userId));
+  const wallet = u?.wallet || u?.clientKey;
+  if (!wallet) return { error: "no-wallet" };
+  const existing = await inftStatus(userId);
+  if (
+    existing &&
+    (existing.network ?? "testnet") === NET_NAME &&
+    (existing.contract ?? "").toLowerCase() === NFT_ADDRESS.toLowerCase()
+  ) {
+    return { error: "already-minted" };
+  }
+  const snap = await memorySnapshot(userId);
+  if (snap.empty) return { error: "no-memory" };
+  const { rootHash } = await putData(JSON.stringify(snap), { key: keyForUser(userId) });
+  const datas = [{ dataDescription: `0g://${rootHash}`, dataHash: rootHash }];
+  const data = new ethers.Interface(ABI).encodeFunctionData("iMint", [wallet, datas]);
+  return { to: NFT_ADDRESS, data, wallet, chainId: OG_NET.chainId };
+}
+
+/** Verify the user's self-signed mint on-chain and store the record. The chain is the source of
+ * truth: we read the receipt, the Transfer-from-zero tokenId, and the token's own data. */
+export async function confirmClientMint(
+  userId: string,
+  txHash: string,
+): Promise<INFTRecord | { error: string }> {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) return { error: "bad-tx" };
+  const provider = providerFor();
+  let receipt: ethers.TransactionReceipt | null = null;
+  for (let i = 0; i < 12 && !receipt; i++) {
+    receipt = await provider.getTransactionReceipt(txHash).catch(() => null);
+    if (!receipt) await new Promise((r) => setTimeout(r, 2500));
+  }
+  if (!receipt || receipt.status !== 1) return { error: "tx-not-found" };
+  if ((receipt.to ?? "").toLowerCase() !== NFT_ADDRESS.toLowerCase())
+    return { error: "wrong-contract" };
+
+  const iface = new ethers.Interface(ABI);
+  let tokenId = "";
+  let owner = "";
+  for (const log of receipt.logs) {
+    try {
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "Transfer" && parsed.args.from === ethers.ZeroAddress) {
+        tokenId = String(parsed.args.tokenId);
+        owner = String(parsed.args.to);
+        break;
+      }
+    } catch {
+      /* not ours */
+    }
+  }
+  if (!tokenId) return { error: "no-mint-event" };
+  const [u] = await db
+    .select({ wallet: users.walletAddress, clientKey: users.clientKeyAddr })
+    .from(users)
+    .where(eq(users.id, userId));
+  const expected = (u?.wallet || u?.clientKey || "").toLowerCase();
+  if (owner.toLowerCase() !== expected) return { error: "owner-mismatch" };
+
+  const c = contract();
+  const datas = (await c.getIntelligentDatas(tokenId)) as { dataDescription: string }[];
+  const root = (datas[0]?.dataDescription ?? "").replace(/^0g:\/\//, "");
+  const rec: INFTRecord = {
+    tokenId,
+    txHash,
+    root,
     version: 1,
     mintedAt: new Date().toISOString(),
     network: NET_NAME,

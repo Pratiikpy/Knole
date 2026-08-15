@@ -1,6 +1,14 @@
 import { useServerFn } from "@tanstack/react-start";
-import { inftStatusFn, mintMemoryINFTFn } from "@/server/fns";
+import { useWallets } from "@privy-io/react-auth";
+import {
+  inftStatusFn,
+  mintMemoryINFTFn,
+  prepareClientMintFn,
+  confirmClientMintFn,
+  sponsorGrantGasFn,
+} from "@/server/fns";
 import { isAuthRequired } from "@/lib/authError";
+import { resolveSigner } from "@/lib/walletSigner";
 import { useEffect, useState } from "react";
 
 type Token = { tokenId: string; txHash: string; root: string; version: number; mintedAt: string };
@@ -14,9 +22,14 @@ type Token = { tokenId: string; txHash: string; root: string; version: number; m
 export function INFTCard() {
   const getStatus = useServerFn(inftStatusFn);
   const doMint = useServerFn(mintMemoryINFTFn);
+  const prepareSelf = useServerFn(prepareClientMintFn);
+  const confirmSelf = useServerFn(confirmClientMintFn);
+  const sponsorGas = useServerFn(sponsorGrantGasFn);
+  const { wallets } = useWallets();
   const [configured, setConfigured] = useState(false);
   const [token, setToken] = useState<Token | null>(null);
   const [minting, setMinting] = useState(false);
+  const [selfMinting, setSelfMinting] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -60,6 +73,53 @@ export function INFTCard() {
       );
     } finally {
       setMinting(false);
+    }
+  };
+
+  // Self-custody mint: the user's OWN wallet calls the public iMint — they are minter and owner,
+  // and the transaction on ChainScan shows their address as the sender, not ours.
+  const selfMint = async () => {
+    if (selfMinting || minting) return;
+    setSelfMinting(true);
+    setMsg("");
+    try {
+      const prep = await prepareSelf();
+      if ("error" in prep) {
+        setMsg(
+          prep.error === "no-wallet"
+            ? "Connect a wallet in Settings first — your iNFT mints to it."
+            : prep.error === "no-memory"
+              ? "Write a few entries first — there's not enough yet to mint."
+              : prep.error === "already-minted"
+                ? "Already minted — use “Update with your latest self” below."
+                : "Couldn't prepare the mint just now. Try again.",
+        );
+        return;
+      }
+      await sponsorGas().catch(() => {}); // dust gas for a fresh wallet; no-op when funded
+      const provider = await resolveSigner(wallets, prep.wallet, prep.chainId);
+      if (!provider) {
+        setMsg("Sign in with your wallet first — this mint is signed by you.");
+        return;
+      }
+      const txHash = (await provider.request({
+        method: "eth_sendTransaction",
+        params: [{ from: prep.wallet, to: prep.to, data: prep.data }],
+      })) as string;
+      const rec = await confirmSelf({ data: { txHash } });
+      if ("error" in rec) {
+        setMsg("The mint transaction didn't confirm — check your wallet and try again.");
+        return;
+      }
+      setToken(rec as Token);
+    } catch (e) {
+      setMsg(
+        isAuthRequired(e)
+          ? "Sign in to mint your memory — you're viewing the demo."
+          : "Couldn't mint just now. Try again.",
+      );
+    } finally {
+      setSelfMinting(false);
     }
   };
 
@@ -115,13 +175,27 @@ export function INFTCard() {
             the encrypted snapshot on 0G Storage, the token owned by your own wallet, evolving with
             you and yours to carry across wallets or grant a 0G agent scoped access.
           </p>
-          <button
-            onClick={mint}
-            disabled={minting}
-            className="mt-4 rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper transition-opacity disabled:opacity-40"
-          >
-            {minting ? "Minting…" : "Mint my memory iNFT"}
-          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={mint}
+              disabled={minting || selfMinting}
+              className="rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper transition-opacity disabled:opacity-40"
+            >
+              {minting ? "Minting…" : "Mint my memory iNFT"}
+            </button>
+            <button
+              onClick={selfMint}
+              disabled={minting || selfMinting}
+              title="Your wallet signs the public iMint itself — the transaction sender on ChainScan is you, not Knole."
+              className="rounded-full border border-rule px-4 py-2.5 text-[12px] text-ink transition-colors hover:border-tan/40 disabled:opacity-40"
+            >
+              {selfMinting ? "Waiting for your wallet…" : "or sign it yourself"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            Both paths mint to your own wallet. “Sign it yourself” makes even the mint transaction
+            yours — we sponsor a dust of gas, your wallet does the rest.
+          </p>
         </>
       )}
       {msg && (

@@ -66,7 +66,13 @@ import { generateImage, imageGenConfigured } from "./imagegen";
 import { research, researchConfigured } from "./research";
 import { computeStats, mintProof, latestProof } from "./proofJournaling";
 import { onThisDay, onThisDayNote } from "./onThisDay";
-import { inftConfigured, inftStatus, mintMemoryINFT } from "./inft";
+import {
+  inftConfigured,
+  inftStatus,
+  mintMemoryINFT,
+  prepareClientMint,
+  confirmClientMint,
+} from "./inft";
 import { storeSignals, latestRadar } from "./omission";
 import { buildYearInOnePage } from "./consolidate";
 import { detectCrisis, CRISIS_REPLY } from "./safety";
@@ -770,6 +776,21 @@ export const sponsorGrantGasFn = createServerFn({ method: "POST" }).handler(asyn
   enforceRate("gas-sponsor", 4, 60_000);
   return sponsorGrantGas(userId);
 });
+
+// ── Self-custody mint: the user's own wallet calls the public iMint — minter AND owner ──
+
+export const prepareClientMintFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  enforceRate("client-mint", 6, 60_000);
+  return prepareClientMint(userId);
+});
+
+export const confirmClientMintFn = createServerFn({ method: "POST" })
+  .validator(z.object({ txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    return confirmClientMint(userId, data.txHash);
+  });
 
 // Tamper-evident recall (#12) — a memory's on-chain-anchored audit trail + public verification.
 export const memoryAuditFn = createServerFn({ method: "POST" })

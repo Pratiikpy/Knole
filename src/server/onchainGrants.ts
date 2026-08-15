@@ -82,10 +82,17 @@ export async function listOnchainGrants(
 export async function sponsorGrantGas(
   userId: string,
 ): Promise<{ sponsored: boolean; balance: string }> {
-  const ctx = await onchainGrantContext(userId);
-  if (!ctx.available) return { sponsored: false, balance: "0" };
+  // Wallet-only requirement (not token): the self-custody MINT is itself a sponsored-gas moment,
+  // and it necessarily happens before any token exists.
+  const [u] = await db
+    .select({ wallet: users.walletAddress })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const wallet = u?.wallet;
+  if (!wallet) return { sponsored: false, balance: "0" };
   const provider = providerFor();
-  const bal = await provider.getBalance(ctx.wallet);
+  const bal = await provider.getBalance(wallet);
   if (bal >= GAS_MIN_BALANCE) return { sponsored: false, balance: ethers.formatEther(bal) };
 
   const recent = (await db.execute(sql`
@@ -95,7 +102,7 @@ export async function sponsorGrantGas(
   if (recent.length > 0) return { sponsored: false, balance: ethers.formatEther(bal) };
 
   const tx = await signerFor().sendTransaction({
-    to: ctx.wallet,
+    to: wallet,
     value: GAS_SPONSOR_AMOUNT,
   });
   await tx.wait();
@@ -105,6 +112,6 @@ export async function sponsorGrantGas(
     threadKey: "gas-sponsor",
     content: { tx: tx.hash, amount: ethers.formatEther(GAS_SPONSOR_AMOUNT) },
   });
-  const after = await provider.getBalance(ctx.wallet);
+  const after = await provider.getBalance(wallet);
   return { sponsored: true, balance: ethers.formatEther(after) };
 }
