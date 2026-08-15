@@ -123,6 +123,10 @@ export const entries = pgTable(
     // Structured check-in (#33): a user-selected energy level (0..1) alongside mood. Activities the
     // person logs ride the `tags` array below (unified with #35 tags), so they're correlatable for free.
     energy: real("energy"),
+    // Personal-baseline flag (the baseline-app model): the person marks a check-in as below / at /
+    // above THEIR usual. Days flagged unusual are down-weighted (x0.4) when computing the rolling
+    // baseline, so the "normal" line tracks their normal, not their outliers.
+    moodRel: text("mood_rel"),
     // Conversational capture: a composed "Daily Chat" entry carries an evocative title + topical
     // tags (also ride the 0G payload + a future timeline). Null for ordinary journal entries.
     title: text("title"),

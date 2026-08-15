@@ -90,6 +90,7 @@ import { latestAnchor } from "./anchor";
 import { generateNudge, hourInTz } from "./proactivity";
 import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
 import { entryMilestone, milestoneChips } from "./milestones";
+import { moodBaseline } from "./baseline";
 import { resurface, resurfaceNote } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -540,6 +541,8 @@ export const quickCheckInFn = createServerFn({ method: "POST" })
       // activities become entry tags — correlatable against mood for free (#1).
       energy: z.enum(["low", "mid", "high"]).optional(),
       activities: z.array(z.string().min(1).max(40)).max(8).optional(),
+      // The baseline flag: this day vs THEIR usual. Unusual days are down-weighted in the baseline.
+      rel: z.enum(["below", "usual", "above"]).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -559,6 +562,7 @@ export const quickCheckInFn = createServerFn({ method: "POST" })
       valenceLabel: m.label,
       energy: data.energy ? CHECKIN_ENERGY[data.energy] : null,
       tags: activities.length ? activities : null,
+      moodRel: data.rel ?? null,
     });
     background(extractMemories(userId, row.id, text), "extractMemories");
     background(storeSignals(userId, row.id, text, row.createdAt), "storeSignals");
@@ -578,6 +582,12 @@ export const mintMemoryINFTFn = createServerFn({ method: "POST" }).handler(async
   enforceRate("inft-mint", 5, 60_000);
   const userId = await requireUserId();
   return mintMemoryINFT(userId);
+});
+
+// The personal baseline: 14-day rolling weighted mean with honest gaps (see server/baseline.ts).
+export const moodBaselineFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return moodBaseline(userId);
 });
 
 export const moodTrajectoryFn = createServerFn({ method: "GET" }).handler(async () => {

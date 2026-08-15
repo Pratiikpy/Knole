@@ -84,6 +84,14 @@ const CHECKIN_ACTIVITIES = [
   "poor sleep",
   "alone",
 ];
+// The baseline flag (the baseline-app model): this day against YOUR usual. Days marked unusual
+// count less toward the rolling baseline, so the "normal" line tracks normal.
+const CHECKIN_REL = [
+  { key: "below", label: "below usual" },
+  { key: "usual", label: "about usual" },
+  { key: "above", label: "above usual" },
+] as const;
+
 const CHECKIN_ENERGY = [
   { key: "low", label: "low energy" },
   { key: "mid", label: "steady" },
@@ -175,6 +183,7 @@ function TodayPage() {
   const [checkInNote, setCheckInNote] = useState("");
   const [checkInEnergy, setCheckInEnergy] = useState<"low" | "mid" | "high" | null>(null);
   const [checkInActs, setCheckInActs] = useState<string[]>([]);
+  const [checkInRel, setCheckInRel] = useState<"below" | "usual" | "above" | null>(null);
   // The 14-Day Mirror arc progress — a cheap day-count call (no LLM) that gives the daily loop
   // visible momentum toward the flagship reveal.
   const getMirrorStatus = useServerFn(mirrorStatusFn);
@@ -634,6 +643,7 @@ function TodayPage() {
         note: checkInNote.trim() || undefined,
         energy: checkInEnergy ?? undefined,
         activities: checkInActs.length ? checkInActs : undefined,
+        rel: checkInRel ?? undefined,
       },
     }).catch(() => {});
   };
@@ -819,6 +829,24 @@ function TodayPage() {
                     }`}
                   >
                     {e.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mb-4 flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                  vs your usual
+                </span>
+                {CHECKIN_REL.map((r) => (
+                  <button
+                    key={r.key}
+                    onClick={() => setCheckInRel((cur) => (cur === r.key ? null : r.key))}
+                    className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+                      checkInRel === r.key
+                        ? "bg-tan/[0.15] text-tan ring-1 ring-tan/30"
+                        : "border border-rule text-muted-foreground hover:text-ink"
+                    }`}
+                  >
+                    {r.label}
                   </button>
                 ))}
               </div>

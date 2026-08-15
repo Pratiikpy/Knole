@@ -3,11 +3,13 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   ReferenceLine,
   Tooltip,
 } from "recharts";
+import type { BaselineResult } from "@/server/baseline";
 
 type MoodPoint = {
   day: string;
@@ -43,9 +45,22 @@ const fmtDay = (d: string) => {
  * visual + screenshot-worthy. Tapping the chart opens the day behind a point. No advice, just the
  * shape of how they've been — a mirror, not an assistant.
  */
-export function MoodWeather({ data }: { data: { points: MoodPoint[]; count: number } }) {
+export function MoodWeather({
+  data,
+  baseline,
+}: {
+  data: { points: MoodPoint[]; count: number };
+  baseline?: BaselineResult;
+}) {
   const [sel, setSel] = useState<MoodPoint | null>(null);
   const points = data.points;
+  // Merge the baseline series into the chart rows by day. connectNulls stays FALSE so a window
+  // with no logs renders as a gap - the graph breaks instead of lying (the baseline-app rule).
+  const baseByDay =
+    baseline?.ready === true ? new Map(baseline.points.map((p) => [p.day, p.value])) : null;
+  const rows = baseByDay
+    ? points.map((p) => ({ ...p, baseline: baseByDay.get(p.day) ?? null }))
+    : points;
 
   if (points.length < 3) {
     return (
@@ -69,7 +84,7 @@ export function MoodWeather({ data }: { data: { points: MoodPoint[]; count: numb
         <div className="h-[140px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={points}
+              data={rows}
               margin={{ top: 6, right: 6, bottom: 0, left: 6 }}
               onClick={(state: unknown) => {
                 const s = state as { activePayload?: { payload?: MoodPoint }[] };
@@ -110,6 +125,18 @@ export function MoodWeather({ data }: { data: { points: MoodPoint[]; count: numb
                   );
                 }}
               />
+              {baseByDay && (
+                <Line
+                  type="monotone"
+                  dataKey="baseline"
+                  stroke="#a8a29e"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  connectNulls={false}
+                  activeDot={false}
+                />
+              )}
               <Area
                 type="monotone"
                 dataKey="valence"
@@ -124,6 +151,9 @@ export function MoodWeather({ data }: { data: { points: MoodPoint[]; count: numb
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Tap the chart to read the day behind a point
+          {baseline?.ready === true && baseline.current !== null && (
+            <> · dashed line: your 14-day baseline</>
+          )}
         </p>
       </div>
 

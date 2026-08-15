@@ -11,6 +11,7 @@ import {
   mirrorFn,
   mirrorComposeFn,
   moodTrajectoryFn,
+  moodBaselineFn,
   markMirrorSeenFn,
   correlationsFn,
   themesFn,
@@ -179,7 +180,14 @@ export const Route = createFileRoute("/insights")({
       },
     ],
   }),
-  loader: async () => ({ mirror: await mirrorFn(), mood: await moodTrajectoryFn() }),
+  loader: async () => {
+    const [mirror, mood, baseline] = await Promise.all([
+      mirrorFn(),
+      moodTrajectoryFn(),
+      moodBaselineFn(),
+    ]);
+    return { mirror, mood, baseline };
+  },
   component: InsightsPage,
   pendingComponent: () => <Composing label="Composing your mirror…" />,
 });
@@ -191,6 +199,38 @@ function Reveal({ label, text }: { label: string; text: string }) {
       <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-tan">{label}</div>
       <p className="font-display text-[20px] italic leading-snug text-ink-soft">{text}</p>
     </div>
+  );
+}
+
+/** The humble framing under the baseline overlay — and the once-a-week scale-drift notice.
+ * A baseline shown too early is noise wearing a trendline, so before 21 logged days this only
+ * says how far along it is. */
+function BaselineNote({ baseline }: { baseline: import("@/server/baseline").BaselineResult }) {
+  if (baseline.ready === false) {
+    if (baseline.daysLogged < 3) return null; // brand-new journal — the chart's own empty state covers it
+    return (
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        Your personal baseline appears after {baseline.daysNeeded} logged days — you're at{" "}
+        {baseline.daysLogged}. It's a slow line on purpose: it should mean something.
+      </p>
+    );
+  }
+  return (
+    <>
+      {baseline.drift && (
+        <div className="animate-fade-up mt-3 rounded-2xl border border-rule bg-card/60 p-5">
+          <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-tan">
+            Your scale has shifted
+          </div>
+          <p className="max-w-[56ch] text-[13px] leading-relaxed text-ink-soft">
+            The last ten days you called "about usual" have averaged{" "}
+            {baseline.drift.direction === "up" ? "noticeably brighter" : "noticeably heavier"} than
+            your center. That usually means your normal itself has moved — worth a line in tonight's
+            entry about what changed.
+          </p>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -212,7 +252,7 @@ function Streak({ dayCount, entryCount }: { dayCount: number; entryCount: number
 }
 
 function InsightsPage() {
-  const { mirror: loadedMirror, mood } = Route.useLoaderData();
+  const { mirror: loadedMirror, mood, baseline } = Route.useLoaderData();
   const composeMirror = useServerFn(mirrorComposeFn);
   // The loader returns fast (never blocks SSR on the ~60s compose). When it comes back `composing`,
   // fetch the composition here and swap it in, showing an anticipation state meanwhile.
@@ -298,7 +338,8 @@ function InsightsPage() {
           ) : m.phase === "building" ? (
             <>
               <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
-              <MoodWeather data={mood} />
+              <MoodWeather data={mood} baseline={baseline} />
+              <BaselineNote baseline={baseline} />
               <Correlations />
               <Themes />
               <ProofOfJournaling />
@@ -328,7 +369,8 @@ function InsightsPage() {
             <>
               {/* Streak — real */}
               <Streak dayCount={m.dayCount} entryCount={m.entryCount} />
-              <MoodWeather data={mood} />
+              <MoodWeather data={mood} baseline={baseline} />
+              <BaselineNote baseline={baseline} />
               <Correlations />
               <Themes />
               <ProofOfJournaling />

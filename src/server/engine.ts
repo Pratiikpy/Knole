@@ -67,6 +67,7 @@ export async function saveEntry(
     valence?: number | null;
     valenceLabel?: string | null;
     energy?: number | null;
+    moodRel?: string | null;
     // Backfill: the yesterday capture slot writes an entry dated to yesterday evening in the
     // user's timezone, so the timeline, mood graph, and nudge suppression all read it correctly.
     createdAt?: Date;
@@ -88,6 +89,7 @@ export async function saveEntry(
       valence: meta?.valence ?? null,
       valenceLabel: meta?.valenceLabel ?? null,
       energy: meta?.energy ?? null,
+      moodRel: meta?.moodRel ?? null,
       ...(meta?.createdAt ? { createdAt: meta.createdAt } : {}),
     })
     .returning();
