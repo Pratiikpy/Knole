@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { sql, eq, and, isNull } from "drizzle-orm";
 import { db, schema } from "../db";
 import { embed, toVectorLiteral } from "./embed";
-import { chat } from "./llm";
+import { chatPrivate } from "./sealed";
 import { putData } from "./og";
 import { keyProvider } from "./keyProvider";
 
@@ -232,15 +232,17 @@ async function judgeMemory(
   oldContent: string,
   newContent: string,
 ): Promise<"update" | "duplicate" | "independent"> {
+  // chatPrivate: anonymised before the model AND TEE-first with plain-0G fallback — the reconcile
+  // judge sees no real names and survives a router-balance outage.
   const r = (
-    await chat(
+    await chatPrivate(
       [
         { role: "system", content: RECONCILE_SYS },
         { role: "user", content: `OLD: ${oldContent}\nNEW: ${newContent}` },
       ],
       { temperature: 0, maxTokens: 4 },
     )
-  )
+  ).content
     .trim()
     .toLowerCase();
   if (r.startsWith("update")) return "update";
@@ -249,13 +251,18 @@ async function judgeMemory(
 }
 
 export async function extractMemories(userId: string, entryId: string, entryText: string) {
-  const raw = await chat(
-    [
-      { role: "system", content: EXTRACT_SYS },
-      { role: "user", content: entryText },
-    ],
-    { temperature: 0.2, maxTokens: 700 },
-  );
+  // chatPrivate scrubs names before the model sees the entry and restores them in the reply, so
+  // extracted memories keep real names while the model only ever saw placeholders — and the call
+  // rides the funded TEE broker first instead of dying with the router balance.
+  const raw = (
+    await chatPrivate(
+      [
+        { role: "system", content: EXTRACT_SYS },
+        { role: "user", content: entryText },
+      ],
+      { temperature: 0.2, maxTokens: 700 },
+    )
+  ).content;
 
   let items: { content?: string; type?: string; quote?: string; confidence?: number }[] = [];
   try {
