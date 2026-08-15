@@ -268,16 +268,39 @@ function OnchainGrantsCard() {
         return;
       }
       await sponsor().catch(() => {}); // dust gas for a fresh wallet; no-op when funded
+      // Prefer Privy's wallet handle (covers embedded wallets); fall back to the raw injected
+      // EIP-1193 provider when it already holds the right address — Privy's wallet list can lag a
+      // page load behind an injected wallet that is otherwise perfectly able to sign.
+      type Eip1193 = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> };
+      let provider: Eip1193 | null = null;
       const w = wallets.find((x) => x.address.toLowerCase() === ctx.wallet.toLowerCase());
-      if (!w) {
+      if (w) {
+        await w.switchChain(ctx.chainId).catch(() => {});
+        provider = await w.getEthereumProvider();
+      } else {
+        const injected = (window as { ethereum?: Eip1193 }).ethereum;
+        if (injected) {
+          const accounts = (await injected
+            .request({ method: "eth_requestAccounts" })
+            .catch(() => [])) as string[];
+          if (accounts.some((a) => a.toLowerCase() === ctx.wallet.toLowerCase())) {
+            await injected
+              .request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: `0x${ctx.chainId.toString(16)}` }],
+              })
+              .catch(() => {});
+            provider = injected;
+          }
+        }
+      }
+      if (!provider) {
         setMsg({
           kind: "err",
           text: "Sign in with your wallet in Settings first — grants are signed by you.",
         });
         return;
       }
-      await w.switchChain(ctx.chainId).catch(() => {});
-      const provider = await w.getEthereumProvider();
       const tx = (await provider.request({
         method: "eth_sendTransaction",
         params: [{ from: ctx.wallet, to: call.to, data: call.data }],
