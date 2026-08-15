@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IERC7857.sol";
 import "./interfaces/IERC7857Authorize.sol";
 import "./interfaces/IERC7857Cloneable.sol";
@@ -39,10 +41,15 @@ contract KnoleAgenticID is
     ERC721Enumerable,
     AccessControl,
     ReentrancyGuard,
+    Pausable,
     IERC7857,
     IERC7857Authorize,
     IERC7857Cloneable
 {
+    /// Raw ERC-721 transfers are disabled per the ERC-7857 standard: every ownership change must go
+    /// through iTransferFrom so the re-encryption gate and grant-clearing can never be bypassed.
+    error ERC7857UseITransferFrom();
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     uint256 private _nextTokenId = 1;
@@ -76,14 +83,16 @@ contract KnoleAgenticID is
     function iMint(
         address to,
         IntelligentData[] calldata datas
-    ) external payable nonReentrant returns (uint256 tokenId) {
+    ) external payable nonReentrant whenNotPaused returns (uint256 tokenId) {
         require(msg.value >= mintFee, "insufficient mint fee");
         require(datas.length > 0, "no data");
         tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
+        // CEI: all token state is written BEFORE _safeMint, so the onERC721Received callback observes
+        // a fully-consistent token and nothing it does (e.g. evolve) can be silently overwritten.
         _setIntelligentData(tokenId, datas);
         version[tokenId] = 1;
         updatedAt[tokenId] = uint64(block.timestamp);
+        _safeMint(to, tokenId);
     }
 
     /// Role-gated mint (migration / server-assisted onboarding only). Kept for operability; the app
@@ -91,23 +100,25 @@ contract KnoleAgenticID is
     function iMintWithRole(
         address to,
         IntelligentData[] calldata datas
-    ) external onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256 tokenId) {
         require(datas.length > 0, "no data");
         tokenId = _nextTokenId++;
-        _safeMint(to, tokenId);
         _setIntelligentData(tokenId, datas);
         version[tokenId] = 1;
         updatedAt[tokenId] = uint64(block.timestamp);
+        _safeMint(to, tokenId);
     }
 
     // ── Living memory — re-point the token at a fresh encrypted snapshot (owner only) ──────────────
 
-    function evolve(uint256 tokenId, IntelligentData[] calldata datas) external {
+    function evolve(uint256 tokenId, IntelligentData[] calldata datas) external whenNotPaused {
         require(ownerOf(tokenId) == msg.sender, "not owner");
         require(datas.length > 0, "no data");
         _setIntelligentData(tokenId, datas);
         version[tokenId] += 1;
         updatedAt[tokenId] = uint64(block.timestamp);
+        // Evolved carries the first entry's hash as the headline; the full array is in the
+        // IntelligentDataSet event _setIntelligentData just emitted.
         emit Evolved(tokenId, datas[0].dataHash, version[tokenId]);
     }
 
@@ -141,12 +152,14 @@ contract KnoleAgenticID is
         address to,
         uint256 tokenId,
         TransferValidityProof[] calldata proofs
-    ) external override nonReentrant {
+    ) external override nonReentrant whenNotPaused {
         require(ownerOf(tokenId) == from, "not owner");
         require(to != address(0), "zero recipient");
+        // Standard ERC-721 authorization ALWAYS applies — a valid-shaped proof alone must never be
+        // enough to move a token (official 0G pattern).
+        _checkAuthorized(from, msg.sender, tokenId);
         _checkMoveAuth(from, tokenId, proofs, to);
-        _transfer(from, to, tokenId);
-        _clearAuthorizations(tokenId);
+        _transfer(from, to, tokenId); // grants are cleared inside _update — no path can bypass it
         emit IntelligentTransfer(from, to, tokenId);
     }
 
@@ -155,24 +168,41 @@ contract KnoleAgenticID is
         address to,
         uint256 tokenId,
         TransferValidityProof[] calldata proofs
-    ) external override nonReentrant returns (uint256 newTokenId) {
+    ) external override nonReentrant whenNotPaused returns (uint256 newTokenId) {
         require(ownerOf(tokenId) == from, "not owner");
         require(to != address(0), "zero recipient");
+        _checkAuthorized(from, msg.sender, tokenId);
         _checkMoveAuth(from, tokenId, proofs, to);
         newTokenId = _nextTokenId++;
-        _safeMint(to, newTokenId);
-        IntelligentData[] storage src = _intelligentData[tokenId];
-        for (uint256 i = 0; i < src.length; i++) _intelligentData[newTokenId].push(src[i]);
+        // CEI: clone state written before _safeMint (see iMint).
+        _copyIntelligentData(tokenId, newTokenId);
         version[newTokenId] = 1;
         updatedAt[newTokenId] = uint64(block.timestamp);
         cloneSource[newTokenId] = tokenId;
+        _safeMint(to, newTokenId);
         emit IntelligentClone(from, to, tokenId, newTokenId);
+    }
+
+    // ── Raw ERC-721 transfers are closed (ERC-7857): every move goes through iTransferFrom ─────────
+
+    function transferFrom(address, address, uint256) public pure override(ERC721, IERC721) {
+        revert ERC7857UseITransferFrom();
+    }
+
+    function safeTransferFrom(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public pure override(ERC721, IERC721) {
+        revert ERC7857UseITransferFrom();
     }
 
     // ── ERC-7857 Authorize: grant a 0G agent scoped usage without giving up ownership ──────────────
 
-    function authorizeUsage(uint256 tokenId, address user) external override {
+    function authorizeUsage(uint256 tokenId, address user) external override whenNotPaused {
         require(ownerOf(tokenId) == msg.sender, "not owner");
+        require(user != address(0), "zero user");
         require(!_isAuthorizedUser[tokenId][user], "already authorized");
         require(_authorizedUsers[tokenId].length < 100, "max authorizations");
         _authorizedUsers[tokenId].push(user);
@@ -211,7 +241,8 @@ contract KnoleAgenticID is
     function batchAuthorizeUsage(
         uint256[] calldata tokenIds,
         address user
-    ) external override {
+    ) external override whenNotPaused {
+        require(user != address(0), "zero user");
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(ownerOf(tokenIds[i]) == msg.sender, "not owner");
             if (!_isAuthorizedUser[tokenIds[i]][user]) {
@@ -235,7 +266,16 @@ contract KnoleAgenticID is
     }
 
     function withdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        payable(msg.sender).transfer(address(this).balance);
+        // sendValue, not transfer: the 2300-gas stipend would brick withdrawal to a Safe admin.
+        Address.sendValue(payable(msg.sender), address(this).balance);
+    }
+
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     // ── Internal ────────────────────────────────────────────────────────────────────────────────────
@@ -244,6 +284,18 @@ contract KnoleAgenticID is
         delete _intelligentData[tokenId];
         for (uint256 i = 0; i < datas.length; i++) _intelligentData[tokenId].push(datas[i]);
         emit IntelligentDataSet(tokenId, datas);
+    }
+
+    /// Copy a source token's data to a clone, emitting IntelligentDataSet so indexers see the clone's
+    /// data exactly like a minted token's (v1.0 pushed raw and emitted nothing — clones were blind).
+    function _copyIntelligentData(uint256 fromTokenId, uint256 toTokenId) internal {
+        IntelligentData[] storage src = _intelligentData[fromTokenId];
+        IntelligentData[] memory copied = new IntelligentData[](src.length);
+        for (uint256 i = 0; i < src.length; i++) {
+            _intelligentData[toTokenId].push(src[i]);
+            copied[i] = src[i];
+        }
+        emit IntelligentDataSet(toTokenId, copied);
     }
 
     function _checkMoveAuth(
@@ -270,12 +322,15 @@ contract KnoleAgenticID is
         delete _authorizedUsers[tokenId];
     }
 
-    // OZ 5.x plumbing for ERC721Enumerable + AccessControl.
+    // OZ 5.x plumbing for ERC721Enumerable + AccessControl — and the grant-clearing choke point:
+    // EVERY ownership change passes through _update, so usage grants are cleared here (official 0G
+    // pattern) and no transfer path — iTransferFrom or otherwise — can carry grants to a new owner.
     function _update(
         address to,
         uint256 tokenId,
         address auth
     ) internal override(ERC721Enumerable) returns (address) {
+        if (_ownerOf(tokenId) != address(0)) _clearAuthorizations(tokenId); // transfer, not mint
         return super._update(to, tokenId, auth);
     }
 

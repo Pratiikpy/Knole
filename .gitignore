@@ -56,3 +56,7 @@ public/proof-shots/journey/
 public/proof-shots/pages/
 public/proof-shots/vid/
 public/proof-shots/write.png
+
+# Foundry artifacts
+/out/
+cache_forge/
