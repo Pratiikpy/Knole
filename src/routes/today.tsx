@@ -21,11 +21,16 @@ import {
   decisionReplayFn,
   receiptForEntryFn,
   relatedToDraftFn,
+  entryMilestoneFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/today")({
+  // The yesterday capture slot (history timeline) opens today's editor in backfill mode. The key
+  // is OPTIONAL in the type so every existing <Link to="/today"> stays valid without a search prop.
+  validateSearch: (s: Record<string, unknown>): { for?: "yesterday" } =>
+    s.for === "yesterday" ? { for: "yesterday" } : {},
   head: () => ({
     meta: [
       { title: "Today — Knole" },
@@ -86,6 +91,23 @@ const CHECKIN_ENERGY = [
 ] as const;
 
 const EXPLORER = "https://chainscan.0g.ai";
+
+// 5 → "5th", 21 → "21st" … for the milestone line.
+function ordinalWord(n: number): string {
+  const rem10 = n % 10;
+  const rem100 = n % 100;
+  const suffix =
+    rem100 >= 11 && rem100 <= 13
+      ? "th"
+      : rem10 === 1
+        ? "st"
+        : rem10 === 2
+          ? "nd"
+          : rem10 === 3
+            ? "rd"
+            : "th";
+  return `${n}${suffix}`;
+}
 
 const reflectingMsgs = [
   "Reading what you wrote…",
@@ -215,6 +237,12 @@ function TodayPage() {
   // answer and Knole responds — reflect-first, one question, adapting each turn. Fully skippable (the
   // entry is already saved). Turns render as a visible thread under the first reflection.
   const [entryId, setEntryId] = useState<string | null>(null);
+  const { for: capturedFor } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  // Milestone celebration (Presently rule: 5th, 10th, then every 25th) — checked once per save.
+  const checkMilestone = useServerFn(entryMilestoneFn);
+  const [milestone, setMilestone] = useState<number | null>(null);
+  const [milestoneCopied, setMilestoneCopied] = useState(false);
   const [thread, setThread] = useState<{ role: "you" | "knole"; text: string }[]>([]);
   const [deepInput, setDeepInput] = useState("");
   const [deepMode, setDeepMode] = useState<"listen" | "reflect" | "push">("reflect");
@@ -284,6 +312,8 @@ function TodayPage() {
     );
     setCrisis(false);
     // A fresh reflection starts a fresh thread.
+    setMilestone(null);
+    setMilestoneCopied(false);
     setEntryId(null);
     setThread([]);
     setDeepInput("");
@@ -312,7 +342,7 @@ function TodayPage() {
       const res = await fetch("/journal/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ entry, lens }),
+        body: JSON.stringify({ entry, lens, capturedFor }),
       });
       if (!res.ok || !res.body) {
         setReflection(
@@ -346,6 +376,12 @@ function TodayPage() {
         setReflection(acc);
       }
       setReflected(true);
+      // The celebration moment: if this save crossed a milestone, say so once, right here.
+      if (eid) {
+        checkMilestone({ data: { entryId: eid } })
+          .then((r) => r.result?.milestone && setMilestone(r.result.ordinal))
+          .catch(() => {});
+      }
       // If this was a program day, advance the program (tags the entry, moves to the next day).
       if (activeProgramId && eid) {
         try {
@@ -903,12 +939,30 @@ function TodayPage() {
           </div>
 
           <div className="rounded-2xl border border-rule bg-card/50 p-8">
+            {/* Backfill mode: the yesterday slot on the timeline opens the editor dated to
+                yesterday evening, so a missed day can still be closed honestly. */}
+            {capturedFor === "yesterday" && (
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-tan/30 bg-tan/[0.06] px-4 py-2.5">
+                <span className="text-[12px] text-tan">
+                  Writing about <span className="font-medium">yesterday</span> — this entry will sit
+                  on yesterday's page.
+                </span>
+                <button
+                  onClick={() => void navigate({ search: {} })}
+                  className="shrink-0 text-[12px] text-muted-foreground hover:text-ink"
+                >
+                  switch to today
+                </button>
+              </div>
+            )}
             {potdPersonalized && !activeProgramId && (
               <span className="mb-2 block text-[10px] uppercase tracking-[0.2em] text-tan">
                 for you
               </span>
             )}
-            <p className="font-display text-[18px] italic text-muted-foreground">{prompt}.</p>
+            <p className="font-display text-[18px] italic text-muted-foreground">
+              {capturedFor === "yesterday" ? "What did yesterday hold" : prompt}.
+            </p>
 
             <textarea
               value={entry}
@@ -1150,6 +1204,41 @@ function TodayPage() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Milestone celebration — permanent chips live in History; this is the moment itself. */}
+            {milestone !== null && reflected && !loading && !crisis && (
+              <div className="animate-fade-up mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-6">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-tan">
+                  A milestone
+                </div>
+                <p className="font-display text-[22px] italic leading-snug text-ink">
+                  This was your {ordinalWord(milestone)} entry.
+                </p>
+                <p className="mt-1 max-w-[52ch] text-[13px] leading-relaxed text-muted-foreground">
+                  {milestone < 25
+                    ? "The habit is taking. Every entry teaches the mirror a little more of you."
+                    : "A real body of work now — the mirror reflects from everything you've given it."}
+                </p>
+                <div className="mt-3 flex items-center gap-4">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard
+                        .writeText(
+                          `${milestone} entries into my private journal. It remembers with me. knole.me`,
+                        )
+                        .then(() => setMilestoneCopied(true))
+                        .catch(() => {});
+                    }}
+                    className="text-[13px] text-tan underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    {milestoneCopied ? "copied ✓" : "copy a line to share"}
+                  </button>
+                  <Link to="/history" className="text-[13px] text-muted-foreground hover:text-ink">
+                    see the timeline →
+                  </Link>
+                </div>
               </div>
             )}
 

@@ -15,6 +15,7 @@ export type StreamPrepared = {
   gen: AsyncGenerator<string, unknown, void>; // de-anonymised reply deltas
   headers?: Record<string, string>; // extra response headers (e.g. recalled memories)
   skipExtract?: boolean; // crisis intercept: save the entry, but never derive recallable data from it
+  entryCreatedAt?: Date; // backfill (yesterday capture slot): date the entry into the past
 };
 
 type Prepare = (
@@ -69,7 +70,13 @@ export async function handleStreamingReply(
     const p = await prepare(userId, rawBody);
     if ("error" in p) return txt(p.error, p.msg);
     prepared = p;
-    const row = await saveEntry(userId, prepared.entryText, prepared.qVec, prepared.entryKind);
+    const row = await saveEntry(
+      userId,
+      prepared.entryText,
+      prepared.qVec,
+      prepared.entryKind,
+      prepared.entryCreatedAt ? { createdAt: prepared.entryCreatedAt } : undefined,
+    );
     entryId = row.id;
     // When client-side encryption is on, the SERVER must not encrypt the 0G copy — the client uploads
     // an already-encrypted blob (keyed to its wallet) via the sweep. Otherwise persist on 0G in the
@@ -120,7 +127,10 @@ export async function handleStreamingReply(
           if (!skipExtract) {
             background(extractMemories(userId, entryId, entryText), "extractMemories");
             background(scoreEntryValence(userId, entryId, entryText), "scoreValence");
-            background(storeSignals(userId, entryId, entryText, new Date()), "storeSignals");
+            background(
+              storeSignals(userId, entryId, entryText, prepared.entryCreatedAt ?? new Date()),
+              "storeSignals",
+            );
             background(
               recordReceipt(userId, {
                 entryId,

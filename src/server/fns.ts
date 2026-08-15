@@ -89,6 +89,7 @@ import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { latestAnchor } from "./anchor";
 import { generateNudge, hourInTz } from "./proactivity";
 import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
+import { entryMilestone, milestoneChips } from "./milestones";
 import { resurface, resurfaceNote } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -276,8 +277,20 @@ export const listEntriesFn = createServerFn({ method: "GET" })
   .validator(z.object({ tag: z.string().max(40).optional() }))
   .handler(async ({ data }) => {
     const userId = await currentUserId();
-    const [rows, tags] = await Promise.all([listEntries(userId, data.tag), listTags(userId)]);
-    return { entries: rows, tags };
+    const [rows, tags, milestones] = await Promise.all([
+      listEntries(userId, data.tag),
+      listTags(userId),
+      milestoneChips(userId),
+    ]);
+    return { entries: rows, tags, milestones };
+  });
+
+// The celebration check, called once after a save: is the entry just written a milestone?
+export const entryMilestoneFn = createServerFn({ method: "GET" })
+  .validator(z.object({ entryId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const userId = await currentUserId();
+    return { result: await entryMilestone(userId, data.entryId) };
   });
 
 export const trashEntryFn = createServerFn({ method: "POST" })

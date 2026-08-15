@@ -3,6 +3,35 @@ import { embed } from "./embed";
 import { retrieveMemories } from "./engine";
 import { handleStreamingReply } from "./streamReply";
 import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
+import { eq } from "drizzle-orm";
+import { db, schema } from "../db";
+
+/** UTC instant of yesterday 21:00 in the user's timezone — where a backfilled entry lands so the
+ * timeline, mood graph, and nudge suppression all bucket it into the right local day. */
+async function yesterdayEveningFor(userId: string): Promise<Date> {
+  const [u] = await db
+    .select({ tz: schema.users.timezone })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId));
+  const tz = u?.tz || "UTC";
+  let nowMin = 0;
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+    nowMin = (parseInt(get("hour"), 10) % 24) * 60 + parseInt(get("minute"), 10);
+  } catch {
+    /* bad tz — fall back to UTC minutes */
+    const d = new Date();
+    nowMin = d.getUTCHours() * 60 + d.getUTCMinutes();
+  }
+  const minutesAgo = nowMin - 21 * 60 + 1440; // back to 21:00 of the previous local day
+  return new Date(Date.now() - minutesAgo * 60_000);
+}
 
 /**
  * Streaming journal endpoint (POST /journal/stream). Mirrors journalFn but streams the reflection
@@ -29,11 +58,17 @@ export function handleJournalStream(request: Request): Promise<Response> {
     }
     const lensRaw = String((body as { lens?: string }).lens ?? "gentle");
     const lens: Lens = lensRaw in LENSES ? (lensRaw as Lens) : "gentle";
+    // The yesterday capture slot: date the entry into the previous local day (evening), so a
+    // missed day can still be filled honestly - today's nudge stays armed, yesterday's gap closes.
+    const capturedFor = String((body as { capturedFor?: string }).capturedFor ?? "");
+    const entryCreatedAt =
+      capturedFor === "yesterday" ? await yesterdayEveningFor(userId) : undefined;
     const qVec = await embed(entry);
     const recalled = await retrieveMemories(userId, qVec, 6, entry);
     return {
       entryText: entry,
       entryKind: "journal" as const,
+      entryCreatedAt,
       qVec,
       gen: reflectStream(entry, recalled, lens),
       headers: {

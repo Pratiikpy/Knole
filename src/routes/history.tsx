@@ -37,6 +37,14 @@ type TrashRow = EntryRow & { deletedAt: string };
 const fmt = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
+/** Any entry on the local calendar day `dayOffset` days ago? (0 = today, 1 = yesterday) */
+const hasEntryOn = (entries: EntryRow[], dayOffset: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - dayOffset);
+  const key = d.toDateString();
+  return entries.some((e) => new Date(e.createdAt).toDateString() === key);
+};
+
 function HistoryPage() {
   const load = useServerFn(listEntriesFn);
   const del = useServerFn(trashEntryFn);
@@ -46,6 +54,7 @@ function HistoryPage() {
   const rename = useServerFn(renameTagFn);
 
   const [entries, setEntries] = useState<EntryRow[] | null>(null);
+  const [milestones, setMilestones] = useState<Record<string, number>>({});
   const [tags, setTags] = useState<{ tag: string; count: number }[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [trash, setTrash] = useState<TrashRow[]>([]);
@@ -58,6 +67,7 @@ function HistoryPage() {
       .then((r) => {
         setEntries(r.entries);
         setTags(r.tags);
+        setMilestones(Object.fromEntries(r.milestones.map((m) => [m.entryId, m.ordinal])));
       })
       .catch(() => setEntries([]));
   useEffect(() => {
@@ -161,6 +171,37 @@ function HistoryPage() {
             </div>
           )}
 
+          {/* Always-present capture slots (the Presently pattern): today and yesterday render as
+              rows even when empty, so the timeline itself invites the entry instead of a bare gap.
+              Hidden while filtering — they're capture affordances, not filterable content. */}
+          {entries !== null && !activeTag && (
+            <div className="mb-4 space-y-3">
+              {!hasEntryOn(entries, 0) && (
+                <Link
+                  to="/today"
+                  className="group flex items-baseline justify-between gap-4 rounded-2xl border border-dashed border-rule px-6 py-4 transition-colors hover:border-tan/40"
+                >
+                  <span className="text-[11px] tabular-nums text-muted-foreground">Today</span>
+                  <span className="flex-1 font-display text-[15px] italic text-muted-foreground/70 group-hover:text-tan">
+                    Nothing written yet — leave a line →
+                  </span>
+                </Link>
+              )}
+              {!hasEntryOn(entries, 1) && (
+                <Link
+                  to="/today"
+                  search={{ for: "yesterday" }}
+                  className="group flex items-baseline justify-between gap-4 rounded-2xl border border-dashed border-rule px-6 py-4 transition-colors hover:border-tan/40"
+                >
+                  <span className="text-[11px] tabular-nums text-muted-foreground">Yesterday</span>
+                  <span className="flex-1 font-display text-[15px] italic text-muted-foreground/70 group-hover:text-tan">
+                    Yesterday went unrecorded — a line still counts →
+                  </span>
+                </Link>
+              )}
+            </div>
+          )}
+
           {/* Entries */}
           {entries === null ? (
             <p className="text-[14px] text-muted-foreground">Loading…</p>
@@ -177,6 +218,11 @@ function HistoryPage() {
                   <div className="mb-2 flex items-baseline justify-between gap-3">
                     <span className="text-[11px] tabular-nums text-muted-foreground">
                       {fmt(e.createdAt)}
+                      {milestones[e.id] && (
+                        <span className="ml-2 rounded-full bg-tan/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-tan">
+                          ✦ {milestones[e.id]}th entry
+                        </span>
+                      )}
                     </span>
                     <button
                       onClick={() => doDelete(e.id)}
