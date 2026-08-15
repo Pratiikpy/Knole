@@ -21,7 +21,13 @@ const RESEARCH_SYS = `You are Knole's private research assistant. You have just 
 - The person's identity has been stripped from this query; never guess who they are.
 Plain, readable prose (light structure is fine for longer answers).`;
 
-export type ResearchResult = { answer: string; anonymised: boolean };
+export type ResearchResult = {
+  answer: string;
+  anonymised: boolean;
+  /** The router's per-request TEE attestation verdict (x_0g_trace.tee_verified). Null when the
+   * provider didn't attest — shown honestly as unverified, never assumed. */
+  teeVerified: boolean | null;
+};
 
 /** Run a private research query on 0G Qwen-Max (verified tier), query anonymised, answer de-anonymised. */
 export async function research(question: string): Promise<ResearchResult> {
@@ -53,6 +59,9 @@ export async function research(question: string): Promise<ResearchResult> {
       // query is already PER-anonymised above, so the search never carries the person's identity.
       enable_search: true,
       search_options: { forced_search: true, enable_source: true },
+      // Ask the router to attest the serving provider per-request; the verdict comes back in
+      // x_0g_trace.tee_verified and drives an honest badge on the research answer.
+      verify_tee: true,
     }),
     signal: AbortSignal.timeout(120_000),
   });
@@ -60,7 +69,12 @@ export async function research(question: string): Promise<ResearchResult> {
     const detail = await res.text().catch(() => "");
     throw new Error(`0G research failed (${res.status}): ${detail.slice(0, 200)}`);
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    x_0g_trace?: { tee_verified?: boolean };
+  };
   const raw = data.choices?.[0]?.message?.content ?? "";
-  return { answer: deAnonymise(raw, map), anonymised: Object.keys(map).length > 0 };
+  const teeVerified =
+    typeof data.x_0g_trace?.tee_verified === "boolean" ? data.x_0g_trace.tee_verified : null;
+  return { answer: deAnonymise(raw, map), anonymised: Object.keys(map).length > 0, teeVerified };
 }

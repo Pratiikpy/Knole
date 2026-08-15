@@ -22,6 +22,7 @@ function ResearchPage() {
   const getPacks = useServerFn(creditPacksFn);
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
+  const [teeVerified, setTeeVerified] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
@@ -46,6 +47,7 @@ function ResearchPage() {
       const r = await doResearch({ data: { question } });
       if (r.ok) {
         setAnswer(r.answer);
+        setTeeVerified(r.teeVerified ?? null);
         if (typeof r.credits === "number") setCredits(r.credits);
       } else if (r.reason === "need_credits") {
         setCredits(r.credits);
@@ -128,6 +130,14 @@ function ResearchPage() {
               <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
                 {answer}
               </p>
+              {teeVerified === true && (
+                <p
+                  className="mt-4 border-t border-rule pt-3 text-[11px] text-tan"
+                  title="The 0G router attested this exact response was served from a verified execution environment (x_0g_trace.tee_verified)."
+                >
+                  ✓ attested execution — verified by the 0G router for this response
+                </p>
+              )}
             </div>
           )}
         </div>
