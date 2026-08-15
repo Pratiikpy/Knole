@@ -20,6 +20,7 @@ import {
   whatModelSawFn,
   decisionReplayFn,
   receiptForEntryFn,
+  relatedToDraftFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
@@ -160,6 +161,28 @@ function TodayPage() {
   // Start empty — the textarea shows its placeholder prompt, never pre-filled with someone else's
   // words. A new user's journal must be theirs from the first keystroke.
   const [entry, setEntry] = useState("");
+  // Related-while-you-write: past entries that echo the draft, surfaced quietly as you type.
+  type RelatedHit = { id: string; date: string; snippet: string; score: number };
+  const [related, setRelated] = useState<RelatedHit[]>([]);
+  const relatedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastRelatedQuery = useRef("");
+  const doRelated = useServerFn(relatedToDraftFn);
+  const scheduleRelated = (draft: string) => {
+    if (relatedTimer.current) clearTimeout(relatedTimer.current);
+    const text = draft.trim();
+    if (text.length < 60) {
+      setRelated([]);
+      return;
+    }
+    relatedTimer.current = setTimeout(() => {
+      const probe = text.slice(0, 900);
+      if (probe === lastRelatedQuery.current) return;
+      lastRelatedQuery.current = probe;
+      doRelated({ data: { draft: probe } })
+        .then((r) => setRelated(r.related))
+        .catch(() => {});
+    }, 1200);
+  };
   const [lens, setLens] = useState<string>("gentle");
   const [reflected, setReflected] = useState(false);
   const [reflection, setReflection] = useState<string | null>(null);
@@ -871,6 +894,7 @@ function TodayPage() {
               onFocus={warmOnIntent}
               onChange={(e) => {
                 setEntry(e.target.value);
+                scheduleRelated(e.target.value);
                 setReflected(false);
                 setReflection(null);
                 setRemembered(null);
@@ -885,6 +909,33 @@ function TodayPage() {
               className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Write what's true, even if it's small."
             />
+
+            {/* Echoes — the journal remembering, live, while the draft takes shape. */}
+            {related.length > 0 && !reflected && (
+              <div className="animate-fade-up mt-2 space-y-1.5">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-tan/80">
+                  Echoes from your past
+                </div>
+                {related.map((r) => (
+                  <Link
+                    key={r.id}
+                    to="/history"
+                    className="block rounded-xl border border-rule/50 bg-card/40 px-3.5 py-2.5 transition-colors hover:border-tan/40"
+                  >
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(r.date).toLocaleDateString(undefined, {
+                        month: "long",
+                        day: "numeric",
+                      })}
+                      {" — "}
+                    </span>
+                    <span className="font-display text-[13px] italic text-ink-soft">
+                      {r.snippet}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
 
             {/* Voice journaling — speak, transcribed privately on 0G, then edit like any entry. */}
             <div className="mt-3 flex flex-wrap items-center gap-3">

@@ -14,6 +14,7 @@ import {
   updateMemoryContent,
   getSettings,
   updateSettings,
+  retrieveEntries,
   getMemoryProvenance,
   markMirrorRevealed,
   futureSelfReadiness,
@@ -154,6 +155,29 @@ export const listMemoriesFn = createServerFn({ method: "GET" }).handler(async ()
   const userId = await currentUserId();
   return { memories: await listMemories(userId) };
 });
+
+// Related-while-you-write: as a draft takes shape, surface the past entries closest to it — the
+// "your journal remembers" moment, live during writing. Embeds locally-shaped text server-side and
+// searches pgvector; nothing is saved and nothing reaches any model.
+export const relatedToDraftFn = createServerFn({ method: "POST" })
+  .validator(z.object({ draft: z.string().min(40).max(4000) }))
+  .handler(async ({ data }) => {
+    enforceRate("related", 40, 60_000);
+    const userId = await currentUserId();
+    const qVec = await embed(data.draft.slice(0, 900));
+    const hits = await retrieveEntries(userId, qVec, 5);
+    return {
+      related: hits
+        .filter((h) => h.score >= 0.35)
+        .slice(0, 3)
+        .map((h) => ({
+          id: h.id,
+          date: h.createdAt,
+          snippet: h.text.length > 150 ? h.text.slice(0, 150) + "…" : h.text,
+          score: Math.round(h.score * 100) / 100,
+        })),
+    };
+  });
 
 // ── guided prompts + journaling programs (#30) ──
 export const promptOfTheDayFn = createServerFn({ method: "GET" }).handler(async () => {
