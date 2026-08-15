@@ -41,6 +41,24 @@ export const Route = createFileRoute("/today")({
   component: TodayPage,
 });
 
+// Sectioned composer (private-journal-mcp): optional structured fields whose placeholders do the
+// psychological priming - each one an invitation to a different register of honesty.
+const SECTIONS = [
+  { key: "events", label: "What happened", ph: "The facts of the day, as they were." },
+  {
+    key: "feelings",
+    label: "How it felt",
+    ph: "Underneath the events. Be as honest as you can stand.",
+  },
+  { key: "gratitude", label: "What you're glad of", ph: "Small counts. Ordinary counts." },
+  {
+    key: "insights",
+    label: "What you're seeing",
+    ph: "A connection, a suspicion, a lesson forming.",
+  },
+  { key: "people", label: "Who mattered today", ph: "Names, and what passed between you." },
+] as const;
+
 const prompts = [
   "A high point",
   "Something you're looking forward to",
@@ -193,6 +211,23 @@ function TodayPage() {
   // Start empty — the textarea shows its placeholder prompt, never pre-filled with someone else's
   // words. A new user's journal must be theirs from the first keystroke.
   const [entry, setEntry] = useState("");
+  const [sectionsMode, setSectionsMode] = useState(false);
+  const [sectionVals, setSectionVals] = useState<Record<string, string>>({});
+  const setSection = (key: string, label: string, v: string) => {
+    setSectionVals((cur) => {
+      const next = { ...cur, [key]: v };
+      // The combined prose stays the single source of truth: embeddings, related-echoes, and the
+      // reflection all read `entry`, so sections ride the existing pipeline unchanged.
+      const combined = SECTIONS.filter((s) => (next[s.key] ?? "").trim())
+        .map((s) => `${s.label}:\n${next[s.key].trim()}`)
+        .join("\n\n");
+      setEntry(combined);
+      scheduleRelated(combined);
+      setReflected(false);
+      setReflection(null);
+      return next;
+    });
+  };
   // Related-while-you-write: past entries that echo the draft, surfaced quietly as you type.
   type RelatedHit = { id: string; date: string; snippet: string; score: number };
   const [related, setRelated] = useState<RelatedHit[]>([]);
@@ -357,7 +392,14 @@ function TodayPage() {
       const res = await fetch("/journal/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ entry, lens, capturedFor }),
+        body: JSON.stringify({
+          entry,
+          lens,
+          capturedFor,
+          sections: sectionsMode
+            ? Object.fromEntries(Object.entries(sectionVals).filter(([, v]) => v.trim()))
+            : undefined,
+        }),
       });
       if (!res.ok || !res.body) {
         setReflection(
@@ -1007,26 +1049,59 @@ function TodayPage() {
               {capturedFor === "yesterday" ? "What did yesterday hold" : prompt}.
             </p>
 
-            <textarea
-              value={entry}
-              onFocus={warmOnIntent}
-              onChange={(e) => {
-                setEntry(e.target.value);
-                scheduleRelated(e.target.value);
+            {!sectionsMode ? (
+              <textarea
+                value={entry}
+                onFocus={warmOnIntent}
+                onChange={(e) => {
+                  setEntry(e.target.value);
+                  scheduleRelated(e.target.value);
+                  setReflected(false);
+                  setReflection(null);
+                  setRemembered(null);
+                  setEntryId(null);
+                  setThread([]);
+                  setDeepClosed(false);
+                }}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleReflect();
+                }}
+                rows={6}
+                className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
+                placeholder="Write what's true, even if it's small."
+              />
+            ) : (
+              <div className="mt-4 space-y-4">
+                {SECTIONS.map((s) => (
+                  <div key={s.key}>
+                    <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {s.label}
+                    </div>
+                    <textarea
+                      value={sectionVals[s.key] ?? ""}
+                      onFocus={warmOnIntent}
+                      onChange={(e) => setSection(s.key, s.label, e.target.value)}
+                      rows={2}
+                      className="w-full resize-none rounded-xl border border-rule bg-card/40 px-4 py-3 font-display text-[17px] leading-[1.5] text-ink placeholder:text-muted-foreground/50 focus:border-tan/40 focus:outline-none"
+                      placeholder={s.ph}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setSectionsMode((m) => !m);
+                setEntry("");
+                setSectionVals({});
+                setRelated([]);
                 setReflected(false);
                 setReflection(null);
-                setRemembered(null);
-                setEntryId(null);
-                setThread([]);
-                setDeepClosed(false);
               }}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleReflect();
-              }}
-              rows={6}
-              className="mt-4 w-full resize-none border-none bg-transparent font-display text-[22px] leading-[1.5] text-ink placeholder:text-muted-foreground/60 focus:outline-none"
-              placeholder="Write what's true, even if it's small."
-            />
+              className="mt-2 text-[11px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+            >
+              {sectionsMode ? "back to the open page" : "write in sections instead"}
+            </button>
 
             {/* Echoes — the journal remembering, live, while the draft takes shape. */}
             {related.length > 0 && !reflected && (

@@ -183,6 +183,13 @@
       "when": 1786809409880,
       "tag": "0025_volatile_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786811971768,
+      "tag": "0026_small_johnny_storm",
+      "breakpoints": true
     }
   ]
 }

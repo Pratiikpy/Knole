@@ -123,6 +123,10 @@ export const entries = pgTable(
     // Structured check-in (#33): a user-selected energy level (0..1) alongside mood. Activities the
     // person logs ride the `tags` array below (unified with #35 tags), so they're correlatable for free.
     energy: real("energy"),
+    // Sectioned entries (private-journal-mcp): the optional structured fields the composer offered
+    // and the person filled. The combined prose (with headers) lives in `text` - the single source
+    // for embeddings and reflection; sections keep the structure for filtered views later.
+    sections: jsonb("sections").$type<Record<string, string>>(),
     // Personal-baseline flag (the baseline-app model): the person marks a check-in as below / at /
     // above THEIR usual. Days flagged unusual are down-weighted (x0.4) when computing the rolling
     // baseline, so the "normal" line tracks their normal, not their outliers.

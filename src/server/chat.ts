@@ -2,6 +2,7 @@ import { type ChatMsg } from "./llm";
 import { chatPrivate, chatPrivateStream } from "./sealed";
 import { retrieveMemories, retrieveEntries, type EntryHit } from "./engine";
 import { embed } from "./embed";
+import { bestExcerpt } from "./excerpt";
 
 const CHAT_SYS = `You are Knole — a private, warm, sharp thinking-partner the user talks to. Not a yes-man, not a generic assistant.
 - You remember this person across time. Weave in what you genuinely know about them when it helps, naturally — never list facts, never say "according to my notes".
@@ -74,7 +75,8 @@ export async function gatherChatContext(
         month: "short",
         year: "numeric",
       });
-      if (!found.some((f) => f.text === h.text)) found.push({ query, date, text: h.text });
+      const excerpt = bestExcerpt(h.text, query, 280);
+      if (!found.some((f) => f.text === excerpt)) found.push({ query, date, text: excerpt });
     }
     if (!hits.length) break;
   }

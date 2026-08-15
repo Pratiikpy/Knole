@@ -16,6 +16,7 @@ export type StreamPrepared = {
   headers?: Record<string, string>; // extra response headers (e.g. recalled memories)
   skipExtract?: boolean; // crisis intercept: save the entry, but never derive recallable data from it
   entryCreatedAt?: Date; // backfill (yesterday capture slot): date the entry into the past
+  entrySections?: Record<string, string> | null; // sectioned composer: the structured fields as filled
 };
 
 type Prepare = (
@@ -75,7 +76,9 @@ export async function handleStreamingReply(
       prepared.entryText,
       prepared.qVec,
       prepared.entryKind,
-      prepared.entryCreatedAt ? { createdAt: prepared.entryCreatedAt } : undefined,
+      prepared.entryCreatedAt || prepared.entrySections
+        ? { createdAt: prepared.entryCreatedAt, sections: prepared.entrySections ?? null }
+        : undefined,
     );
     entryId = row.id;
     // When client-side encryption is on, the SERVER must not encrypt the 0G copy — the client uploads

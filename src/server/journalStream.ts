@@ -61,6 +61,17 @@ export function handleJournalStream(request: Request): Promise<Response> {
     // The yesterday capture slot: date the entry into the previous local day (evening), so a
     // missed day can still be filled honestly - today's nudge stays armed, yesterday's gap closes.
     const capturedFor = String((body as { capturedFor?: string }).capturedFor ?? "");
+    // Sectioned composer: keep the structured fields (validated, size-capped) alongside the prose.
+    const rawSections = (body as { sections?: unknown }).sections;
+    let entrySections: Record<string, string> | null = null;
+    if (rawSections && typeof rawSections === "object" && !Array.isArray(rawSections)) {
+      const clean: Record<string, string> = {};
+      for (const [k, v] of Object.entries(rawSections as Record<string, unknown>).slice(0, 8)) {
+        if (typeof v === "string" && v.trim() && k.length <= 24)
+          clean[k.slice(0, 24)] = v.trim().slice(0, 4000);
+      }
+      if (Object.keys(clean).length) entrySections = clean;
+    }
     const entryCreatedAt =
       capturedFor === "yesterday" ? await yesterdayEveningFor(userId) : undefined;
     const qVec = await embed(entry);
@@ -69,6 +80,7 @@ export function handleJournalStream(request: Request): Promise<Response> {
       entryText: entry,
       entryKind: "journal" as const,
       entryCreatedAt,
+      entrySections,
       qVec,
       gen: reflectStream(entry, recalled, lens),
       headers: {

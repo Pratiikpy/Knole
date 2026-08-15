@@ -94,6 +94,7 @@ import { moodBaseline } from "./baseline";
 import { calendarMonth, journalStats } from "./calendar";
 import { companionComment } from "./companion";
 import { ASK_PRESETS, FREE_CUSTOM_PER_DAY } from "./askPresets";
+import { bestExcerpt } from "./excerpt";
 import {
   createAutomation,
   listAutomations,
@@ -185,7 +186,8 @@ export const relatedToDraftFn = createServerFn({ method: "POST" })
         .map((h) => ({
           id: h.id,
           date: h.createdAt,
-          snippet: h.text.length > 150 ? h.text.slice(0, 150) + "…" : h.text,
+          // Query-aware excerpt: show the passage that echoes the draft, not the entry's opening.
+          snippet: bestExcerpt(h.text, data.draft.slice(0, 300), 150),
           score: Math.round(h.score * 100) / 100,
         })),
     };
