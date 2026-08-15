@@ -88,6 +88,7 @@ import {
 import { ownershipSummary, restoreEntryFromChain } from "./restore";
 import { latestAnchor } from "./anchor";
 import { generateNudge, hourInTz } from "./proactivity";
+import { getNudgePrefs, saveNudgePrefs } from "./nudgeEngine";
 import { resurface, resurfaceNote } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -890,6 +891,32 @@ export const architectureFn = createServerFn({ method: "GET" }).handler(async ()
 
 // Web-push enrollment: the client needs the VAPID public key to create a subscription, and whether
 // push is even configured (so Settings can hide the control until the VAPID keys are supplied).
+// ── the nudge engine: a random-in-window daily reminder that never fires if you already wrote ──
+
+export const nudgePrefsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return getNudgePrefs(userId);
+});
+
+export const saveNudgePrefsFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      enabled: z.boolean(),
+      mode: z.enum(["random", "fixed"]),
+      windowStartMin: z.number().int().min(0).max(1439),
+      windowEndMin: z.number().int().min(0).max(1439),
+      fixedTimeMin: z.number().int().min(0).max(1439),
+      alwaysRemind: z.boolean(),
+      otdTimeMin: z.number().int().min(0).max(1439).nullable(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("nudge-prefs", 20, 60_000);
+    await saveNudgePrefs(userId, data);
+    return getNudgePrefs(userId);
+  });
+
 export const pushConfigFn = createServerFn({ method: "GET" }).handler(async () => {
   return { configured: pushConfigured(), publicKey: vapidPublicKey() };
 });

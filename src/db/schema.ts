@@ -395,3 +395,24 @@ export const evalRuns = pgTable("eval_runs", {
   details: jsonb("details"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ── nudge engine (the retention lever) ───────────────────
+// One row per user: a randomized-in-window (or fixed) daily reminder that fires ONLY when they
+// haven't journaled today, plus a memory-gated on-this-day push. next_fire_at is the precomputed
+// UTC instant the dispatcher acts on; every fire schedules the next.
+export const nudgeSettings = pgTable("nudge_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").default(false).notNull(),
+  mode: text("mode").default("random").notNull(), // random (in window) | fixed
+  windowStartMin: integer("window_start_min").default(540).notNull(), // 09:00, minutes from local midnight
+  windowEndMin: integer("window_end_min").default(1260).notNull(), // 21:00; end < start = crosses midnight
+  fixedTimeMin: integer("fixed_time_min").default(1200).notNull(), // 20:00
+  alwaysRemind: boolean("always_remind").default(false).notNull(), // fire even after journaling
+  otdTimeMin: integer("otd_time_min"), // on-this-day push, local minutes; null = off
+  otdLastDate: text("otd_last_date"), // YYYY-MM-DD (user tz) of the last on-this-day push
+  nextFireAt: timestamp("next_fire_at"),
+  lastFiredAt: timestamp("last_fired_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

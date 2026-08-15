@@ -186,6 +186,27 @@ function TodayPage() {
   const [lens, setLens] = useState<string>("gentle");
   const [reflected, setReflected] = useState(false);
   const [reflection, setReflection] = useState<string | null>(null);
+
+  // One-time ask (the Presently pattern): after the first reflection ever completes, offer the
+  // daily reminder once. localStorage-flagged so it never nags again, whichever way they answer.
+  const [nudgeAsk, setNudgeAsk] = useState(false);
+  useEffect(() => {
+    if (!reflected) return;
+    try {
+      if (localStorage.getItem("knole.nudge.asked")) return;
+    } catch {
+      return; // private mode — never show rather than show every time
+    }
+    setNudgeAsk(true);
+  }, [reflected]);
+  const dismissNudgeAsk = () => {
+    try {
+      localStorage.setItem("knole.nudge.asked", "1");
+    } catch {
+      /* localStorage unavailable — dismiss for this page anyway */
+    }
+    setNudgeAsk(false);
+  };
   const [crisis, setCrisis] = useState(false);
   const [loading, setLoading] = useState(false);
   const [remembered, setRemembered] = useState<RecallPill | null>(null);
@@ -1129,6 +1150,34 @@ function TodayPage() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* First-reflection ask: one chance to set up the daily nudge, then never again. */}
+            {nudgeAsk && reflected && !loading && !crisis && (
+              <div className="animate-fade-up mt-6 rounded-2xl border border-rule bg-card/60 p-6">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-tan">
+                  Make this a habit?
+                </div>
+                <p className="max-w-[52ch] text-[14px] leading-relaxed text-ink-soft">
+                  Knole can nudge you once a day, at a random quiet moment — and only on days you
+                  haven't written. Journal first, and it stays silent.
+                </p>
+                <div className="mt-3 flex items-center gap-4">
+                  <Link
+                    to="/settings"
+                    onClick={dismissNudgeAsk}
+                    className="text-[13px] text-tan underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    set a daily reminder →
+                  </Link>
+                  <button
+                    onClick={dismissNudgeAsk}
+                    className="text-[13px] text-muted-foreground hover:text-ink"
+                  >
+                    not now
+                  </button>
+                </div>
               </div>
             )}
 

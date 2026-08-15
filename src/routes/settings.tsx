@@ -20,6 +20,7 @@ import {
 import { useState, useEffect } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { NotifyButton } from "@/components/knole/NotifyButton";
+import { NudgeCard } from "@/components/knole/NudgeCard";
 import { useClientKey } from "@/lib/useClientKey";
 
 export const Route = createFileRoute("/settings")({
@@ -399,6 +400,11 @@ function SettingsPage() {
             <p className="mt-3 text-[12px] text-muted-foreground">
               Knole will stay silent between these hours, even if it has something to say.
             </p>
+          </Group>
+
+          {/* Daily reminder — the nudge engine */}
+          <Group title="Daily reminder">
+            <NudgeCard />
           </Group>
 
           {/* Voice */}

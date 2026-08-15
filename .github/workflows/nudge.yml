@@ -1,0 +1,21 @@
+name: Nudge dispatch
+
+# Vercel Hobby crons are daily-only; nudges need minute-scale dispatch. GitHub's scheduler fills the
+# gap (5-minute minimum, real-world jitter up to ~15 — fine for a reminder whose exact minute is
+# random anyway). The endpoint is idempotent and Bearer-guarded; a missed tick just fires next tick.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the nudge dispatcher
+        run: |
+          code=$(curl -s -o /tmp/out -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://www.knole.me/cron/nudge)
+          cat /tmp/out
+          [ "$code" = "200" ] || { echo "dispatch failed ($code)"; exit 1; }
