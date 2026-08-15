@@ -19,6 +19,7 @@ import {
   markMirrorRevealed,
   futureSelfReadiness,
   setAgeAffirmed,
+  memoriesForEntry,
 } from "./engine";
 import { embed, warmEmbed } from "./embed";
 import { warmNER, anonymise } from "./anonymise";
@@ -966,6 +967,15 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
 });
+
+// The filing strip (memex's processing-placeholder pattern): what the extractor filed from one
+// entry, polled briefly after a reflection so the person watches the Index organize itself.
+export const memoriesForEntryFn = createServerFn({ method: "GET" })
+  .validator(z.object({ entryId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const userId = await currentUserId();
+    return { memories: await memoriesForEntry(userId, data.entryId) };
+  });
 
 // The margin's comment on an entry - generated once, skipped freely (silence is a feature).
 export const companionCommentFn = createServerFn({ method: "POST" })

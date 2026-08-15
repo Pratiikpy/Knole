@@ -23,6 +23,7 @@ import {
   relatedToDraftFn,
   entryMilestoneFn,
   companionCommentFn,
+  memoriesForEntryFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
@@ -292,6 +293,33 @@ function TodayPage() {
   // late so it lands like someone chiming in, not part of the machine's output.
   const getCompanion = useServerFn(companionCommentFn);
   const [marginNote, setMarginNote] = useState<{ move: string | null; text: string } | null>(null);
+  // The filing strip (memex's processing placeholder): after a reflection, watch the Index file
+  // what it learned. Polls briefly; if extraction filed nothing (or is slow), the strip just fades.
+  const getFiled = useServerFn(memoriesForEntryFn);
+  const [filed, setFiled] = useState<{ id: string; type: string; content: string }[] | null>(null);
+  const [filing, setFiling] = useState(false);
+  const filingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startFilingPoll = (eid: string) => {
+    setFiling(true);
+    setFiled(null);
+    let tries = 0;
+    const poll = () => {
+      tries++;
+      getFiled({ data: { entryId: eid } })
+        .then((r) => {
+          if (r.memories.length) {
+            setFiled(r.memories);
+            setFiling(false);
+          } else if (tries < 10) {
+            filingTimer.current = setTimeout(poll, 4000);
+          } else {
+            setFiling(false); // nothing durable in this one - the strip quietly leaves
+          }
+        })
+        .catch(() => setFiling(false));
+    };
+    filingTimer.current = setTimeout(poll, 4500);
+  };
   const [thread, setThread] = useState<{ role: "you" | "knole"; text: string }[]>([]);
   const [deepInput, setDeepInput] = useState("");
   const [deepMode, setDeepMode] = useState<"listen" | "reflect" | "push">("reflect");
@@ -364,6 +392,9 @@ function TodayPage() {
     setMilestone(null);
     setMilestoneCopied(false);
     setMarginNote(null);
+    setFiled(null);
+    setFiling(false);
+    if (filingTimer.current) clearTimeout(filingTimer.current);
     setEntryId(null);
     setThread([]);
     setDeepInput("");
@@ -439,6 +470,7 @@ function TodayPage() {
           .then((r) => r.result?.milestone && setMilestone(r.result.ordinal))
           .catch(() => {});
       }
+      if (eid) startFilingPoll(eid);
       // The margin arrives a beat later, if it chooses to speak at all.
       if (eid) {
         const capturedEid = eid;
@@ -1334,6 +1366,36 @@ function TodayPage() {
                 <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
                   — the margin
                 </p>
+              </div>
+            )}
+
+            {/* The filing strip — the Index, visibly doing its job. */}
+            {(filing || (filed && filed.length > 0)) && reflected && !loading && !crisis && (
+              <div className="animate-fade-up mt-4">
+                {filing ? (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                    <Pulse />
+                    <span>The Index is filing this…</span>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-tan/80">
+                      Filed to your Index
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {filed!.map((f) => (
+                        <Link
+                          key={f.id}
+                          to="/the-index"
+                          className="max-w-full truncate rounded-full border border-rule bg-card/60 px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-tan/40 hover:text-ink"
+                        >
+                          <span className="mr-1.5 text-tan">{f.type}</span>
+                          {f.content.length > 60 ? `${f.content.slice(0, 60)}…` : f.content}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

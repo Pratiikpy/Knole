@@ -232,6 +232,19 @@ export async function retrieveMemories(
   return result;
 }
 
+/** What the extractor filed from one entry - the filing strip's data (memex placeholder flow). */
+export async function memoriesForEntry(
+  userId: string,
+  entryId: string,
+): Promise<{ id: string; type: string; content: string }[]> {
+  const rows = await db
+    .select({ id: memories.id, type: memories.type, content: memories.content })
+    .from(memories)
+    .where(and(eq(memories.sourceEntryId, entryId), eq(memories.userId, userId)))
+    .limit(8);
+  return rows.map((r) => ({ id: r.id, type: String(r.type), content: r.content }));
+}
+
 /** Bump recall stats for memories that were just surfaced (fire-and-forget). */
 export async function bumpRecall(userId: string, ids: string[]): Promise<void> {
   if (!ids.length) return;

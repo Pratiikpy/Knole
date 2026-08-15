@@ -83,6 +83,18 @@ const typeLabel: Record<string, string> = {
   emotion: "Feeling",
 };
 
+// Typed cards (memex): each memory type carries its own left-edge accent so the Index reads as a
+// structured self-model at a glance - relationships warm, commitments urgent, patterns deep.
+const typeAccent: Record<string, string> = {
+  fact: "border-l-stone-300",
+  pattern: "border-l-[#4a4457]",
+  commitment: "border-l-[#a98a5e]",
+  relationship: "border-l-[#c2a15e]",
+  preference: "border-l-[#a79e90]",
+  value: "border-l-[#7c6545]",
+  emotion: "border-l-[#7a7382]",
+};
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -271,7 +283,7 @@ function TheIndex() {
               {sorted.map((f) => (
                 <li
                   key={f.id}
-                  className="group rounded-xl border border-rule bg-card/50 p-5 transition-colors hover:border-ink/15"
+                  className={`group rounded-xl border border-rule border-l-2 bg-card/50 p-5 transition-colors hover:border-ink/15 ${typeAccent[f.type] ?? "border-l-rule"}`}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
