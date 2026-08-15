@@ -295,8 +295,11 @@ function SettingsPage() {
         .then(() => router.invalidate())
         .catch(() => {});
     }
+    // user?.id is load-bearing: a wallet login can REPLACE the Privy identity mid-session (guest
+    // DID → wallet DID) without `authenticated` ever flipping — without re-keying on the DID, the
+    // server session stays pinned to the wallet-less guest and mint/day-anchor see no wallet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated]);
+  }, [ready, authenticated, user?.id]);
   const [forgetOpen, setForgetOpen] = useState(false);
   const [forgetFrom, setForgetFrom] = useState("");
   const [forgetTo, setForgetTo] = useState("");
