@@ -84,6 +84,8 @@ export type INFTRecord = {
   version: number;
   mintedAt: string;
   network?: string;
+  /** The contract the token lives on. Records without it predate the v1.1 redeploy and are stale. */
+  contract?: string;
 };
 
 export async function inftStatus(userId: string): Promise<INFTRecord | null> {
@@ -119,10 +121,14 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
   const existing = await inftStatus(userId);
   const c = contract();
 
-  // Only evolve a token that lives on the CURRENT network. A record from another chain (e.g. a
-  // testnet token after the mainnet migration; legacy records with no network tag are testnet) can't
-  // be evolved on this contract — fall through to mint a fresh token here instead.
-  if (existing && (existing.network ?? "testnet") === NET_NAME) {
+  // Only evolve a token that lives on the CURRENT network AND the current contract. A record from
+  // another chain, or minted on a prior deployment (e.g. v1.0 before the raw-transfer fix — records
+  // without a contract tag), can't be evolved here — fall through to mint fresh on this contract.
+  if (
+    existing &&
+    (existing.network ?? "testnet") === NET_NAME &&
+    (existing.contract ?? "").toLowerCase() === NFT_ADDRESS.toLowerCase()
+  ) {
     const tx = await c.evolve(existing.tokenId, datas);
     const rcpt = await tx.wait();
     const rec: INFTRecord = {
@@ -132,6 +138,7 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
       version: existing.version + 1,
       mintedAt: existing.mintedAt,
       network: existing.network ?? NET_NAME,
+      contract: NFT_ADDRESS,
     };
     await db
       .insert(reflectionArtifacts)
@@ -163,6 +170,7 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
     version: 1,
     mintedAt: new Date().toISOString(),
     network: NET_NAME,
+    contract: NFT_ADDRESS,
   };
   await db
     .insert(reflectionArtifacts)
