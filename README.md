@@ -80,7 +80,7 @@ Trust is minimized at every layer:
 | **0G Storage** | Encrypted journal entries                 |
 | **0G Chain**   | Integrity roots + memory ownership (iNFT) |
 
-The **sealed 0G TEE is the primary inference path**, verified by hardware attestation on every response. If the enclave is ever unreachable, Knole falls back to the plain 0G model — honestly marked *not sealed*, never dressed up as the enclave — so an outage costs the seal, never your privacy (the text is already anonymized before any model) or capability.
+The **sealed 0G TEE is the primary inference path**, verified by hardware attestation on every response. If the enclave is ever unreachable, Knole falls back to the plain 0G model — honestly marked _not sealed_, never dressed up as the enclave — so an outage costs the seal, never your privacy (the text is already anonymized before any model) or capability.
 
 ## Proof, Not Promises
 
@@ -88,17 +88,17 @@ Every major claim is verifiable — and here's the on-chain proof, live on the 0
 
 The memory token is a **genuine ERC-7857 Agentic ID** — not an ERC-721 wearing the name. Don't take our word for it; call the deployed contract yourself. Every value below is read from `KnoleAgenticID` on 0G Aristotle mainnet and is live on the [**/verify**](https://knole.me/verify) page, re-checked on each load:
 
-| On-chain check (contract [`0x6A3200…6B813`](https://chainscan.0g.ai/address/0x6A3200aea59043cAb74e2077F3f446db0646B813)) | Result |
-| --- | --- |
-| `supportsInterface(0x4b396f04)` — **ERC-7857 (iNFT)** | **true** |
-| `supportsInterface(0x35d39512)` — ERC-7857 Authorize | **true** |
-| `supportsInterface(0xd79f01c7)` — ERC-7857 Cloneable | **true** |
-| `supportsInterface(0x80ac58cd)` — ERC-721 (compatible) | **true** |
-| `supportsInterface(0xdeadbeef)` — unknown id (control) | **false** |
+| On-chain check (contract [`0x6A3200…6B813`](https://chainscan.0g.ai/address/0x6A3200aea59043cAb74e2077F3f446db0646B813)) | Result    |
+| ------------------------------------------------------------------------------------------------------------------------ | --------- |
+| `supportsInterface(0x4b396f04)` — **ERC-7857 (iNFT)**                                                                    | **true**  |
+| `supportsInterface(0x35d39512)` — ERC-7857 Authorize                                                                     | **true**  |
+| `supportsInterface(0xd79f01c7)` — ERC-7857 Cloneable                                                                     | **true**  |
+| `supportsInterface(0x80ac58cd)` — ERC-721 (compatible)                                                                   | **true**  |
+| `supportsInterface(0xdeadbeef)` — unknown id (control)                                                                   | **false** |
 
 The control id returning **false** is the point: this is a real interface registry, not a stub that answers `true` to everything. **Mints go to the user, not a central wallet** — [token #2](https://chainscan.0g.ai/tx/0xbc9be373659865c80920902d40f7dd397a1ea7e9905a6392b66d1b8d79d94e1b) is owned by `0x45d6431D…`, a user's own embedded wallet, minted gas-free by the server. The encrypted memory snapshot lives on 0G Storage; the token records only its hash.
 
-- **Sealed inference is real, not a fallback** — reflection *and* live chat run through the 0G Compute serving broker inside a TEE (TeeML), and every response is gated on `processResponse()`, which verifies the enclave attestation before the "sealed" badge is ever shown
+- **Sealed inference is real, not a fallback** — reflection _and_ live chat run through the 0G Compute serving broker inside a TEE (TeeML), and every response is gated on `processResponse()`, which verifies the enclave attestation before the "sealed" badge is ever shown
 - **21 automated evaluation suites** in CI — retrieval, groundedness, privacy-leak, crypto, isolation
 - **Restore-from-chain** verification with real mainnet roots
 - A **real-wallet end-to-end run** — inbox → Privy OTP → wallet-signed encryption → on-chain mint

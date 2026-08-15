@@ -20,8 +20,20 @@ export async function generateImage(prompt: string): Promise<string> {
   if (!url || !key) throw new Error("0G image generation not configured");
   const res = await fetch(`${url}/images/generations`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({ model, prompt, n: 1, size: "1024x1024" }),
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "content-type": "application/json",
+      "X-0G-Provider-Trust-Mode": "private", // z-image-turbo is TeeML; our key is private-tier
+    },
+    // response_format is doc-mandated ("currently required") — without it we ride an undocumented
+    // provider default. z-image-turbo is TeeML, so the private trust tier applies to image prompts.
+    body: JSON.stringify({
+      model,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json",
+    }),
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) {

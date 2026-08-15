@@ -33,7 +33,9 @@ export async function transcribeAudio(
 
   const res = await fetch(`${url}/audio/transcriptions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}` },
+    // whisper-large-v3 is TeeML, and our key is private-tier: pin the private trust mode explicitly
+    // so voice audio is documented as enclave-served, not left to the router's default.
+    headers: { Authorization: `Bearer ${key}`, "X-0G-Provider-Trust-Mode": "private" },
     body: form,
     signal: AbortSignal.timeout(120_000),
   });

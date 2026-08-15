@@ -90,10 +90,21 @@ export async function handleStreamingReply(
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let full = "";
+      // The generator's RETURN value carries the per-response attestation result ({sealed}); a plain
+      // for-await discards it, so iterate manually — the anchored receipt must record what actually
+      // served this reply, not the config-level default.
+      let genSealed: boolean | undefined;
       try {
-        for await (const delta of gen) {
-          full += delta;
-          controller.enqueue(enc.encode(delta));
+        const it = gen[Symbol.asyncIterator]();
+        for (;;) {
+          const step = await it.next();
+          if (step.done) {
+            const r = step.value as { sealed?: boolean } | undefined;
+            if (r && typeof r.sealed === "boolean") genSealed = r.sealed;
+            break;
+          }
+          full += step.value;
+          controller.enqueue(enc.encode(step.value));
         }
         // Persist the reply + extract memories BEFORE closing so serverless keeps the function alive
         // through the write; extraction itself rides background()/waitUntil.
@@ -107,7 +118,13 @@ export async function handleStreamingReply(
             background(scoreEntryValence(userId, entryId, entryText), "scoreValence");
             background(storeSignals(userId, entryId, entryText, new Date()), "storeSignals");
             background(
-              recordReceipt(userId, { entryId, replyId: reply.id, input: entryText, output: full }),
+              recordReceipt(userId, {
+                entryId,
+                replyId: reply.id,
+                input: entryText,
+                output: full,
+                sealed: genSealed,
+              }),
               "recordReceipt",
             );
           }

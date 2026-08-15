@@ -64,7 +64,7 @@
     "setup:stripe": "node scripts/setup-stripe.mjs"
   },
   "dependencies": {
-    "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
+    "@0gfoundation/0g-compute-ts-sdk": "^0.9.0",
     "@0gfoundation/0g-ts-sdk": "^1.2.8",
     "@fontsource/instrument-serif": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
@@ -148,6 +148,7 @@
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "forge-std": "github:foundry-rs/forge-std",
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",

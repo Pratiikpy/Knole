@@ -22,10 +22,16 @@ function loadBrokerFactory(): typeof ZG.createZGComputeNetworkBroker {
 //
 // Provider: a TeeML chatbot on 0G mainnet (default glm-5.1, TEE-attested). Override with OG_TEE_PROVIDER.
 
-const RPC = process.env.OG_RPC_URL || "https://evmrpc.0g.ai";
+// Follow OG_NETWORK so a testnet deploy without an explicit OG_RPC_URL doesn't silently run the
+// broker on mainnet while storage runs on testnet.
+const RPC =
+  process.env.OG_RPC_URL ||
+  ((process.env.OG_NETWORK ?? "").toLowerCase() === "testnet"
+    ? "https://evmrpc-testnet.0g.ai"
+    : "https://evmrpc.0g.ai");
 const PK = process.env.EVM_PRIVATE_KEY || "";
-// deepseek-v4-flash — verifiability=TeeML on 0G Aristotle mainnet, and fast (~2.7s streaming TTFT):
-// genuine TEE attestation without the slow thinking-model latency. Override with OG_TEE_PROVIDER.
+// deepseek-v4-flash-0731 — verifiability=TeeML on 0G Aristotle mainnet, and fast (~2.7s streaming
+// TTFT): genuine TEE attestation without thinking-model latency. Override with OG_TEE_PROVIDER.
 const TEE_PROVIDER = process.env.OG_TEE_PROVIDER || "0x61C0007197E7D4d6A842d6768E8035728877B9F6";
 
 export function teeConfigured(): boolean {
@@ -111,12 +117,15 @@ export async function teeChat(
   if (!res.ok) throw new Error(`0G TEE compute failed (${res.status})`);
   const data = (await res.json()) as {
     id?: string;
+    usage?: unknown;
     choices?: { message?: { content?: string } }[];
   };
   const content = data.choices?.[0]?.message?.content?.trim() ?? "";
   if (!content) throw new Error("0G TEE compute returned empty content");
   const chatID = res.headers.get("ZG-Res-Key") || res.headers.get("zg-res-key") || data.id || "";
-  const verified = await verify(broker, provider, chatID, content);
+  // processResponse's content param expects the USAGE JSON (token counts for fee settlement), not
+  // the answer text — passing prose made the SDK's fee parse fail silently.
+  const verified = await verify(broker, provider, chatID, JSON.stringify(data.usage ?? {}));
   return { content, model, verified, provider };
 }
 
@@ -144,6 +153,8 @@ export async function* teeChatStream(
       temperature: opts.temperature ?? 0.7,
       max_tokens: Math.max(opts.maxTokens ?? 1024, 2048),
       stream: true,
+      // Ask for the usage frame in the SSE tail — processResponse settles fees from it.
+      stream_options: { include_usage: true },
     }),
   });
   if (!res.ok || !res.body) {

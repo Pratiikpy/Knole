@@ -220,8 +220,7 @@ export async function getData(
   const timeoutMs = Number(process.env.OG_TIMEOUT_MS ?? 45000);
   const { result: raw } = await withFallback(async (net) => {
     const [blob, err] = await withTimeout(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      indexer(net).downloadToBlob(rootHash, { proof: true } as any),
+      indexer(net).downloadToBlob(rootHash, { proof: true }),
       timeoutMs,
       "0G download",
     );

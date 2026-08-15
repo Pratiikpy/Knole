@@ -75,13 +75,21 @@ export function verifyProof(leaf: string, proof: string[], root: string): boolea
 /** Commit a reflection to a receipt. Fire-and-forget from the reflection paths. Returns the id. */
 export async function recordReceipt(
   userId: string,
-  args: { entryId?: string | null; replyId?: string | null; input: string; output: string },
+  args: {
+    entryId?: string | null;
+    replyId?: string | null;
+    input: string;
+    output: string;
+    /** The PER-RESPONSE attestation result. A fallback (non-TEE) reply must anchor sealed:false —
+     * the config-level sealedActive() is only the default for paths that can't thread the flag. */
+    sealed?: boolean;
+  },
 ): Promise<string | null> {
   if (!args.input || !args.output) return null;
   const ts = new Date();
   const inputHash = sha256(args.input);
   const outputHash = sha256(args.output);
-  const sealed = sealedActive();
+  const sealed = args.sealed ?? sealedActive();
   const leafHash = leafFor({ inputHash, outputHash, model: MODEL, sealed, ts: ts.toISOString() });
   const [row] = await db
     .insert(receipts)
