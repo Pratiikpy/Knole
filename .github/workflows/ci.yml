@@ -22,6 +22,19 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run build
 
+  contracts:
+    name: Solidity tests (Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci # forge-std + @openzeppelin resolve from node_modules (see foundry.toml libs)
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge test -vv
+
   tests:
     name: Engine evals · new-user · auth
     runs-on: ubuntu-latest
