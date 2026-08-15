@@ -112,9 +112,14 @@ async function pushToUser(userId: string, payload: { title: string; body: string
   let delivered = 0;
   for (const s of subs) {
     const sub: PushSub = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } };
-    const ok = await sendPush(sub, payload);
-    if (ok) delivered++;
-    else await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id)); // stale sub
+    const result = await sendPush(sub, payload);
+    if (result === "ok") delivered++;
+    // "gone" = expired/revoked → prune; "fail" may be transient, keep the sub.
+    else if (result === "gone")
+      await db
+        .delete(pushSubscriptions)
+        .where(eq(pushSubscriptions.id, s.id))
+        .catch(() => {});
   }
   return delivered;
 }
