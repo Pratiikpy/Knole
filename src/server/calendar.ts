@@ -122,7 +122,7 @@ export async function journalStats(userId: string): Promise<JournalStats> {
   const tz = await userTz(userId);
   const [totals] = (await db.execute(sql`
     SELECT count(*)::int AS entries,
-           coalesce(sum(array_length(regexp_split_to_array(trim(text), '\s+'), 1)), 0)::int AS words,
+           coalesce(sum(array_length(regexp_split_to_array(trim(text), '[[:space:]]+'), 1)), 0)::int AS words,
            count(DISTINCT (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date)::int AS days
     FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
   `)) as unknown as Record<string, unknown>[];

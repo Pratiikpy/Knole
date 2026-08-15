@@ -275,7 +275,7 @@ function CalendarPage() {
                   {[
                     { n: stats.entries.toLocaleString(), l: "entries" },
                     { n: stats.words.toLocaleString(), l: "words kept" },
-                    { n: String(stats.avgWords), l: "avg words / entry" },
+                    { n: String(stats.avgWords), l: "avg length" },
                   ].map((s) => (
                     <div key={s.l}>
                       <div className="font-display text-[24px] italic leading-none text-ink">
@@ -297,7 +297,11 @@ function CalendarPage() {
                       {stats.byMonth.map((m) => {
                         const max = Math.max(...stats.byMonth.map((x) => x.count));
                         return (
-                          <div key={m.month} className="flex-1" title={`${m.month}: ${m.count}`}>
+                          <div
+                            key={m.month}
+                            className="flex h-full flex-1 flex-col justify-end"
+                            title={`${m.month}: ${m.count}`}
+                          >
                             <div
                               className="w-full rounded-t bg-tan/70"
                               style={{ height: `${Math.max(6, (m.count / max) * 100)}%` }}
@@ -317,15 +321,17 @@ function CalendarPage() {
                   <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
                     which days you write
                   </div>
-                  <div className="flex h-12 items-end gap-1.5">
+                  <div className="flex gap-1.5">
                     {stats.byWeekday.map((c, i) => {
                       const max = Math.max(1, ...stats.byWeekday);
                       return (
                         <div key={i} className="flex-1 text-center">
-                          <div
-                            className="w-full rounded-t bg-ink/25"
-                            style={{ height: `${Math.max(6, (c / max) * 100)}%` }}
-                          />
+                          <div className="flex h-12 flex-col justify-end">
+                            <div
+                              className={`w-full rounded-t ${c > 0 ? "bg-tan/60" : "bg-rule"}`}
+                              style={{ height: `${c > 0 ? Math.max(8, (c / max) * 100) : 4}%` }}
+                            />
+                          </div>
                           <div className="mt-0.5 text-[9px] text-muted-foreground/60">
                             {WEEKDAYS[i]}
                           </div>
