@@ -107,6 +107,8 @@ export function isValidTimezone(tz: string): boolean {
  * stays at its 'UTC' default and every reminder lands at the wrong local hour. */
 export async function setUserTimezone(userId: string, tz: string): Promise<boolean> {
   if (!isValidTimezone(tz)) return false;
+  const [cur] = await db.select({ tz: users.timezone }).from(users).where(eq(users.id, userId));
+  if (cur?.tz === tz) return true; // unchanged — don't disturb an armed reminder
   await db.update(users).set({ timezone: tz }).where(eq(users.id, userId));
   // A changed zone shifts the meaning of an already-armed next_fire_at; re-arm from fresh prefs.
   const [row] = await db.select().from(nudgeSettings).where(eq(nudgeSettings.userId, userId));
