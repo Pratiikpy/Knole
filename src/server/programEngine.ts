@@ -1,6 +1,7 @@
 import { sql, and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
-import { PROGRAMS, CANNED_PROMPTS, getProgram, type ProgramDay } from "./programs";
+import { PROGRAMS, getProgram, type ProgramDay } from "./programs";
+import { promptForDate } from "./promptLibrary";
 
 const { programEnrollments, entries } = schema;
 
@@ -162,6 +163,7 @@ export async function promptOfTheDay(
   userId: string,
   seed = new Date().getDate(),
 ): Promise<{ prompt: string; personalized: boolean }> {
+  const dateKey = new Date().toISOString().slice(0, 10);
   const rows = (await db.execute(sql`
     SELECT topic, count(*) AS c
     FROM entry_signals, jsonb_array_elements_text(topics) AS topic
@@ -178,5 +180,7 @@ export async function promptOfTheDay(
     const tmpl = THEME_TEMPLATES[seed % THEME_TEMPLATES.length];
     return { prompt: tmpl(theme), personalized: true };
   }
-  return { prompt: CANNED_PROMPTS[seed % CANNED_PROMPTS.length], personalized: false };
+  // The 150-prompt seeded library (journiv): hash of the full date, so the 5th of March and the
+  // 5th of April get different prompts and the library takes months to repeat.
+  return { prompt: promptForDate(dateKey), personalized: false };
 }

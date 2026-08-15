@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { Shell } from "@/components/knole/Shell";
-import { calendarMonthFn } from "@/server/fns";
-import type { CalendarDay } from "@/server/calendar";
+import { calendarMonthFn, journalAnalyticsFn } from "@/server/fns";
+import type { CalendarDay, JournalStats } from "@/server/calendar";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({
@@ -59,6 +59,18 @@ function CalendarPage() {
   const [ym, setYm] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
   const [data, setData] = useState<MonthData | null>(null);
   const [sel, setSel] = useState<CalendarDay | null>(null);
+  const getStats = useServerFn(journalAnalyticsFn);
+  const [stats, setStats] = useState<JournalStats | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getStats()
+      .then((s) => alive && setStats(s))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -249,6 +261,98 @@ function CalendarPage() {
               >
                 read the entries →
               </Link>
+            </div>
+          )}
+
+          {/* The analytics dashboard (journiv): the shape of the whole practice. */}
+          {stats && stats.entries > 0 && (
+            <div className="mt-10">
+              <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-tan">
+                The shape of your practice
+              </div>
+              <div className="rounded-2xl border border-rule bg-card/50 p-5">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  {[
+                    { n: stats.entries.toLocaleString(), l: "entries" },
+                    { n: stats.words.toLocaleString(), l: "words kept" },
+                    { n: String(stats.avgWords), l: "avg words / entry" },
+                  ].map((s) => (
+                    <div key={s.l}>
+                      <div className="font-display text-[24px] italic leading-none text-ink">
+                        {s.n}
+                      </div>
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                        {s.l}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {stats.byMonth.length > 1 && (
+                  <div className="mt-6">
+                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                      by month
+                    </div>
+                    <div className="flex h-16 items-end gap-1">
+                      {stats.byMonth.map((m) => {
+                        const max = Math.max(...stats.byMonth.map((x) => x.count));
+                        return (
+                          <div key={m.month} className="flex-1" title={`${m.month}: ${m.count}`}>
+                            <div
+                              className="w-full rounded-t bg-tan/70"
+                              style={{ height: `${Math.max(6, (m.count / max) * 100)}%` }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-1 flex justify-between text-[9px] text-muted-foreground/60">
+                      <span>{stats.byMonth[0]?.month}</span>
+                      <span>{stats.byMonth[stats.byMonth.length - 1]?.month}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6">
+                  <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                    which days you write
+                  </div>
+                  <div className="flex h-12 items-end gap-1.5">
+                    {stats.byWeekday.map((c, i) => {
+                      const max = Math.max(1, ...stats.byWeekday);
+                      return (
+                        <div key={i} className="flex-1 text-center">
+                          <div
+                            className="w-full rounded-t bg-ink/25"
+                            style={{ height: `${Math.max(6, (c / max) * 100)}%` }}
+                          />
+                          <div className="mt-0.5 text-[9px] text-muted-foreground/60">
+                            {WEEKDAYS[i]}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {stats.topTags.length > 0 && (
+                  <div className="mt-6">
+                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                      what it's been about
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {stats.topTags.map((t) => (
+                        <span
+                          key={t.tag}
+                          className="rounded-full bg-tan/[0.1] px-2.5 py-1 text-[11px] text-tan"
+                        >
+                          {t.tag} <span className="opacity-60">{t.count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -106,3 +106,54 @@ export async function calendarMonth(
   const streak = streaksFromDays(all, todayKey(tz), todayKey(tz, 1));
   return { year, month, days, streak };
 }
+
+// ── the analytics dashboard (journiv) ────────────────────
+export type JournalStats = {
+  entries: number;
+  words: number;
+  avgWords: number;
+  daysWritten: number;
+  byMonth: { month: string; count: number }[]; // last 12, oldest first
+  byWeekday: number[]; // Mon..Sun counts
+  topTags: { tag: string; count: number }[];
+};
+
+export async function journalStats(userId: string): Promise<JournalStats> {
+  const tz = await userTz(userId);
+  const [totals] = (await db.execute(sql`
+    SELECT count(*)::int AS entries,
+           coalesce(sum(array_length(regexp_split_to_array(trim(text), '\s+'), 1)), 0)::int AS words,
+           count(DISTINCT (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date)::int AS days
+    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
+  `)) as unknown as Record<string, unknown>[];
+  const months = (await db.execute(sql`
+    SELECT to_char((created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date, 'YYYY-MM') AS m, count(*)::int AS c
+    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
+      AND created_at > now() - interval '12 months'
+    GROUP BY 1 ORDER BY 1 ASC
+  `)) as unknown as Record<string, unknown>[];
+  const weekdays = (await db.execute(sql`
+    SELECT extract(isodow FROM (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}))::int AS dow, count(*)::int AS c
+    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
+    GROUP BY 1
+  `)) as unknown as Record<string, unknown>[];
+  const byWeekday = Array.from({ length: 7 }, () => 0);
+  for (const r of weekdays) byWeekday[Number(r.dow) - 1] = Number(r.c);
+  const tags = (await db.execute(sql`
+    SELECT tag, count(*)::int AS c
+    FROM entries, jsonb_array_elements_text(tags) AS tag
+    WHERE user_id = ${userId} AND deleted_at IS NULL AND tag NOT LIKE 'program:%'
+    GROUP BY tag ORDER BY c DESC LIMIT 6
+  `)) as unknown as Record<string, unknown>[];
+  const entriesN = Number(totals?.entries ?? 0);
+  const words = Number(totals?.words ?? 0);
+  return {
+    entries: entriesN,
+    words,
+    avgWords: entriesN ? Math.round(words / entriesN) : 0,
+    daysWritten: Number(totals?.days ?? 0),
+    byMonth: months.map((r) => ({ month: String(r.m), count: Number(r.c) })),
+    byWeekday,
+    topTags: tags.map((r) => ({ tag: String(r.tag), count: Number(r.c) })),
+  };
+}

@@ -91,7 +91,7 @@ import { generateNudge, hourInTz } from "./proactivity";
 import { getNudgePrefs, saveNudgePrefs, setUserTimezone } from "./nudgeEngine";
 import { entryMilestone, milestoneChips } from "./milestones";
 import { moodBaseline } from "./baseline";
-import { calendarMonth } from "./calendar";
+import { calendarMonth, journalStats } from "./calendar";
 import { companionComment } from "./companion";
 import { ASK_PRESETS, FREE_CUSTOM_PER_DAY } from "./askPresets";
 import {
@@ -950,6 +950,12 @@ export const saveNudgePrefsFn = createServerFn({ method: "POST" })
     await saveNudgePrefs(userId, prefs, tz);
     return getNudgePrefs(userId);
   });
+
+// The analytics dashboard (journiv): totals, monthly rhythm, weekday shape, top tags.
+export const journalAnalyticsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return journalStats(userId);
+});
 
 // The preset question library for /ask + the free-tier custom-question allowance.
 export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () => {
