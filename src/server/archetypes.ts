@@ -306,7 +306,8 @@ export async function archetypeReveal(
             { role: "system", content: ASSIGN_SYS(taxonomy) },
             { role: "user", content: `THE MONTH (${monthKey}):\n${listing}`.slice(0, 11000) },
           ],
-          { temperature: 0.4, maxTokens: 900 },
+          // glm-5.1 thinks before it writes - a low ceiling starves the visible output to nothing.
+          { temperature: 0.4, maxTokens: 2400 },
         )
       ).content;
       const j = raw.match(/\{[\s\S]*\}/);
