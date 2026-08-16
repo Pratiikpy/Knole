@@ -33,7 +33,7 @@ import {
   startSessionFromToken,
   endSession,
 } from "./session";
-import { enforceRate } from "./rateLimit";
+import { enforceRate, enforceRateDurable } from "./rateLimit";
 import { background } from "./background";
 import { askMyLife } from "./ask";
 import { chatReply, composeEntry } from "./chat";
@@ -665,7 +665,7 @@ export const generateImageFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const userId = await requireUserId();
     if (!imageGenConfigured()) return { ok: false as const, reason: "not_configured" as const };
-    enforceRate("image-gen", 12, 60_000);
+    await enforceRateDurable("image-gen", 12, 60_000);
     const { plan, credits } = await getBilling(userId);
     // Own-to-use (Part 7C): holding your memory iNFT grants unlimited — pay once, own forever.
     const owns = !!(await inftStatus(userId));
@@ -691,7 +691,7 @@ export const researchFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const userId = await requireUserId();
     if (!researchConfigured()) return { ok: false as const, reason: "not_configured" as const };
-    enforceRate("research", 10, 60_000);
+    await enforceRateDurable("research", 10, 60_000);
     const { plan, credits } = await getBilling(userId);
     const owns = !!(await inftStatus(userId));
     const metered = plan !== "deep" && !owns;
@@ -742,7 +742,7 @@ export const claimOgPaymentFn = createServerFn({ method: "POST" })
   .validator(z.object({ txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }))
   .handler(async ({ data }) => {
     const userId = await requireUserId();
-    enforceRate("claim-0g", 15, 60_000);
+    await enforceRateDurable("claim-0g", 15, 60_000);
     return claimOgPayment(userId, data.txHash);
   });
 

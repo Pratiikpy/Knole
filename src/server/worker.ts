@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { pruneRateLimits } from "./rateLimit";
 import { db } from "../db";
 import { runDreaming } from "./dreaming";
 import { storeEntryOn0G } from "./engine";
@@ -70,6 +71,8 @@ export async function tick(): Promise<{
     let pruned = 0;
     try {
       pruned = await pruneStaleCaches();
+      // Expired rate-limit buckets, so the durable limiter's table cannot grow without bound.
+      pruned += await pruneRateLimits();
     } catch (e) {
       console.error("cache prune failed:", (e as Error).message);
     }

@@ -7,8 +7,16 @@ import "dotenv/config";
 const RPC = "https://evmrpc.0g.ai";
 const CHARITY = "0x000000000000000000000000000000000000dEaD";
 const provider = new ethers.JsonRpcProvider(RPC);
-const wallet = new ethers.Wallet(process.env.OG_PRIVATE_KEY ?? process.env.EVM_PRIVATE_KEY, provider);
-console.log("deployer:", wallet.address, "| balance:", ethers.formatEther(await provider.getBalance(wallet.address)));
+const wallet = new ethers.Wallet(
+  process.env.OG_PRIVATE_KEY ?? process.env.EVM_PRIVATE_KEY,
+  provider,
+);
+console.log(
+  "deployer:",
+  wallet.address,
+  "| balance:",
+  ethers.formatEther(await provider.getBalance(wallet.address)),
+);
 
 const load = (n) => JSON.parse(readFileSync(`out/${n}.sol/${n}.json`, "utf8"));
 async function deploy(name, args) {
@@ -33,9 +41,17 @@ const cmt = await deploy("KnoleCommitment", [anchor.addr, CHARITY]);
 // ── sanity gates on the live contracts ──
 const A = new ethers.Contract(anchor.addr, anchor.abi, wallet);
 const C = new ethers.Contract(cmt.addr, cmt.abi, provider);
-console.log("commitment.anchor wired:", (await C.anchor()).toLowerCase() === anchor.addr.toLowerCase());
+console.log(
+  "commitment.anchor wired:",
+  (await C.anchor()).toLowerCase() === anchor.addr.toLowerCase(),
+);
 console.log("charity:", await C.charity(), "| userFavor false:", (await C.userFavor()) === false);
-console.log("MIN_STAKE:", ethers.formatEther(await C.MIN_STAKE()), "| GRACE_DAYS:", await C.GRACE_DAYS());
+console.log(
+  "MIN_STAKE:",
+  ethers.formatEther(await C.MIN_STAKE()),
+  "| GRACE_DAYS:",
+  await C.GRACE_DAYS(),
+);
 
 // prove the historical read works on-chain: record a day, then query as-of yesterday vs today
 const probe = wallet.address;
@@ -46,7 +62,9 @@ const cToday = await A.countAtDay(probe, today);
 const cYesterday = await A.countAtDay(probe, today - 1n);
 const live = await A.journaledDayCount(probe);
 console.log(`recordDay tx: ${tx.hash}`);
-console.log(`live count: ${live} | countAtDay(today): ${cToday} | countAtDay(yesterday): ${cYesterday}`);
+console.log(
+  `live count: ${live} | countAtDay(today): ${cToday} | countAtDay(yesterday): ${cYesterday}`,
+);
 console.log("historical read correct:", live === 1n && cToday === 1n && cYesterday === 0n);
 console.log("\nANCHOR_V2=" + anchor.addr);
 console.log("COMMITMENT_V2=" + cmt.addr);

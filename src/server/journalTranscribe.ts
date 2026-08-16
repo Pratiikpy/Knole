@@ -1,6 +1,6 @@
 import { requireUserId } from "./session";
 import { isSameOrigin } from "./sameOrigin";
-import { enforceRate } from "./rateLimit";
+import { enforceRate, enforceRateDurable } from "./rateLimit";
 import { transcribeAudio, transcribeConfigured } from "./transcribe";
 
 /**
@@ -24,7 +24,7 @@ export async function handleTranscribe(request: Request): Promise<Response> {
   }
   if (!transcribeConfigured()) return json(503, { error: "voice unavailable" });
   try {
-    enforceRate("transcribe", 20, 60_000);
+    await enforceRateDurable("transcribe", 20, 60_000);
   } catch {
     return json(429, { error: "slow down a moment" });
   }

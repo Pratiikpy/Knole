@@ -37,10 +37,19 @@ async function main() {
   for (const f of files) {
     if (applied.has(f)) continue;
     const body = readFileSync(join(dir, f), "utf8");
-    // drizzle separates independent statements with this marker; run them in order.
-    const statements = body
-      .split("--> statement-breakpoint")
-      .map((s) => s.trim())
+    // drizzle separates independent statements with its marker; hand-written files just use
+    // semicolons. Split on the marker when present, otherwise on statement-terminating semicolons
+    // (comments stripped first) - the driver rejects multiple commands in one prepared statement.
+    const withoutComments = body
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    const statements = (
+      body.includes("--> statement-breakpoint")
+        ? body.split("--> statement-breakpoint")
+        : withoutComments.split(";")
+    )
+      .map((x) => x.trim())
       .filter(Boolean);
     for (const stmt of statements) {
       try {
