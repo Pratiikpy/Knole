@@ -207,6 +207,65 @@ export const replyForDraftFn = createServerFn({ method: "POST" })
     return { reply: rows[0]?.text ?? null, entryId: rows[0]?.entry_id ?? null };
   });
 
+// Share-then-fork (khoj's public conversations): publish ONE reflection as a frozen snapshot at
+// a public slug - the rest of the journal stays sealed. Revocable. The share page invites the
+// visitor to start their own journal, which is the fork.
+export const shareReflectionFn = createServerFn({ method: "POST" })
+  .validator(z.object({ entryId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    enforceRate("share-reflection", 10, 60_000);
+    const userId = await requireUserId();
+    const rows = (await db.execute(sql`
+      SELECT e.text AS entry_text, r.text AS reflection_text FROM entries e
+      JOIN replies r ON r.parent_entry_id = e.id AND r.is_ai = true
+      WHERE e.id = ${data.entryId} AND e.user_id = ${userId} AND e.deleted_at IS NULL
+      ORDER BY r.created_at DESC LIMIT 1
+    `)) as unknown as { entry_text: string; reflection_text: string }[];
+    if (!rows[0]) return { ok: false as const };
+    // An existing live share for this entry is reused - sharing twice must not mint two links.
+    const existing = (await db.execute(sql`
+      SELECT slug FROM shared_reflections
+      WHERE user_id = ${userId} AND entry_id = ${data.entryId} AND revoked_at IS NULL
+      LIMIT 1
+    `)) as unknown as { slug: string }[];
+    if (existing[0]) return { ok: true as const, slug: existing[0].slug };
+    const slug = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+      .map((b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31])
+      .join("");
+    await db.execute(sql`
+      INSERT INTO shared_reflections (slug, user_id, entry_id, entry_text, reflection_text)
+      VALUES (${slug}, ${userId}, ${data.entryId}, ${rows[0].entry_text}, ${rows[0].reflection_text})
+    `);
+    return { ok: true as const, slug };
+  });
+
+export const revokeShareFn = createServerFn({ method: "POST" })
+  .validator(z.object({ slug: z.string().min(4).max(20) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    await db.execute(sql`
+      UPDATE shared_reflections SET revoked_at = now()
+      WHERE slug = ${data.slug} AND user_id = ${userId}
+    `);
+    return { ok: true };
+  });
+
+// Public read - no auth by design; revoked links go dark.
+export const sharedReflectionFn = createServerFn({ method: "GET" })
+  .validator(z.object({ slug: z.string().min(4).max(20) }))
+  .handler(async ({ data }) => {
+    const rows = (await db.execute(sql`
+      SELECT entry_text, reflection_text, created_at FROM shared_reflections
+      WHERE slug = ${data.slug} AND revoked_at IS NULL LIMIT 1
+    `)) as unknown as { entry_text: string; reflection_text: string; created_at: unknown }[];
+    if (!rows[0]) return { found: false as const };
+    return {
+      found: true as const,
+      entry: rows[0].entry_text,
+      reflection: rows[0].reflection_text,
+    };
+  });
+
 // AI entry editing (khoj's Obsidian search/replace engine): propose small approve-or-skip edits
 // to the DRAFT, never a rewrite. Free like reflection - polishing your words is daily practice.
 export const proposeEntryEditsFn = createServerFn({ method: "POST" })

@@ -27,6 +27,7 @@ import {
   replyForEntryFn,
   proposeEntryEditsFn,
   replyForDraftFn,
+  shareReflectionFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
@@ -430,6 +431,31 @@ function TodayPage() {
   const mediaRef = useRef<WavRecorder | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const reflectAbort = useRef<AbortController | null>(null);
+  // Share-then-fork: one reflection published at a public slug, by explicit two-tap choice.
+  const [shareState, setShareState] = useState<
+    { step: "confirm" } | { step: "shared"; url: string; copied: boolean } | null
+  >(null);
+  const doShare = useServerFn(shareReflectionFn);
+  async function confirmShare() {
+    if (!entryId) return;
+    try {
+      const r = await doShare({ data: { entryId } });
+      if (!r.ok) throw new Error("no reflection");
+      const url = `${window.location.origin}/r/${r.slug}`;
+      let copied = false;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        }
+      } catch {
+        /* copy is a nicety; the link is shown either way */
+      }
+      setShareState({ step: "shared", url, copied });
+    } catch {
+      setShareState(null);
+    }
+  }
   // Live dictation (khoj's incremental transcription): while recording, the cumulative clip is
   // re-transcribed every few seconds and the draft region updates in place - it reads as
   // dictation, not an upload. voiceBase = the typed text that preceded this recording; the
@@ -1715,6 +1741,57 @@ function TodayPage() {
                 {crisis && !loading && (
                   <div className="mt-4">
                     <CrisisCard />
+                  </div>
+                )}
+
+                {/* Share-then-fork: publish THIS reflection at a public link, two taps, revocable. */}
+                {!crisis && !loading && entryId && (
+                  <div className="mt-4">
+                    {!shareState && (
+                      <button
+                        onClick={() => setShareState({ step: "confirm" })}
+                        className="text-[11px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+                      >
+                        share this reflection
+                      </button>
+                    )}
+                    {shareState?.step === "confirm" && (
+                      <div className="animate-fade-up rounded-xl border border-tan/30 bg-tan/[0.04] p-4">
+                        <p className="text-[12px] leading-relaxed text-ink-soft">
+                          This entry and its reflection become a public page — just this one,
+                          nothing else. You can take it back any time from Settings.
+                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          <button
+                            onClick={() => void confirmShare()}
+                            className="rounded-full bg-ink px-4 py-1.5 text-[12px] font-medium text-paper"
+                          >
+                            Create the public link
+                          </button>
+                          <button
+                            onClick={() => setShareState(null)}
+                            className="text-[12px] text-muted-foreground hover:text-ink"
+                          >
+                            keep it private
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {shareState?.step === "shared" && (
+                      <div className="animate-fade-up rounded-xl border border-tan/30 bg-tan/[0.04] p-4">
+                        <p className="text-[12px] text-ink-soft">
+                          {shareState.copied ? "Link copied — " : ""}your reflection lives at
+                        </p>
+                        <a
+                          href={shareState.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="break-all font-mono text-[12px] text-tan underline-offset-2 hover:underline"
+                        >
+                          {shareState.url}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
 

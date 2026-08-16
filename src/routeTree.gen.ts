@@ -40,6 +40,7 @@ import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as ArchetypeRouteImport } from './routes/archetype'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RSlugRouteImport } from './routes/r.$slug'
 
 const YearRoute = YearRouteImport.update({
   id: '/year',
@@ -196,6 +197,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RSlugRoute = RSlugRouteImport.update({
+  id: '/r/$slug',
+  path: '/r/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
+  '/r/$slug': typeof RSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
+  '/r/$slug': typeof RSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
+  '/r/$slug': typeof RSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/wellbeing'
     | '/wrapped'
     | '/year'
+    | '/r/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/wellbeing'
     | '/wrapped'
     | '/year'
+    | '/r/$slug'
   id:
     | '__root__'
     | '/'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/wellbeing'
     | '/wrapped'
     | '/year'
+    | '/r/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   WellbeingRoute: typeof WellbeingRoute
   WrappedRoute: typeof WrappedRoute
   YearRoute: typeof YearRoute
+  RSlugRoute: typeof RSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -652,6 +665,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/r/$slug': {
+      id: '/r/$slug'
+      path: '/r/$slug'
+      fullPath: '/r/$slug'
+      preLoaderRoute: typeof RSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -687,6 +707,7 @@ const rootRouteChildren: RootRouteChildren = {
   WellbeingRoute: WellbeingRoute,
   WrappedRoute: WrappedRoute,
   YearRoute: YearRoute,
+  RSlugRoute: RSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
