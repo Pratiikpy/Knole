@@ -27,6 +27,7 @@ import {
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
+import { startWavRecording, type WavRecorder } from "@/lib/wavRecorder";
 
 export const Route = createFileRoute("/today")({
   // The yesterday capture slot (history timeline) opens today's editor in backfill mode. The key
@@ -363,8 +364,7 @@ function TodayPage() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceErr, setVoiceErr] = useState<string | null>(null);
-  const mediaRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const mediaRef = useRef<WavRecorder | null>(null);
 
   // Cycle a calm "thinking" line while the reflection generates (~15-18s LLM call).
   useEffect(() => {
@@ -518,55 +518,52 @@ function TodayPage() {
   async function startVoice() {
     setVoiceErr(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = ["audio/webm", "audio/mp4", "audio/ogg"].find(
-        (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
-      );
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => {
-        if (e.data.size) chunksRef.current.push(e.data);
-      };
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
-        if (blob.size < 400) {
-          setVoiceErr("Didn't catch that — try again.");
-          return;
-        }
-        setTranscribing(true);
-        try {
-          const fd = new FormData();
-          fd.append("file", blob, "voice.webm");
-          const res = await fetch("/journal/transcribe", { method: "POST", body: fd });
-          if (!res.ok) throw new Error(String(res.status));
-          const { text } = (await res.json()) as { text?: string };
-          if (text && text.trim()) {
-            setEntry((prev) => (prev.trim() ? `${prev.trim()} ${text.trim()}` : text.trim()));
-            setReflected(false);
-            setReflection(null);
-            setEntryId(null);
-            setThread([]);
-          } else {
-            setVoiceErr("Didn't catch any words — try again.");
-          }
-        } catch {
-          setVoiceErr("Couldn't transcribe just now — you can type instead.");
-        } finally {
-          setTranscribing(false);
-        }
-      };
-      mediaRef.current = rec;
-      rec.start();
+      // WAV via WebAudio - the 0G Whisper endpoint rejects MediaRecorder's webm/mp4 containers,
+      // so we capture PCM and build a classic 16 kHz mono WAV it always accepts.
+      mediaRef.current = await startWavRecording();
       setRecording(true);
     } catch {
       setVoiceErr("Microphone access is needed to speak your entry.");
     }
   }
 
-  function stopVoice() {
-    mediaRef.current?.stop();
+  async function stopVoice() {
+    const rec = mediaRef.current;
+    mediaRef.current = null;
     setRecording(false);
+    if (!rec) return;
+    let blob: Blob;
+    try {
+      blob = await rec.stop();
+    } catch {
+      setVoiceErr("Didn't catch that — try again.");
+      return;
+    }
+    if (blob.size < 4000) {
+      setVoiceErr("Didn't catch that — try again.");
+      return;
+    }
+    setTranscribing(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", blob, "voice.wav");
+      const res = await fetch("/journal/transcribe", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(String(res.status));
+      const { text } = (await res.json()) as { text?: string };
+      if (text && text.trim()) {
+        setEntry((prev) => (prev.trim() ? `${prev.trim()} ${text.trim()}` : text.trim()));
+        setReflected(false);
+        setReflection(null);
+        setEntryId(null);
+        setThread([]);
+      } else {
+        setVoiceErr("Didn't catch any words — try again.");
+      }
+    } catch {
+      setVoiceErr("Couldn't transcribe just now — you can type instead.");
+    } finally {
+      setTranscribing(false);
+    }
   }
 
   async function toggleReceipt() {
