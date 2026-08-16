@@ -92,10 +92,21 @@ export async function handleDeepenStream(request: Request): Promise<Response> {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let full = "";
+      let genSealed: boolean | undefined;
       try {
-        for await (const delta of gen) {
-          full += delta;
-          controller.enqueue(enc.encode(delta));
+        // Iterate manually: `for await` DISCARDS the generator's return value, which carries the
+        // real per-response attestation. Without it the receipt defaulted to the config flag and
+        // could anchor "sealed: true" for a fallback reply.
+        const it = gen[Symbol.asyncIterator]();
+        for (;;) {
+          const step = await it.next();
+          if (step.done) {
+            const v = step.value as { sealed?: boolean } | undefined;
+            if (v && typeof v.sealed === "boolean") genSealed = v.sealed;
+            break;
+          }
+          full += step.value;
+          controller.enqueue(enc.encode(step.value));
         }
         if (full) {
           const reply = await saveReply(entryId, full, true);
@@ -104,7 +115,13 @@ export async function handleDeepenStream(request: Request): Promise<Response> {
           if (!crisis) {
             background(extractMemories(userId, entryId, answer), "deepen extractMemories");
             background(
-              recordReceipt(userId, { entryId, replyId: reply.id, input: answer, output: full }),
+              recordReceipt(userId, {
+                entryId,
+                replyId: reply.id,
+                input: answer,
+                output: full,
+                sealed: genSealed,
+              }),
               "deepen recordReceipt",
             );
           }

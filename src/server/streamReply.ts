@@ -3,7 +3,6 @@ import { isSameOrigin } from "./sameOrigin";
 import { scoreEntryValence } from "./valence";
 import { storeSignals } from "./omission";
 import { recordReceipt } from "./receipts";
-import { recordJournaledDayBg } from "./dayAnchor";
 import { clientEncEnabledFor } from "./clientEnc";
 import { requireUserId } from "./session";
 import { background } from "./background";
@@ -131,9 +130,8 @@ export async function handleStreamingReply(
         // through the write; extraction itself rides background()/waitUntil.
         if (full) {
           const reply = await saveReply(entryId, full, true);
-          // Proof-of-journaling: bump the on-chain day counter (idempotent per UTC day; skips
-          // guests). Counts crisis entries too — writing IS journaling; only derived data is gated.
-          recordJournaledDayBg(userId);
+          // (The on-chain journaling day is recorded by saveEntry itself, so every save path
+          // counts - not just this one.)
           // Crisis intercept: the entry is saved (it's the user's private journal, and theirs), but a
           // self-harm disclosure must NEVER become derived data that could resurface — no recallable
           // memory, no mood-graph "representative entry", no signal topics, and no reflection receipt.

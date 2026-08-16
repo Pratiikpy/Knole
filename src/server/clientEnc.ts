@@ -82,7 +82,7 @@ export async function listPendingOg(
 ): Promise<{ pending: { entryId: string; text: string; savedAt: string }[] }> {
   const rows = (await db.execute(sql`
     SELECT id, text, created_at FROM entries
-    WHERE user_id = ${userId} AND kv_ref IS NULL
+    WHERE user_id = ${userId} AND kv_ref IS NULL AND deleted_at IS NULL
     ORDER BY created_at DESC LIMIT 50
   `)) as unknown as Record<string, unknown>[];
   return {

@@ -68,7 +68,10 @@ export async function runDreaming(userId: string): Promise<{ observation: string
   // Dreaming-in-TEE (#13): the overnight analysis ran inside the 0G enclave — commit a receipt so that
   // sealed computation is on-chain verifiable too (anchored by the worker's receipt step, like #8).
   try {
-    await recordReceipt(userId, { input: context, output: observation });
+    // r.sealed is the per-response attestation result. Omitting it defaulted the receipt to
+    // sealedActive() - a CONFIG check - so a TEE outage anchored "sealed: true" on-chain for a
+    // reply the enclave never served. A false attestation is worse than no attestation.
+    await recordReceipt(userId, { input: context, output: observation, sealed: r.sealed });
   } catch (e) {
     console.error("dream receipt failed:", (e as Error).message);
   }

@@ -6,6 +6,7 @@ import { chatPrivate } from "./sealed";
 import { putData } from "./og";
 import { keyProvider } from "./keyProvider";
 import { upsertEntities, matchEntities, entityBoostWeight } from "./entities";
+import { recordJournaledDayBg } from "./dayAnchor";
 
 const { users, entries, replies, memories, memoryHistory } = schema;
 
@@ -112,6 +113,12 @@ ${text}`).catch(async () => vec ?? (await embed(text)));
       ...(meta?.createdAt ? { createdAt: meta.createdAt } : {}),
     })
     .returning();
+  // Proof-of-journaling, recorded HERE rather than in one caller. KnoleCommitment settles real
+  // staked money against this on-chain count, and it was only being written on the streaming
+  // reflection path - so a user who journaled every day through the quick check-in, the composer,
+  // post-session capture, the extension or onboarding could still forfeit their stake. Idempotent
+  // per UTC day, skips guests, and never counts clipped/imported material as journaling.
+  if (type === "journal") recordJournaledDayBg(userId);
   return row;
 }
 
@@ -579,13 +586,36 @@ export async function storeEntryOn0G(
   entryId: string,
   text: string,
 ): Promise<string> {
+  // The gate lives HERE, not in the callers. Only the streaming save path used to check, while ten
+  // other call sites (chat compose, quick check-in, import, onboarding, the nightly backfill) wrote
+  // a SERVER-readable copy for users who had enrolled in client-side encryption - the one thing
+  // that enrollment promises can never happen. A missed caller is a broken promise, so it is
+  // enforced at the single point that does the writing.
+  const [row] = await db
+    .select({
+      clientEnc: users.clientEncEnabled,
+      deletedAt: entries.deletedAt,
+      kvRef: entries.kvRef,
+    })
+    .from(entries)
+    .innerJoin(users, eq(users.id, entries.userId))
+    .where(eq(entries.id, entryId));
+  if (!row) return "";
+  if (row.clientEnc) return ""; // the client sweep owns this entry; the server must not read it
+  // 0G storage is permanent. An entry the user has deleted must never be published to it, and a
+  // re-upload of an already-stored entry is pure waste.
+  if (row.deletedAt) return "";
+  if (row.kvRef) return row.kvRef;
+
   const key = keyForUser(userId);
   const payload = JSON.stringify({ entryId, text, savedAt: new Date().toISOString() });
   const { rootHash } = await putData(payload, { key });
+  // Only claim the row if it is STILL eligible — the user may have enrolled or deleted while the
+  // upload was in flight, and the client sweep may have written its own copy.
   await db
     .update(entries)
     .set({ kvRef: rootHash, encScheme: "server" })
-    .where(eq(entries.id, entryId));
+    .where(and(eq(entries.id, entryId), isNull(entries.kvRef), isNull(entries.deletedAt)));
   return rootHash;
 }
 

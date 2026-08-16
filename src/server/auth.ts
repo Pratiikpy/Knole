@@ -67,7 +67,9 @@ export async function ensureWalletCaptured(userId: string): Promise<void> {
     .where(eq(users.id, userId))
     .limit(1);
   const row = found[0];
-  if (!row || row.wallet || !row.privyId) return;
+  // Guests are stored with privyId "guest-<uuid>", which is truthy - so every guest entry save
+  // fired a Privy lookup that 404s, swallowed, on a path that runs for each write.
+  if (!row || row.wallet || !row.privyId || row.privyId.startsWith("guest-")) return;
   await captureWallet(row.privyId, userId).catch(() => {});
 }
 
@@ -75,9 +77,11 @@ export async function ensureWalletCaptured(userId: string): Promise<void> {
 async function captureWallet(privyId: string, userId: string): Promise<void> {
   const u = (await privy().getUser(privyId)) as { linkedAccounts?: unknown[] };
   const accts = (u?.linkedAccounts ?? []) as Record<string, unknown>[];
-  const eth = accts.find(
-    (a) => a.type === "wallet" && a.address && (a.chainType === "ethereum" || !a.chainType),
-  );
+  // Prefer the EMBEDDED wallet. Picking "the first linked ETH wallet" minted a user's iNFT to
+  // whichever external wallet (MetaMask, etc.) Privy happened to list first.
+  const isEth = (a: Record<string, unknown>) =>
+    a.type === "wallet" && a.address && (a.chainType === "ethereum" || !a.chainType);
+  const eth = accts.find((a) => isEth(a) && a.walletClientType === "privy") ?? accts.find(isEth);
   const addr = (eth?.address as string | undefined) ?? "";
   if (/^0x[0-9a-fA-F]{40}$/.test(addr)) {
     await db.update(users).set({ walletAddress: addr }).where(eq(users.id, userId));

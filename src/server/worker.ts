@@ -212,9 +212,11 @@ export async function backfill0G(
 ): Promise<number> {
   const { start = Date.now(), budgetMs = Infinity, limit = 25, userId } = opts;
   const rows = (await db.execute(sql`
-    SELECT id, user_id, text FROM entries
-    WHERE kv_ref IS NULL ${userId ? sql`AND user_id = ${userId}` : sql``}
-    ORDER BY created_at ASC
+    SELECT e.id, e.user_id, e.text FROM entries e
+    JOIN users u ON u.id = e.user_id
+    WHERE e.kv_ref IS NULL AND e.deleted_at IS NULL AND u.client_enc_enabled IS NOT TRUE
+      ${userId ? sql`AND e.user_id = ${userId}` : sql``}
+    ORDER BY e.created_at ASC
     LIMIT ${limit}
   `)) as unknown as Record<string, unknown>[];
   let stored = 0;
@@ -244,7 +246,7 @@ export async function backfillValence(
   const rows = (await db.execute(sql`
     SELECT id, user_id, text FROM entries
     WHERE valence IS NULL
-    ORDER BY created_at ASC
+    ORDER BY e.created_at ASC
     LIMIT ${limit}
   `)) as unknown as Record<string, unknown>[];
   let scored = 0;
