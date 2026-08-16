@@ -14,6 +14,15 @@
 
 > **📖 Start here → [the full product overview on Notion](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)** — the complete story: visuals, architecture, PMF research, the privacy model, and the build journey. **If you open one link, make it this one.** Everything below is a summary.
 
+## New
+
+- **Ask now searches like a librarian** — your question fans out into four angles (the feeling, the people, the events, the time) with date filters the model writes itself, then a cross-encoder keeps only what's actually about your question.
+- **The journal survives you leaving** — close the tab mid-reflection and it finishes anyway; the next visit hands it to you under _"Finished while you were away."_
+- **Polish, without losing your voice** — the AI proposes surgical edits to a draft as word-level diffs you approve or skip, one by one. Never a rewrite, never auto-applied.
+- **Voice is dictation now** — words appear in the composer while you speak.
+- **Share one reflection, keep the rest sealed** — a two-tap public link for a single entry + its reflection, revocable, ending on _"What would yours say back?"_
+- **Journal Mini** — `Ctrl/⌘+Shift+J` in the Chrome extension opens a five-second composer on any page; a thought saved there counts as real journaling.
+
 <div align="center">
 
 |                                                                                                                     |                                                                                                                |                                                                                                                     |
@@ -67,14 +76,16 @@ _One private memory engine behind 40+ features across 30 routes — the full pro
 
 Trust is minimized at every layer:
 
-1. Local **MiniLM** embeddings — the vectors never leave the machine
-2. Local **anonymization** before any prompt
-3. Reflection **and live chat** inside a **0G TEE** — sealed inference, **attestation-verified** per response
-4. **AES-256-GCM** encryption under user-controlled keys
-5. Encrypted storage on **0G Storage**
-6. Memory roots anchored on **0G Chain**
-7. Deterministic **restore from 0G**
-8. **ERC-7857 Memory iNFT** — owned by the user's own wallet, portable and grantable
+Every layer links the code that implements it — read it, don't take our word:
+
+1. Local **MiniLM** embeddings — the vectors never leave the machine ([`embed.ts`](src/server/embed.ts))
+2. Local **anonymization** before any prompt — windowed NER so long entries are covered end to end ([`anonymise.ts`](src/server/anonymise.ts))
+3. Reflection **and live chat** inside a **0G TEE** — sealed inference, **attestation-verified** per response ([`sealed.ts`](src/server/sealed.ts) · [`ogCompute.ts`](src/server/ogCompute.ts))
+4. **AES-256-GCM** encryption under user-controlled keys ([`keyProvider.ts`](src/server/keyProvider.ts))
+5. Encrypted storage on **0G Storage** — client-encryption enrollment is enforced inside the single write path, so no caller can bypass it ([`engine.ts` → `storeEntryOn0G`](src/server/engine.ts))
+6. Memory roots anchored on **0G Chain** ([`receipts.ts`](src/server/receipts.ts))
+7. Deterministic **restore from 0G** ([`restore.ts`](src/server/restore.ts))
+8. **ERC-7857 Memory iNFT** — owned by the user's own wallet, portable and grantable ([`KnoleAgenticID.sol`](contracts/KnoleAgenticID.sol))
 
 > Even if the enclave were compromised, the model would still only ever see **anonymized text.**
 
@@ -92,7 +103,7 @@ The **sealed 0G TEE is the primary inference path**, verified by hardware attest
 
 Every major claim is verifiable — and here's the on-chain proof, live on the 0G explorer:
 
-Three contracts, all deployed to **0G Aristotle mainnet**, all tested in a **102-test Foundry suite** (unit + fuzz + invariants):
+Three contracts, all deployed to **0G Aristotle mainnet**, all tested in a **112-test Foundry suite** (unit + fuzz + invariants):
 
 | Contract                | Address                                                                                        | What it proves                                                                                                                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -154,6 +165,27 @@ You'll need a Neon Postgres URL (with the `vector` extension), an LLM key, and �
 `src/routes` file-based routes · `src/components/knole` app shell · `src/server` the engine (embed · anonymise · sealed inference via `ogCompute.ts` · 0G storage · restore · reflect · mirror · ask · iNFT) · `src/db` Drizzle schema + pgvector · `contracts/KnoleAgenticID.sol` the ERC-7857 Agentic ID.
 
 </details>
+
+## FAQ
+
+**Can Knole read my journal?**
+The model only ever sees anonymized text ([`anonymise.ts`](src/server/anonymise.ts)), inference runs sealed in a 0G TEE with per-response attestation, and entries are encrypted at rest. With client-side encryption enrolled, the server structurally cannot produce a readable copy — the gate lives inside the one function that writes ([`storeEntryOn0G`](src/server/engine.ts)).
+
+**What happens if Knole disappears?**
+Your entries live encrypted on 0G Storage with on-chain roots; `restore-from-chain` rebuilds the journal deterministically, and the memory iNFT in your own wallet carries your identity model with you.
+
+**What do I actually own?**
+The ERC-7857 iNFT (in your wallet, not ours), the encrypted blobs, the on-chain anchors, and a one-click full export. Deleting your account deletes everything — including the row that holds your credentials.
+
+**Does sharing a reflection expose my journal?**
+No. Sharing publishes exactly one entry + its reflection at a revocable link. Everything else stays sealed, and taking it back sends the page dark.
+
+**Is the "sealed" badge honest?**
+It only renders when the per-response hardware attestation verified. A TEE outage falls back to the plain 0G model marked _not sealed_ — the badge is never dressed up.
+
+## Credits
+
+Knole stands on real shoulders: [0G](https://0g.ai) (compute, storage, chain) · [mem0](https://github.com/mem0ai/mem0) (memory-extraction patterns) · [khoj](https://github.com/khoj-ai/khoj) (query fan-out, automations judge, share-fork, and more — studied deeply, credited gladly) · [gnothi](https://github.com/lefnire/gnothi) (the ask-preset model) · [Daily_You](https://github.com/Demizo/Daily_You) (nudge scheduling) · [chrono-node](https://github.com/wanasit/chrono) · [sentence-transformers](https://www.sbert.net/) & [transformers.js](https://github.com/xenova/transformers.js) · OpenZeppelin · Foundry.
 
 ## Current Status
 
