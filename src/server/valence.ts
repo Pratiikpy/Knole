@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
-import { db } from "../db";
+import { sql, eq } from "drizzle-orm";
+import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
 
 // Mood trajectory — a private per-entry emotional valence, scored through the same anonymise +
@@ -85,9 +85,17 @@ export async function moodTrajectory(
   userId: string,
   days = 90,
 ): Promise<{ points: MoodPoint[]; count: number }> {
+  // Bucket by the USER's calendar day. date_trunc on the raw UTC timestamp put a Los Angeles
+  // user's 8pm entry on the following day, so the mood trend and the calendar (which converts
+  // correctly) disagreed about the same entry, and one evening could split across two points.
+  const [u] = await db
+    .select({ tz: schema.users.timezone })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId));
+  const tz = u?.tz || "UTC";
   const rows = (await db.execute(sql`
     SELECT
-      to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day,
+      to_char(date_trunc('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}), 'YYYY-MM-DD') AS day,
       avg(valence)::float AS valence,
       count(*)::int AS entries,
       (array_agg(id ORDER BY abs(valence) DESC))[1] AS entry_id,
@@ -96,8 +104,8 @@ export async function moodTrajectory(
     FROM entries
     WHERE user_id = ${userId} AND valence IS NOT NULL AND deleted_at IS NULL
       AND created_at > now() - (${days} * interval '1 day')
-    GROUP BY date_trunc('day', created_at)
-    ORDER BY date_trunc('day', created_at) ASC
+    GROUP BY 1
+    ORDER BY 1 ASC
   `)) as unknown as Record<string, unknown>[];
   const points: MoodPoint[] = rows.map((r) => {
     const t = String(r.rep_text ?? "");

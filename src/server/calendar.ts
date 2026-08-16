@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { localDayKey } from "./localDay";
 import { db, schema } from "../db";
 
 const { users } = schema;
@@ -37,14 +38,7 @@ async function journaledDays(userId: string, tz: string): Promise<string[]> {
   return rows.map((r) => String(r.day));
 }
 
-function todayKey(tz: string, offsetDays = 0): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(Date.now() - offsetDays * 86_400_000));
-}
+const todayKey = (tz: string, offsetDays = 0): string => localDayKey(tz, offsetDays);
 
 const dayMs = 86_400_000;
 const toUtcMidnight = (key: string) => Date.parse(`${key}T00:00:00Z`);

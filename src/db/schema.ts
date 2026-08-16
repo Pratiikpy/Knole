@@ -570,6 +570,9 @@ export const coupleMirrors = pgTable(
     content: jsonb("content")
       .$type<{ throughline: string; divergence: string; starter: string }>()
       .notNull(),
+    // How many unlocked days the mirror was written from, so a week that grows gets regenerated
+    // instead of serving the version cached on the first day it became available.
+    unlockedDays: integer("unlocked_days").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [uniqueIndex("couple_mirrors_week_uniq").on(t.coupleId, t.weekKey)],

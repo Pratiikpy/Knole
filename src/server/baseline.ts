@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { shiftDayKey } from "./localDay";
 import { db, schema } from "../db";
 
 const { users, reflectionArtifacts } = schema;
@@ -72,14 +73,16 @@ export async function moodBaseline(userId: string, spanDays = 90): Promise<Basel
       month: "2-digit",
       day: "2-digit",
     }).format(d);
+  const todayKeyLocal = dayKey(today);
   for (let i = spanDays - 1; i >= 0; i--) {
-    const d = new Date(today.getTime() - i * 86_400_000);
-    const key = dayKey(d);
+    // Calendar steps, not fixed milliseconds: across a DST transition the old arithmetic emitted
+    // the same day twice (double-counting it in every window) and skipped a real one as a gap.
+    const key = shiftDayKey(todayKeyLocal, -i);
     // Trailing 14-day window ending on this day; a window with no logs is an honest gap.
     let num = 0;
     let den = 0;
     for (let w = 0; w < WINDOW; w++) {
-      const wd = byDay.get(dayKey(new Date(d.getTime() - w * 86_400_000)));
+      const wd = byDay.get(shiftDayKey(key, -w));
       if (wd) {
         num += wd.avg * wd.wsum;
         den += wd.wsum;

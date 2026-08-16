@@ -1,9 +1,9 @@
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { getBilling } from "./billing";
 import { inftStatus } from "./inft";
 
-const { reflectionArtifacts } = schema;
+const { reflectionArtifacts, users } = schema;
 
 // The preset question library + the free-tier gate (gnothi's model). Free accounts get the full
 // preset library and a small daily allowance of custom questions; Deep (or an iNFT holder) gets
@@ -127,7 +127,14 @@ export function presetById(id: string): AskPreset | null {
 }
 
 export type AskGate =
-  | { allowed: true; question: string; custom: boolean; remaining: number | null }
+  | {
+      allowed: true;
+      question: string;
+      custom: boolean;
+      remaining: number | null;
+      /** Present for a metered custom ask, so the caller can refund the slot if the ask fails. */
+      claimId?: string;
+    }
   | { allowed: false; reason: "custom-limit"; remaining: 0 };
 
 /** Resolve + gate an ask request. Presets always pass (server text). Custom questions pass for
@@ -145,18 +152,42 @@ export async function gateAsk(
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   if (unlimited) return { allowed: true, question, custom: true, remaining: null };
 
-  const used = (await db.execute(sql`
+  // The allowance resets at the USER's midnight, not UTC's — at UTC+10 the old reset landed
+  // mid-afternoon. And the count-then-insert let concurrent requests all pass the check, so the
+  // "3 a day" cap was bypassable by firing them in parallel: claim the slot atomically instead.
+  const [u] = await db.select({ tz: users.timezone }).from(users).where(eq(users.id, userId));
+  const tz = u?.tz || "UTC";
+  const claimed = (await db.execute(sql`
+    INSERT INTO reflection_artifacts (user_id, type, thread_key, content, sources)
+    SELECT ${userId}, 'state', 'ask-custom',
+           ${JSON.stringify({ q: question.slice(0, 200) })}::jsonb, '{}'::jsonb
+    WHERE (
+      SELECT count(*) FROM reflection_artifacts
+      WHERE user_id = ${userId} AND thread_key = 'ask-custom'
+        AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+            = (now() AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+    ) < ${FREE_CUSTOM_PER_DAY}
+    RETURNING id
+  `)) as unknown as { id: string }[];
+  if (!claimed.length) return { allowed: false, reason: "custom-limit", remaining: 0 };
+  const [after] = (await db.execute(sql`
     SELECT count(*)::int AS n FROM reflection_artifacts
     WHERE user_id = ${userId} AND thread_key = 'ask-custom'
-      AND created_at > date_trunc('day', now())
-  `)) as unknown as { n: unknown }[];
-  const n = Number(used[0]?.n ?? 0);
-  if (n >= FREE_CUSTOM_PER_DAY) return { allowed: false, reason: "custom-limit", remaining: 0 };
-  await db.insert(reflectionArtifacts).values({
-    userId,
-    type: "state",
-    threadKey: "ask-custom",
-    content: { q: question.slice(0, 200) },
-  });
-  return { allowed: true, question, custom: true, remaining: FREE_CUSTOM_PER_DAY - n - 1 };
+      AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+          = (now() AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+  `)) as unknown as { n: number }[];
+  return {
+    allowed: true,
+    question,
+    custom: true,
+    remaining: Math.max(0, FREE_CUSTOM_PER_DAY - Number(after?.n ?? FREE_CUSTOM_PER_DAY)),
+    // The caller refunds this claim if the ask itself fails, so a model timeout doesn't burn one
+    // of three daily questions.
+    claimId: claimed[0].id,
+  };
+}
+
+/** Give back a metered custom-ask slot when the ask itself failed to run. */
+export async function refundAskClaim(claimId: string): Promise<void> {
+  await db.execute(sql`DELETE FROM reflection_artifacts WHERE id = ${claimId}`).catch(() => {});
 }

@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNotNull, lte, sql, inArray } from "drizzle-orm";
 import { CronExpressionParser } from "cron-parser";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
@@ -201,15 +201,30 @@ async function judgeNotify(subject: string, answer: string): Promise<boolean> {
  * nothing is due; call from the external scheduler alongside the nudge dispatcher. */
 export async function runDueAutomations(): Promise<{ ran: number; notified: number }> {
   const now = new Date();
+  // CLAIM the due rows first. nextRunAt used to be updated only after each row's work, and each
+  // run makes two LLM calls, so a backlog easily outlasted the 10-minute scheduler interval and
+  // the next tick re-selected the same rows - duplicate pushes, duplicate emails, duplicate spend.
+  // Pushing nextRunAt forward inside the claim makes a concurrent tick see nothing due.
+  const claimed = (await db.execute(sql`
+    UPDATE automations SET next_run_at = next_run_at + interval '1 hour'
+    WHERE id IN (
+      SELECT id FROM automations
+      WHERE active = true AND next_run_at IS NOT NULL AND next_run_at <= ${now}
+      ORDER BY next_run_at ASC
+      LIMIT 25
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id
+  `)) as unknown as { id: string }[];
+  if (!claimed.length) return { ran: 0, notified: 0 };
   const due = await db
     .select({ a: automations, tz: users.timezone, email: users.email })
     .from(automations)
     .innerJoin(users, eq(users.id, automations.userId))
     .where(
-      and(
-        eq(automations.active, true),
-        isNotNull(automations.nextRunAt),
-        lte(automations.nextRunAt, now),
+      inArray(
+        automations.id,
+        claimed.map((c) => c.id),
       ),
     );
 

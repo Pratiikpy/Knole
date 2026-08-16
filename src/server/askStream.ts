@@ -1,6 +1,6 @@
 import { askMyLifeStream } from "./ask";
 import { isSameOrigin } from "./sameOrigin";
-import { gateAsk } from "./askPresets";
+import { gateAsk, refundAskClaim } from "./askPresets";
 import { currentUserId } from "./session";
 import { enforceRate } from "./rateLimit";
 
@@ -59,6 +59,9 @@ export async function handleAskStream(request: Request): Promise<Response> {
     result = await askMyLifeStream(userId, question);
   } catch (e) {
     console.error("ask-stream setup failed:", (e as Error).message);
+    // The daily allowance was consumed before the ask ran, so a model timeout used to cost the
+    // user one of their three free questions for nothing. Give it back.
+    if (gate.allowed && gate.claimId) await refundAskClaim(gate.claimId);
     return txt(500, "couldn't search");
   }
 

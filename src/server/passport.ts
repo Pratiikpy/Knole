@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
-import { db } from "../db";
+import { sql, eq } from "drizzle-orm";
+import { db, schema } from "../db";
 import { buildIdentityCapsule } from "./portableIdentity";
 import { inftStatus } from "./inft";
 
@@ -29,6 +29,14 @@ export type PassportView = {
 };
 
 export async function passportView(userId: string): Promise<PassportView> {
+  // The user's own calendar day, so daysWritten matches the number the Stats page shows. Counting
+  // created_at::date used the DB session zone (UTC) and split a non-UTC user's evening entries
+  // across two days.
+  const [settings] = await db
+    .select({ tz: schema.users.timezone })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId));
+  const tz = settings?.tz || "UTC";
   const [byTypeRows, entityRows, daysRow, capsule, inft] = await Promise.all([
     db.execute(sql`
       SELECT type, count(*)::int AS c FROM memories
@@ -40,7 +48,7 @@ export async function passportView(userId: string): Promise<PassportView> {
       WHERE user_id = ${userId} ORDER BY links DESC LIMIT 6
     `) as unknown as Promise<{ name: string; links: number }[]>,
     db.execute(sql`
-      SELECT count(DISTINCT created_at::date)::int AS d FROM entries
+      SELECT count(DISTINCT (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date)::int AS d FROM entries
       WHERE user_id = ${userId} AND deleted_at IS NULL
     `) as unknown as Promise<{ d: number }[]>,
     buildIdentityCapsule(userId),

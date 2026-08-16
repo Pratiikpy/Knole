@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { localDayKey } from "./localDay";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { coupleQuestionFor, coupleQuestionById } from "./coupleDeck";
@@ -10,14 +11,7 @@ const { couples, coupleMembers, coupleAnswers, users } = schema;
 // the status payload never carries the partner's text until both partners have answered that
 // day's question. Everything the client shows is derived from this one server view.
 
-function dateKeyIn(tz: string, offsetDays = 0): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz || "UTC",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(Date.now() - offsetDays * 86_400_000));
-}
+const dateKeyIn = (tz: string, offsetDays = 0): string => localDayKey(tz, offsetDays);
 
 export type DuetStatus =
   | { state: "none" }
@@ -288,10 +282,9 @@ export async function usMirror(
 
   const { coupleMirrors } = schema;
   const [cached] = await db
-    .select({ content: coupleMirrors.content })
+    .select({ content: coupleMirrors.content, days: coupleMirrors.unlockedDays })
     .from(coupleMirrors)
     .where(and(eq(coupleMirrors.coupleId, couple.id), eq(coupleMirrors.weekKey, weekKey)));
-  if (cached) return { ready: true, mirror: cached.content };
 
   // Unlocked = both answered that day. Last 7 days, in the couple's clock.
   const since = dateKeyIn(couple.tz, 7);
@@ -355,10 +348,16 @@ export async function usMirror(
     /* model down - report not-ready rather than caching junk */
   }
   if (!mirror) return { ready: false, unlockedDays, needed: 3 };
+  // Keyed on the week AND the number of unlocked days it was written from. Keyed on the week
+  // alone, a couple who opened it on Wednesday with three days kept reading Wednesday's mirror for
+  // the rest of the week, no matter how much they answered afterwards.
   await db
     .insert(coupleMirrors)
-    .values({ coupleId: couple.id, weekKey, content: mirror })
-    .onConflictDoNothing();
+    .values({ coupleId: couple.id, weekKey, content: mirror, unlockedDays })
+    .onConflictDoUpdate({
+      target: [coupleMirrors.coupleId, coupleMirrors.weekKey],
+      set: { content: mirror, unlockedDays },
+    });
   return { ready: true, mirror };
 }
 
