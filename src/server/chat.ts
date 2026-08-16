@@ -3,6 +3,7 @@ import { chatPrivate, chatPrivateStream } from "./sealed";
 import { retrieveMemories, retrieveEntries, type EntryHit } from "./engine";
 import { embed } from "./embed";
 import { bestExcerpt } from "./excerpt";
+import { parseDateFilters } from "./dateLens";
 
 const CHAT_SYS = `You are Knole — a private, warm, sharp thinking-partner the user talks to. Not a yes-man, not a generic assistant.
 - You remember this person across time. Weave in what you genuinely know about them when it helps, naturally — never list facts, never say "according to my notes".
@@ -20,6 +21,7 @@ export type Turn = { role: "user" | "assistant"; content: string };
 // the whole trick: "what happened in March" becomes a search for "March", not for the user's
 // literal phrasing. Results feed the final streamed answer as dated journal excerpts.
 const SEARCH_SYS = `You decide whether you need to SEARCH the user's journal before answering their message. You may search when the answer depends on their past - events, dates, people, feelings, commitments, "when did I", "what happened", "have I ever".
+When the message points at a TIME PERIOD, append a date filter to the search query using exactly this syntax: dt>="<value>" dt<"<value>" or dt:"<value>" - values may be dates (2026-03-01) or natural words ("last week", "yesterday", "April 2026"). Example: {"search": "argument with Sam dt:\\"last month\\""}
 Reply with ONLY one JSON object, nothing else:
 {"search": "<one focused search query - name the month/person/topic directly>"} - to look something up
 {"ready": true} - when the conversation alone is enough (greetings, opinions, the present moment)`;
@@ -69,8 +71,11 @@ export async function gatherChatContext(
     }
     if (!query || seenQueries.has(query.toLowerCase())) break;
     seenQueries.add(query.toLowerCase());
-    const qv = await embed(query);
-    const hits: EntryHit[] = await retrieveEntries(userId, qv, 4);
+    // The planner may have emitted a dt-date-filter; strip it before embedding and let it gate
+    // the search window ("what did I do in March" only searches March).
+    const { cleaned, range } = parseDateFilters(query);
+    const qv = await embed(cleaned || query);
+    const hits: EntryHit[] = await retrieveEntries(userId, qv, 4, range);
     for (const h of hits) {
       const date = new Date(h.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",

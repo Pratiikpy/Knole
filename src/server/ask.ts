@@ -1,6 +1,8 @@
 import { embed } from "./embed";
 import { chatPrivate, chatPrivateStream } from "./sealed";
 import { retrieveEntries, retrieveMemories } from "./engine";
+import { rewriteSearchQueries } from "./queryRewrite";
+import { parseDateFilters } from "./dateLens";
 
 const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the journal excerpts and remembered facts provided below.
 - Ground every claim in what they actually wrote. Never invent events, dates, numbers, or feelings.
@@ -27,29 +29,75 @@ export type AskResult = {
 const NOTHING =
   "There's nothing in your journal about that yet. Write a little, then ask me again.";
 
-// Shared retrieval: pull the most relevant entries + memories, dedupe, and build the grounded
-// context + the receipts (the user's own words, shown only to them). null = nothing to answer from.
+// Shared retrieval, khoj-style: the question is first REWRITTEN into up to four diverse
+// sub-queries (feeling / people / events / time lenses, with dt-date-filters the model emits
+// itself), each sub-query searched in parallel, and the results unioned. "How was I feeling
+// around my exam" stops depending on the raw sentence happening to be semantically near the
+// right entry. onStatus lets the streaming endpoint narrate the stages.
 async function gather(
   userId: string,
   question: string,
-): Promise<{ context: string; receipts: Receipt[] } | null> {
-  const qVec = await embed(question);
-  const [rawEntries, memories] = await Promise.all([
-    retrieveEntries(userId, qVec, 8),
-    retrieveMemories(userId, qVec, 6, question),
-  ]);
+  onStatus?: (line: string) => void,
+): Promise<{ context: string; receipts: Receipt[]; angles: number } | null> {
+  onStatus?.("Reading your question");
+  const { queries, rewritten } = await rewriteSearchQueries(question);
+  onStatus?.(
+    rewritten && queries.length > 1
+      ? `Searching your journal from ${queries.length} angles`
+      : "Searching your journal",
+  );
+
+  const perQuery = await Promise.all(
+    queries.map(async (q) => {
+      const { cleaned, range } = parseDateFilters(q);
+      const text = cleaned || q;
+      const vec = await embed(text);
+      const [e, m] = await Promise.all([
+        retrieveEntries(userId, vec, 5, range),
+        retrieveMemories(userId, vec, 4, text),
+      ]);
+      return { e, m };
+    }),
+  );
+  // The raw question always searches too - the rewrite adds angles, it must never remove one.
+  if (rewritten) {
+    const vec = await embed(question);
+    const [e, m] = await Promise.all([
+      retrieveEntries(userId, vec, 5),
+      retrieveMemories(userId, vec, 4, question),
+    ]);
+    perQuery.push({ e, m });
+  }
+
+  const entryBest = new Map<string, (typeof perQuery)[number]["e"][number]>();
+  const memBest = new Map<string, (typeof perQuery)[number]["m"][number]>();
+  for (const { e, m } of perQuery) {
+    for (const hit of e) {
+      const prev = entryBest.get(hit.id);
+      if (!prev || hit.score > prev.score) entryBest.set(hit.id, hit);
+    }
+    for (const hit of m) {
+      const prev = memBest.get(hit.id);
+      if (!prev || hit.score > prev.score) memBest.set(hit.id, hit);
+    }
+  }
 
   const seen = new Set<string>();
-  const entries = rawEntries
+  const entries = [...entryBest.values()]
+    .sort((a, b) => b.score - a.score)
     .filter((e) => {
       const k = e.text.trim().toLowerCase();
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
     })
-    .slice(0, 4);
+    .slice(0, 5);
+  const memories = [...memBest.values()].sort((a, b) => b.score - a.score).slice(0, 6);
 
   if (entries.length === 0 && memories.length === 0) return null;
+  onStatus?.(
+    `Found ${entries.length} ${entries.length === 1 ? "entry" : "entries"} and ${memories.length} ${memories.length === 1 ? "memory" : "memories"}`,
+  );
 
   const context = [
     "JOURNAL EXCERPTS:",
@@ -65,7 +113,7 @@ async function gather(
     quote: e.text.length > 240 ? e.text.slice(0, 237) + "…" : e.text,
   }));
 
-  return { context, receipts };
+  return { context, receipts, angles: queries.length };
 }
 
 const askMessages = (question: string, context: string) => [
@@ -97,8 +145,12 @@ export type AskStream =
     };
 
 /** Streaming sibling of askMyLife (TTFT) — same grounding, yields de-anonymised answer deltas. */
-export async function askMyLifeStream(userId: string, question: string): Promise<AskStream> {
-  const g = await gather(userId, question);
+export async function askMyLifeStream(
+  userId: string,
+  question: string,
+  onStatus?: (line: string) => void,
+): Promise<AskStream> {
+  const g = await gather(userId, question, onStatus);
   if (!g) return { empty: true, summary: NOTHING };
   return {
     empty: false,

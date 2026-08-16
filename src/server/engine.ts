@@ -7,6 +7,8 @@ import { putData } from "./og";
 import { keyProvider } from "./keyProvider";
 import { upsertEntities, matchEntities, entityBoostWeight } from "./entities";
 import { recordJournaledDayBg } from "./dayAnchor";
+import { indexEntryDates, entryDateGate, type DateRange } from "./dateLens";
+import { background } from "./background";
 
 const { users, entries, replies, memories, memoryHistory } = schema;
 
@@ -119,6 +121,12 @@ ${text}`).catch(async () => vec ?? (await embed(text)));
   // post-session capture, the extension or onboarding could still forfeit their stake. Idempotent
   // per UTC day, skips guests, and never counts clipped/imported material as journaling.
   if (type === "journal") recordJournaledDayBg(userId);
+  // The date lens: dates this entry MENTIONS become searchable ("what did I write about my
+  // birthday" matches the entry that talks about it). Chat turns are skipped - conversational
+  // date mentions are noise, not events.
+  if (type !== "chat") {
+    background(indexEntryDates(userId, row.id, text, when), "indexEntryDates");
+  }
   return row;
 }
 
@@ -322,13 +330,18 @@ export async function retrieveEntries(
   userId: string,
   queryVec: number[],
   k = 5,
+  dateRange?: DateRange | null,
 ): Promise<EntryHit[]> {
   const lit = toVectorLiteral(queryVec);
+  // The date lens gate: when the query carried a dt-filter, entries must be written in - or
+  // mention a date in - the range, BEFORE vector ranking. Empty gate otherwise.
+  const gate = dateRange ? entryDateGate(dateRange) : sql``;
   const rows = await db.execute(sql`
     SELECT id, text, created_at, 1 - (embedding <=> ${lit}::vector) AS score
     FROM entries
     WHERE user_id = ${userId} AND embedding IS NOT NULL AND deleted_at IS NULL
       AND type <> 'chat'
+      ${gate}
     ORDER BY embedding <=> ${lit}::vector
     LIMIT ${k}
   `);

@@ -54,46 +54,59 @@ export async function handleAskStream(request: Request): Promise<Response> {
   }
   question = gate.question;
 
-  let result: Awaited<ReturnType<typeof askMyLifeStream>>;
-  try {
-    result = await askMyLifeStream(userId, question);
-  } catch (e) {
-    console.error("ask-stream setup failed:", (e as Error).message);
-    // The daily allowance was consumed before the ask ran, so a model timeout used to cost the
-    // user one of their three free questions for nothing. Give it back.
-    if (gate.allowed && gate.claimId) await refundAskClaim(gate.claimId);
-    return txt(500, "couldn't search");
-  }
-
-  // Nothing to answer from → a plain (non-streamed) message; no receipts/privacy footer.
-  if (result.empty) {
-    return new Response(result.summary, {
-      headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" },
-    });
-  }
-
+  // Everything from here happens INSIDE the stream, so the connection opens instantly and the
+  // retrieval stages narrate themselves as they run (khoj's train-of-thought). Frame protocol:
+  // control frames are {json} (status / receipts / privacy); everything outside a frame
+  // is answer text. Receipts moving off the response header also removes the header-size ceiling
+  // that long CJK excerpts could blow through.
   const enc = new TextEncoder();
+  const claimId = gate.allowed ? gate.claimId : undefined;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      // The real per-call privacy flags (sealed = TEE attestation verified) are only known once the
-      // generator finishes — after headers have flushed. So iterate manually to capture the return
-      // value and emit it as a trailing sentinel frame; the client splits it off the answer text.
+      const ctl = (obj: unknown) => {
+        try {
+          controller.enqueue(enc.encode("" + JSON.stringify(obj) + ""));
+        } catch {
+          /* reader gone */
+        }
+      };
+      const say = (text: string) => {
+        try {
+          controller.enqueue(enc.encode(text));
+        } catch {
+          /* reader gone */
+        }
+      };
       let privacy = { sealed: false, anonymised: true };
       try {
+        const result = await askMyLifeStream(userId, question, (line) => ctl({ status: line }));
+        if (result.empty) {
+          say(result.summary);
+          ctl({ privacy });
+          return;
+        }
+        ctl({ receipts: result.receipts });
+        ctl({ status: "Writing your answer" });
         const gen = result.gen;
         let step = await gen.next();
         while (!step.done) {
-          controller.enqueue(enc.encode(step.value));
+          say(step.value);
           step = await gen.next();
         }
         privacy = { sealed: step.value.sealed, anonymised: step.value.anonymised };
       } catch (e) {
-        console.error("ask-stream reply failed:", (e as Error).message);
+        console.error("ask-stream failed:", (e as Error).message);
+        // The daily allowance was consumed before the ask ran; a model failure must not cost one
+        // of the three free questions.
+        if (claimId) await refundAskClaim(claimId).catch(() => {});
+        say("Something interrupted the search - ask again in a moment.");
       } finally {
-        // \x1e (record separator) can't occur in the model's prose, so the client can safely split the
-        // JSON footer from the answer — surfacing the honest "sealed enclave" badge only when verified.
-        controller.enqueue(enc.encode("\x1e" + JSON.stringify(privacy)));
-        controller.close();
+        ctl({ privacy });
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       }
     },
   });
@@ -103,10 +116,6 @@ export async function handleAskStream(request: Request): Promise<Response> {
       "content-type": "text/plain; charset=utf-8",
       "cache-control": "no-cache, no-transform",
       "x-content-type-options": "nosniff",
-      "x-knole-receipts": encodeURIComponent(JSON.stringify(result.receipts)),
-      // Optimistic default (anonymise gateway always runs); the trailing sentinel frame carries the
-      // real, per-call {sealed, anonymised} once the TEE attestation has been verified.
-      "x-knole-privacy": encodeURIComponent(JSON.stringify({ sealed: false, anonymised: true })),
     },
   });
 }

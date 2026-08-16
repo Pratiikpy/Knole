@@ -34,6 +34,7 @@ function AskPage() {
   const [asked, setAsked] = useState<string | null>(null);
   const [result, setResult] = useState<AskResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [thinking, setThinking] = useState<string | null>(null);
   const [gated, setGated] = useState<string | null>(null);
   const getPresets = useServerFn(askPresetsFn);
   const [presets, setPresets] = useState<AskPreset[]>([]);
@@ -60,6 +61,7 @@ function AskPage() {
     setLoading(true);
     setResult(null);
     setGated(null);
+    setThinking("Reading your question");
     const fail = () =>
       setResult({
         summary: "Something interrupted the search — try again in a moment.",
@@ -83,49 +85,71 @@ function AskPage() {
         fail();
         return;
       }
-      const parse = <T,>(h: string | null, fallback: T): T => {
-        if (!h) return fallback;
-        try {
-          return JSON.parse(decodeURIComponent(h)) as T;
-        } catch {
-          return fallback;
-        }
-      };
-      // Receipts (the user's own quoted words) + the privacy flag ride in headers.
-      const receipts = parse<Receipt[]>(res.headers.get("x-knole-receipts"), []);
-      const privacy = parse(res.headers.get("x-knole-privacy"), {
-        sealed: false,
-        anonymised: false,
-      });
-      setResult({ summary: "", receipts, privacy });
+      // Framed protocol: \x1e{json}\x1e control frames (status / receipts / privacy) interleaved
+      // with plain answer text. Statuses narrate the retrieval live — khoj's train-of-thought —
+      // so a multi-second search never looks frozen.
+      setResult({ summary: "", receipts: [], privacy: { sealed: false, anonymised: true } });
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let acc = "";
-      let live = privacy;
+      let answer = "";
+      let receipts: Receipt[] = [];
+      let live = { sealed: false, anonymised: true };
+      const takeFrame = (json: string) => {
+        try {
+          const j = JSON.parse(json) as {
+            status?: string;
+            receipts?: Receipt[];
+            privacy?: { sealed: boolean; anonymised: boolean };
+          };
+          if (j.status) setThinking(j.status);
+          if (j.receipts) receipts = j.receipts;
+          if (j.privacy) live = j.privacy;
+        } catch {
+          /* malformed frame — skip */
+        }
+      };
+      const drain = (final: boolean) => {
+        for (;;) {
+          const a = acc.indexOf("\x1e");
+          if (a < 0) {
+            answer += acc;
+            acc = "";
+            return;
+          }
+          const b = acc.indexOf("\x1e", a + 1);
+          if (b < 0) {
+            answer += acc.slice(0, a);
+            if (final) {
+              takeFrame(acc.slice(a + 1)); // legacy trailing frame with no closer
+              acc = "";
+            } else {
+              acc = acc.slice(a); // frame still arriving — keep from the marker
+            }
+            return;
+          }
+          answer += acc.slice(0, a);
+          takeFrame(acc.slice(a + 1, b));
+          acc = acc.slice(b + 1);
+        }
+      };
       for (;;) {
         const { done, value } = await reader.read();
-        if (done) break;
-        acc += dec.decode(value, { stream: true });
-        // The answer text and a trailing \x1e{privacy} footer share the stream. Show only the text;
-        // once the footer arrives, upgrade the badge to the real (verified-sealed) per-call flags.
-        const sep = acc.indexOf("\x1e");
-        const body = sep >= 0 ? acc.slice(0, sep) : acc;
-        if (sep >= 0) {
-          try {
-            live = JSON.parse(acc.slice(sep + 1));
-          } catch {
-            /* footer still arriving in pieces — keep the last good flags */
-          }
+        if (done) {
+          drain(true);
+          break;
         }
-        setResult((r) => ({
-          summary: body,
-          receipts: r?.receipts ?? receipts,
-          privacy: live,
-        }));
+        acc += dec.decode(value, { stream: true });
+        drain(false);
+        if (answer) setThinking(null); // first answer text retires the status line
+        setResult({ summary: answer, receipts, privacy: live });
       }
+      setThinking(null);
+      setResult({ summary: answer, receipts, privacy: live });
     } catch {
       fail();
     } finally {
+      setThinking(null);
       setLoading(false);
     }
   };
@@ -222,9 +246,18 @@ function AskPage() {
           )}
 
           {asked && loading && !result?.summary && (
-            <p className="animate-fade-up mt-12 font-display text-[20px] italic text-muted-foreground">
-              Reading back through your own words…
-            </p>
+            <div className="animate-fade-up mt-12">
+              {/* Train of thought — the retrieval narrates itself while it runs. */}
+              <div className="flex items-center gap-2.5">
+                <span className="size-2 shrink-0 animate-breathe rounded-full bg-tan/70" />
+                <p
+                  key={thinking ?? "start"}
+                  className="animate-fade-up font-display text-[20px] italic text-muted-foreground"
+                >
+                  {thinking ?? "Reading back through your own words"}…
+                </p>
+              </div>
+            </div>
           )}
 
           {asked && result && result.summary && (
