@@ -64,7 +64,12 @@ function CommitPage() {
   const [stake, setStake] = useState("0.1");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const gated = inIndia();
+  // Resolved on the CLIENT only. Calling inIndia() during render made the server (UTC) and an
+  // Indian browser produce different HTML - a hydration mismatch (React #418) that briefly painted
+  // the stake form to a user the gate is meant to close it for. null = not yet known, and the
+  // stake flow stays hidden until it is.
+  const [gated, setGated] = useState<boolean | null>(null);
+  useEffect(() => setGated(inIndia()), []);
 
   const refresh = () =>
     loadCtx()
@@ -88,7 +93,7 @@ function CommitPage() {
   };
 
   const stakeIt = async () => {
-    if (busy || gated) return;
+    if (busy || gated !== false) return;
     setBusy("stake");
     setNote(null);
     try {
@@ -169,7 +174,7 @@ function CommitPage() {
             . Void where prohibited.
           </div>
 
-          {gated && (
+          {gated === true && (
             <div className="mt-6 rounded-2xl border border-rule bg-card/60 p-5">
               <p className="text-[13px] leading-relaxed text-ink-soft">
                 Staking is closed in your region for now — India's Online Gaming Act (2025) is
@@ -179,7 +184,7 @@ function CommitPage() {
             </div>
           )}
 
-          {!gated && ctx && !ctx.wallet && (
+          {gated === false && ctx && !ctx.wallet && (
             <p className="mt-6 text-[13px] text-muted-foreground">
               Connect a wallet in{" "}
               <Link to="/settings" className="text-tan hover:text-ink">
@@ -190,7 +195,7 @@ function CommitPage() {
           )}
 
           {/* the stake form */}
-          {!gated && ctx?.wallet && (
+          {gated === false && ctx?.wallet && (
             <div className="mt-6 rounded-2xl border border-rule bg-card/50 p-6">
               <div className="grid grid-cols-3 gap-3">
                 <label className="block">
