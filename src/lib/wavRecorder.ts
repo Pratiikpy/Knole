@@ -6,6 +6,10 @@
 export type WavRecorder = {
   stop: () => Promise<Blob>;
   cancel: () => void;
+  /** WAV of EVERYTHING captured so far, without stopping — powers live transcription. */
+  snapshot: () => Blob;
+  /** Seconds of audio captured so far. */
+  duration: () => number;
 };
 
 const TARGET_RATE = 16_000;
@@ -35,20 +39,32 @@ export async function startWavRecording(): Promise<WavRecorder> {
     }
   };
 
+  const joinAll = () => {
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const joined = new Float32Array(total);
+    let off = 0;
+    for (const c of chunks) {
+      joined.set(c, off);
+      off += c.length;
+    }
+    return joined;
+  };
+
   return {
     cancel: teardown,
-    stop: async () => {
-      teardown();
-      const inputRate = ctx.sampleRate;
+    // Cumulative snapshot, khoj-style: re-transcribing the WHOLE clip every few seconds costs
+    // fractions of a cent and never splits a word at a chunk boundary the way rolling-window
+    // chunks do - the transcript simply gets more complete each pass.
+    snapshot: () => encodeWav(downsample(joinAll(), ctx.sampleRate, TARGET_RATE), TARGET_RATE),
+    duration: () => {
       let total = 0;
       for (const c of chunks) total += c.length;
-      const joined = new Float32Array(total);
-      let off = 0;
-      for (const c of chunks) {
-        joined.set(c, off);
-        off += c.length;
-      }
-      const pcm = downsample(joined, inputRate, TARGET_RATE);
+      return total / ctx.sampleRate;
+    },
+    stop: async () => {
+      teardown();
+      const pcm = downsample(joinAll(), ctx.sampleRate, TARGET_RATE);
       return encodeWav(pcm, TARGET_RATE);
     },
   };

@@ -430,6 +430,13 @@ function TodayPage() {
   const mediaRef = useRef<WavRecorder | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const reflectAbort = useRef<AbortController | null>(null);
+  // Live dictation (khoj's incremental transcription): while recording, the cumulative clip is
+  // re-transcribed every few seconds and the draft region updates in place - it reads as
+  // dictation, not an upload. voiceBase = the typed text that preceded this recording; the
+  // transcript replaces everything after it on each pass.
+  const voiceBase = useRef("");
+  const voiceTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceBusy = useRef(false);
   // Mid-stream stop (khoj's interrupt): keeps whatever streamed, and clears the recovery markers -
   // a reflection the person chose to stop must not resurrect on the next visit.
   function stopReflection() {
@@ -558,6 +565,7 @@ function TodayPage() {
   useEffect(() => {
     return () => {
       filingFor.current = null;
+      if (voiceTimer.current) clearInterval(voiceTimer.current);
       const rec = mediaRef.current;
       mediaRef.current = null;
       if (rec) void rec.stop().catch(() => {});
@@ -752,6 +760,30 @@ function TodayPage() {
       // so we capture PCM and build a classic 16 kHz mono WAV it always accepts.
       mediaRef.current = await startWavRecording();
       setRecording(true);
+      voiceBase.current = entry.trim() ? entry.trim() + " " : "";
+      // Live pass every 4s on the CUMULATIVE clip - each pass replaces the dictated region, so a
+      // word split across passes self-heals rather than duplicating.
+      voiceTimer.current = setInterval(async () => {
+        const rec = mediaRef.current;
+        if (!rec || voiceBusy.current) return;
+        if (rec.duration() < 2.5) return;
+        voiceBusy.current = true;
+        try {
+          const fd = new FormData();
+          fd.append("file", rec.snapshot(), "voice.wav");
+          const res = await fetch("/journal/transcribe", { method: "POST", body: fd });
+          if (res.ok) {
+            const { text } = (await res.json()) as { text?: string };
+            if (text?.trim() && mediaRef.current) {
+              setEntry(voiceBase.current + text.trim());
+            }
+          }
+        } catch {
+          /* a missed pass just means the next one catches up */
+        } finally {
+          voiceBusy.current = false;
+        }
+      }, 4000);
     } catch {
       setVoiceErr("Microphone access is needed to speak your entry.");
     }
@@ -761,6 +793,10 @@ function TodayPage() {
     const rec = mediaRef.current;
     mediaRef.current = null;
     setRecording(false);
+    if (voiceTimer.current) {
+      clearInterval(voiceTimer.current);
+      voiceTimer.current = null;
+    }
     if (!rec) return;
     let blob: Blob;
     try {
@@ -781,7 +817,9 @@ function TodayPage() {
       if (!res.ok) throw new Error(String(res.status));
       const { text } = (await res.json()) as { text?: string };
       if (text && text.trim()) {
-        setEntry((prev) => (prev.trim() ? `${prev.trim()} ${text.trim()}` : text.trim()));
+        // The final full-clip pass replaces the dictated region (not appends) - the live passes
+        // already filled it, and appending again would duplicate every word.
+        setEntry(voiceBase.current + text.trim());
         setReflected(false);
         setReflection(null);
         setEntryId(null);
@@ -1441,7 +1479,7 @@ function TodayPage() {
               </button>
               {recording && (
                 <span className="text-[11px] text-muted-foreground">
-                  listening — tap stop when you're done
+                  listening — your words appear as you speak
                 </span>
               )}
               {voiceErr && <span className="text-[11px] text-tan">{voiceErr}</span>}
