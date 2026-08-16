@@ -1,6 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 
 // Mood trajectory — a private per-entry emotional valence, scored through the same anonymise +
 // sealed-inference gateway as every other call. Only a float + a one-word label are stored. The
@@ -25,32 +26,26 @@ export async function scoreValence(
     { temperature: 0, maxTokens: 90 },
   ).catch(() => null);
   if (!r) return null;
-  try {
-    const m = r.content.match(/\{[\s\S]*\}/);
-    if (!m) return null;
-    const j = JSON.parse(m[0]) as {
-      valence?: unknown;
-      label?: unknown;
-      title?: unknown;
-      themes?: unknown;
-    };
-    const v = Number(j.valence);
-    if (!Number.isFinite(v)) return null;
-    const valence = Math.max(-1, Math.min(1, v));
-    const label = typeof j.label === "string" ? j.label.trim().toLowerCase().slice(0, 24) : "";
-    const title =
-      typeof j.title === "string" && j.title.trim() ? j.title.trim().slice(0, 80) : null;
-    const themes = Array.isArray(j.themes)
-      ? j.themes
-          .filter((t): t is string => typeof t === "string")
-          .map((t) => t.trim().toLowerCase().slice(0, 40))
-          .filter(Boolean)
-          .slice(0, 3)
-      : [];
-    return { valence, label, title, themes };
-  } catch {
-    return null;
-  }
+  const j = parseModelJson<{
+    valence?: unknown;
+    label?: unknown;
+    title?: unknown;
+    themes?: unknown;
+  } | null>(r.content, null);
+  if (!j) return null;
+  const v = Number(j.valence);
+  if (!Number.isFinite(v)) return null;
+  const valence = Math.max(-1, Math.min(1, v));
+  const label = typeof j.label === "string" ? j.label.trim().toLowerCase().slice(0, 24) : "";
+  const title = typeof j.title === "string" && j.title.trim() ? j.title.trim().slice(0, 80) : null;
+  const themes = Array.isArray(j.themes)
+    ? j.themes
+        .filter((t): t is string => typeof t === "string")
+        .map((t) => t.trim().toLowerCase().slice(0, 40))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+  return { valence, label, title, themes };
 }
 
 /** Score one entry's valence and persist it. Fire-and-forget; never on the reply path. */

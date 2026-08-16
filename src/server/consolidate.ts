@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { keccak256, toUtf8Bytes } from "ethers";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 import { anchorOnChain } from "./og";
 
 const { reflectionArtifacts } = schema;
@@ -175,20 +176,14 @@ export async function consolidate(
     new Promise<null>((resolve) => setTimeout(() => resolve(null), 90000)),
   ]);
   if (!r) return null;
-  const m = r.content.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  let parsed: {
+  const parsed = parseModelJson<{
     label?: unknown;
     throughline?: unknown;
     essence?: unknown;
     threads?: unknown;
     shifts?: unknown;
-  };
-  try {
-    parsed = JSON.parse(m[0]);
-  } catch {
-    return null;
-  }
+  } | null>(r.content, null);
+  if (!parsed) return null;
   const essence = typeof parsed.essence === "string" ? parsed.essence.trim() : "";
   if (!essence) return null;
   const threads: EssenceThread[] = Array.isArray(parsed.threads)

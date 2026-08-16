@@ -2,6 +2,7 @@ import { and, eq, isNotNull, lte, sql, inArray } from "drizzle-orm";
 import { CronExpressionParser } from "cron-parser";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 import { askMyLife } from "./ask";
 import { pushToUser, isValidTimezone } from "./nudgeEngine";
 import { sendEmail, emailConfigured } from "./notify";
@@ -67,10 +68,9 @@ export async function translateInstruction(instruction: string): Promise<Automat
       { temperature: 0, maxTokens: 250 },
     )
   ).content;
+  const spec = parseModelJson<Partial<AutomationSpec> | null>(raw, null);
+  if (!spec) return null;
   try {
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (!m) return null;
-    const spec = JSON.parse(m[0]) as Partial<AutomationSpec>;
     if (!spec.crontab || !spec.query || !spec.subject) return null;
     if (spec.crontab.trim().split(/\s+/).length !== 5) return null;
     if (!nextCronRun(spec.crontab, "UTC")) return null;

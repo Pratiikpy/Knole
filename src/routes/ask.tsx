@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { askPresetsFn } from "@/server/fns";
 import type { AskPreset } from "@/server/askPresets";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/ask")({
   head: () => ({
@@ -29,12 +29,43 @@ type AskResult = {
   privacy: { sealed: boolean; anonymised: boolean };
 };
 
+/** Render the model's inline [n] citations as small chips that jump to the matching receipt. */
+function SummaryWithCitations({ text, receiptCount }: { text: string; receiptCount: number }) {
+  const parts = text.split(/(\[\d+\])/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const m = /^\[(\d+)\]$/.exec(part);
+        const n = m ? Number(m[1]) : 0;
+        if (m && n >= 1 && n <= receiptCount) {
+          return (
+            <button
+              key={i}
+              onClick={() =>
+                document
+                  .getElementById(`receipt-${n}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              className="mx-0.5 inline-flex h-[18px] min-w-[18px] translate-y-[-4px] items-center justify-center rounded-full bg-tan/[0.15] px-1 align-middle font-sans text-[10px] not-italic text-tan ring-1 ring-tan/30"
+              aria-label={`show receipt ${n}`}
+            >
+              {n}
+            </button>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function AskPage() {
   const [q, setQ] = useState("");
   const [asked, setAsked] = useState<string | null>(null);
   const [result, setResult] = useState<AskResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState<string | null>(null);
+  const askAbort = useRef<AbortController | null>(null);
   const [gated, setGated] = useState<string | null>(null);
   const getPresets = useServerFn(askPresetsFn);
   const [presets, setPresets] = useState<AskPreset[]>([]);
@@ -69,7 +100,9 @@ function AskPage() {
         privacy: { sealed: false, anonymised: false },
       });
     try {
+      askAbort.current = new AbortController();
       const res = await fetch("/ask/stream", {
+        signal: askAbort.current.signal,
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question: text, presetId }),
@@ -146,9 +179,10 @@ function AskPage() {
       }
       setThinking(null);
       setResult({ summary: answer, receipts, privacy: live });
-    } catch {
-      fail();
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") fail();
     } finally {
+      askAbort.current = null;
       setThinking(null);
       setLoading(false);
     }
@@ -256,6 +290,13 @@ function AskPage() {
                 >
                   {thinking ?? "Reading back through your own words"}…
                 </p>
+                <button
+                  onClick={() => askAbort.current?.abort()}
+                  className="ml-1 inline-flex items-center gap-1 rounded-full border border-rule px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-tan/40 hover:text-ink"
+                >
+                  <span className="inline-block h-[8px] w-[8px] rounded-[2px] bg-current opacity-70" />
+                  stop
+                </button>
               </div>
             </div>
           )}
@@ -266,7 +307,7 @@ function AskPage() {
                 The throughline
               </div>
               <p className="whitespace-pre-line font-display text-[22px] italic leading-snug text-ink-soft">
-                {result.summary}
+                <SummaryWithCitations text={result.summary} receiptCount={result.receipts.length} />
                 {loading && (
                   <span className="ml-0.5 inline-block h-5 w-px translate-y-1 animate-breathe bg-tan align-middle" />
                 )}
@@ -284,9 +325,18 @@ function AskPage() {
 
                   <ul className="space-y-4">
                     {result.receipts.map((r, i) => (
-                      <li key={i} className="rounded-xl border border-rule bg-card/50 p-5">
+                      <li
+                        key={i}
+                        id={`receipt-${i + 1}`}
+                        className="scroll-mt-24 rounded-xl border border-rule bg-card/50 p-5"
+                      >
                         <div className="mb-2 flex items-baseline justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          <span>{r.date}</span>
+                          <span>
+                            <span className="mr-2 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-tan/[0.15] px-1 text-[9px] text-tan ring-1 ring-tan/30">
+                              {i + 1}
+                            </span>
+                            {r.date}
+                          </span>
                           <span>{r.tag}</span>
                         </div>
                         <p className="font-display text-[17px] italic leading-snug text-ink-soft">

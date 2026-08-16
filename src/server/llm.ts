@@ -8,6 +8,13 @@ import "dotenv/config";
 const ZG_URL = process.env.ZG_SERVICE_URL ?? "";
 const ZG_KEY = process.env.ZG_API_SECRET ?? "";
 const ZG_MODEL = process.env.ZG_MODEL ?? "glm-5.1";
+// The fallback chain (khoj's priority-ordered model slots): when the primary model is down or
+// rate-limited, the SAME router serves a different model rather than the surface failing. Order:
+// primary, then each fallback, each getting the empty-content double-token retry.
+const ZG_CHAIN = [
+  ZG_MODEL,
+  ...(process.env.ZG_FALLBACK_MODELS ?? "qwen3.7-max").split(",").map((m) => m.trim()),
+].filter((m, i, a) => m && a.indexOf(m) === i);
 
 export type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
 
@@ -23,34 +30,54 @@ export async function chat(
   opts: { model?: string; temperature?: number; maxTokens?: number } = {},
 ): Promise<string> {
   requireZg();
-  // glm-5.1 is a thinking model: a tight max_tokens can be spent before it emits any content, so we
-  // floor generously and, on an empty completion, retry once with double the room before giving up.
+  // Thinking models can spend a tight max_tokens before emitting content, so we floor generously
+  // and, on an empty completion, retry once with double the room. If a model is down entirely
+  // (non-2xx, timeout, or still empty), the chain walks to the next model - an outage of the
+  // primary degrades the voice, not the product.
   const base = Math.max(opts.maxTokens ?? 1024, 2048);
+  const chain = opts.model ? [opts.model] : ZG_CHAIN;
   let lastErr = "empty content";
-  for (const maxTokens of [base, base * 2]) {
-    const res = await fetch(`${ZG_URL}/chat/completions`, {
-      method: "POST",
-      signal: AbortSignal.timeout(Number(process.env.LLM_TIMEOUT_MS ?? 40000)),
-      headers: {
-        Authorization: `Bearer ${ZG_KEY}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        model: opts.model ?? ZG_MODEL,
-        messages,
-        temperature: opts.temperature ?? 0.7,
-        max_tokens: maxTokens,
-        stream: false,
-      }),
-    });
-    if (!res.ok) {
-      lastErr = `0G upstream ${res.status}`;
-      break; // a non-2xx won't improve with more tokens
+  let retried429 = false;
+  for (const model of chain) {
+    for (const maxTokens of [base, base * 2]) {
+      let res: Response;
+      try {
+        res = await fetch(`${ZG_URL}/chat/completions`, {
+          method: "POST",
+          signal: AbortSignal.timeout(Number(process.env.LLM_TIMEOUT_MS ?? 40000)),
+          headers: {
+            Authorization: `Bearer ${ZG_KEY}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: opts.temperature ?? 0.7,
+            max_tokens: maxTokens,
+            stream: false,
+          }),
+        });
+      } catch (e) {
+        lastErr = `${model}: ${(e as Error).name === "TimeoutError" ? "timeout" : (e as Error).message}`;
+        break; // timeouts/network won't improve with more tokens - next model
+      }
+      if (res.status === 429 && !retried429) {
+        // One short backoff per chain walk: the router's rate window is seconds wide, and walking
+        // straight past a healthy-but-busy model to a colder one serves the user worse.
+        retried429 = true;
+        await new Promise((r) => setTimeout(r, 2500));
+        continue;
+      }
+      if (!res.ok) {
+        lastErr = `${model}: 0G upstream ${res.status}`;
+        break; // a non-2xx won't improve with more tokens - next model
+      }
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+      if (content) return content;
+      lastErr = `${model}: empty content`;
     }
-    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-    if (content) return content;
   }
   throw new Error(`LLM request failed (${lastErr})`);
 }

@@ -3,9 +3,11 @@ import { chatPrivate, chatPrivateStream } from "./sealed";
 import { retrieveEntries, retrieveMemories } from "./engine";
 import { rewriteSearchQueries } from "./queryRewrite";
 import { parseDateFilters } from "./dateLens";
+import { rerankAndFloor } from "./rerank";
 
 const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the journal excerpts and remembered facts provided below.
 - Ground every claim in what they actually wrote. Never invent events, dates, numbers, or feelings.
+- When a sentence draws on a numbered journal excerpt, cite it inline as [1], [2] etc — the excerpt's own number, right after the claim it supports. Cite only numbers that exist. Remembered facts (unnumbered) need no citation.
 - Answer in 2–4 complete, grammatical sentences — the real throughline across their words, in second person ("You…"). Be concise: finish every sentence, never ramble, pad, or trail off.
 - Be warm and clear, never flattering, never clinical.
 - If the provided material does not actually answer the question, say so plainly instead of guessing.
@@ -83,7 +85,7 @@ async function gather(
   }
 
   const seen = new Set<string>();
-  const entries = [...entryBest.values()]
+  const entryCandidates = [...entryBest.values()]
     .sort((a, b) => b.score - a.score)
     .filter((e) => {
       const k = e.text.trim().toLowerCase();
@@ -91,8 +93,20 @@ async function gather(
       seen.add(k);
       return true;
     })
-    .slice(0, 5);
-  const memories = [...memBest.values()].sort((a, b) => b.score - a.score).slice(0, 6);
+    .slice(0, 10);
+  const memCandidates = [...memBest.values()].sort((a, b) => b.score - a.score).slice(0, 10);
+
+  // Cross-encoder pass over the unioned candidates, judged against the RAW question: the fan-out
+  // maximised recall, this maximises precision - and the floor drops candidates that are not
+  // actually about the question (measured: cosine alone cannot tell; see rerank.ts).
+  const [entries, memories] = await Promise.all([
+    rerankAndFloor(question, entryCandidates, (e) => e.text, { keepAtLeast: 2 }).then((r) =>
+      r.slice(0, 5),
+    ),
+    rerankAndFloor(question, memCandidates, (m) => m.content, { keepAtLeast: 2 }).then((r) =>
+      r.slice(0, 6),
+    ),
+  ]);
 
   if (entries.length === 0 && memories.length === 0) return null;
   onStatus?.(

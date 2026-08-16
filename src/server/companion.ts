@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 
 const { entryComments, entries } = schema;
 
@@ -80,10 +81,12 @@ export async function companionComment(
   } catch {
     return null; // the margin stays quiet when the model is down - silence is in character
   }
-  const m = raw.match(/\{[\s\S]*\}/);
-  if (!m) return null;
+  const parsed = parseModelJson<{ skip?: unknown; move?: unknown; text?: unknown } | null>(
+    raw,
+    null,
+  );
+  if (!parsed) return null;
   try {
-    const parsed = JSON.parse(m[0]) as { skip?: unknown; move?: unknown; text?: unknown };
     if (parsed.skip === true) {
       await db
         .insert(entryComments)

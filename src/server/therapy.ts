@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { dayKey } from "./dateKey";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 import { computeThemes } from "./themes";
 
 const { reflectionArtifacts } = schema;
@@ -95,17 +96,11 @@ export async function sessionPrep(userId: string): Promise<SessionPrep> {
     ],
     { temperature: 0.3, maxTokens: 1024 },
   );
-  let parsed: {
+  const parsed = parseModelJson<{
     talkingPoints?: { point?: string; quote?: string; date?: string }[];
     unresolved?: string[];
     wins?: { text?: string; date?: string }[];
-  } = {};
-  try {
-    const m = r.content.match(/\{[\s\S]*\}/);
-    parsed = m ? JSON.parse(m[0]) : {};
-  } catch {
-    parsed = {};
-  }
+  }>(r.content, {});
 
   // Keep only talking points whose quote is genuinely verbatim from an entry (the accuracy guarantee).
   const talkingPoints = (parsed.talkingPoints ?? [])

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 
 const { entrySignals, reflectionArtifacts } = schema;
 
@@ -52,14 +53,13 @@ export async function extractSignals(
       ],
       { temperature: 0, maxTokens: 200 },
     );
-    const m = r.content.match(/\{[\s\S]*\}/);
-    if (!m) return empty;
-    const p = JSON.parse(m[0]) as {
+    const p = parseModelJson<{
       topics?: unknown;
       valence?: unknown;
       arousal?: unknown;
       flat?: unknown;
-    };
+    } | null>(r.content, null);
+    if (!p) return empty;
     const topics = Array.isArray(p.topics)
       ? Array.from(
           new Set(

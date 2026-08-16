@@ -4,6 +4,7 @@ import { retrieveMemories, retrieveEntries, type EntryHit } from "./engine";
 import { embed } from "./embed";
 import { bestExcerpt } from "./excerpt";
 import { parseDateFilters } from "./dateLens";
+import { parseModelJson } from "./llmJson";
 
 const CHAT_SYS = `You are Knole — a private, warm, sharp thinking-partner the user talks to. Not a yes-man, not a generic assistant.
 - You remember this person across time. Weave in what you genuinely know about them when it helps, naturally — never list facts, never say "according to my notes".
@@ -60,15 +61,10 @@ export async function gatherChatContext(
     } catch {
       break; // planner down — answer from base context
     }
-    const m = decision.match(/\{[\s\S]*\}/);
-    if (!m) break;
+    const parsed = parseModelJson<{ search?: unknown; ready?: unknown } | null>(decision, null);
+    if (!parsed) break;
     let query = "";
-    try {
-      const parsed = JSON.parse(m[0]) as { search?: unknown; ready?: unknown };
-      if (typeof parsed.search === "string" && parsed.search.trim()) query = parsed.search.trim();
-    } catch {
-      break;
-    }
+    if (typeof parsed.search === "string" && parsed.search.trim()) query = parsed.search.trim();
     if (!query || seenQueries.has(query.toLowerCase())) break;
     seenQueries.add(query.toLowerCase());
     // The planner may have emitted a dt-date-filter; strip it before embedding and let it gate
@@ -103,9 +99,22 @@ function buildMessages(
   const searchBlock = searched.length
     ? `\n\nFrom their journal (dated — ground any claims about their past in these, and say the date when it helps):\n${searched.map((s) => `- [${s.date}] ${s.text.slice(0, 260)}`).join("\n")}`
     : "";
+  // Structural budgeting (khoj's truncate_messages): drop whole OLDEST turns first, and never
+  // touch the live message or the retrieved context. slice(-10) alone let ten 4000-char turns
+  // put ~40k chars of history in front of every reply; the budget keeps the recent conversation
+  // whole and lets the deep past fall away turn by turn.
+  const BUDGET = 12_000; // chars of history (~3k tokens) - the system block and message ride free
+  const recent: Turn[] = [];
+  let used = 0;
+  for (let i = history.length - 1; i >= 0 && recent.length < 10; i--) {
+    const len = history[i].content.length + 16;
+    if (used + len > BUDGET && recent.length >= 2) break; // keep at least one exchange
+    used += len;
+    recent.unshift(history[i]);
+  }
   return [
     { role: "system", content: CHAT_SYS + persona + memBlock + searchBlock },
-    ...history.slice(-10).map((t) => ({ role: t.role, content: t.content }) as ChatMsg),
+    ...recent.map((t) => ({ role: t.role, content: t.content }) as ChatMsg),
     { role: "user", content: message },
   ];
 }
@@ -174,14 +183,13 @@ export async function composeEntry(
       ],
       { temperature: 0.4, maxTokens: 700 },
     );
-    const m = r.content.match(/\{[\s\S]*\}/);
-    if (!m) return { title: fallbackTitle, body: fallbackBody, tags: [], mood: null };
-    const parsed = JSON.parse(m[0]) as {
+    const parsed = parseModelJson<{
       title?: unknown;
       body?: unknown;
       tags?: unknown;
       mood?: unknown;
-    };
+    } | null>(r.content, null);
+    if (!parsed) return { title: fallbackTitle, body: fallbackBody, tags: [], mood: null };
     const body =
       typeof parsed.body === "string" && parsed.body.trim() ? parsed.body.trim() : fallbackBody;
     const title =

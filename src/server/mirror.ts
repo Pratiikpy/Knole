@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 import { latestDream, type Dream } from "./dreaming";
 
 const { reflectionArtifacts } = schema;
@@ -214,13 +215,7 @@ export async function buildMirror(userId: string, opts?: { compose?: boolean }):
     });
   }
 
-  let parsed: Record<string, unknown> = {};
-  try {
-    const m = r.content.match(/\{[\s\S]*\}/);
-    parsed = m ? (JSON.parse(m[0]) as Record<string, unknown>) : {};
-  } catch {
-    parsed = {};
-  }
+  const parsed = parseModelJson<Record<string, unknown>>(r.content, {});
 
   // Map each pattern's cited entry number → the user's own quote (truncated) + date. This is the
   // "Knole proves them" receipt; a missing/out-of-range citation just yields an empty receipt.

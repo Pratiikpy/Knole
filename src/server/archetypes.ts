@@ -2,6 +2,7 @@ import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { dayKey } from "./dateKey";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 
 const { entries, users, archetypeReveals } = schema;
 
@@ -311,8 +312,11 @@ export async function archetypeReveal(
           { temperature: 0.4, maxTokens: 2400 },
         )
       ).content;
-      const j = raw.match(/\{[\s\S]*\}/);
-      if (j) parsed = JSON.parse(j[0]);
+      parsed = parseModelJson<{
+        archetypeId?: unknown;
+        letter?: unknown;
+        claims?: unknown;
+      } | null>(raw, null);
     } catch {
       if (attempt < 2) await new Promise((r) => setTimeout(r, 6000 * (attempt + 1)));
     }

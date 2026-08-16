@@ -1,4 +1,5 @@
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 
 // Query-rewrite fan-out (khoj's extract_questions, tuned for a journal).
 //
@@ -73,9 +74,8 @@ export async function rewriteSearchQueries(
       ],
       { temperature: 0, maxTokens: 700 },
     );
-    const m = r.content.match(/\{[\s\S]*\}/);
-    if (!m) return fallback;
-    const parsed = JSON.parse(m[0]) as { queries?: unknown };
+    const parsed = parseModelJson<{ queries?: unknown } | null>(r.content, null);
+    if (!parsed) return fallback;
     const queries = (Array.isArray(parsed.queries) ? parsed.queries : [])
       .filter((q): q is string => typeof q === "string" && q.trim().length > 2)
       .map((q) => q.trim().slice(0, 300))

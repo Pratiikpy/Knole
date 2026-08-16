@@ -3,6 +3,7 @@ import { db, schema } from "../db";
 import { embed } from "./embed";
 import { retrieveEntries } from "./engine";
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 
 const { intentions } = schema;
 
@@ -159,13 +160,7 @@ export async function measureMovement(userId: string, intentionText: string): Pr
     { temperature: 0.2, maxTokens: 1024 },
   );
 
-  let parsed: Partial<Movement> = {};
-  try {
-    const m = r.content.match(/\{[\s\S]*\}/);
-    parsed = m ? (JSON.parse(m[0]) as Partial<Movement>) : {};
-  } catch {
-    parsed = {};
-  }
+  const parsed = parseModelJson<Partial<Movement>>(r.content, {});
   const dir =
     parsed.direction === "toward" || parsed.direction === "drifted" ? parsed.direction : "none";
 

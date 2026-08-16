@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { coupleQuestionFor, coupleQuestionById } from "./coupleDeck";
 import { streaksFromDays } from "./calendar";
+import { parseModelJson } from "./llmJson";
 
 const { couples, coupleMembers, coupleAnswers, users } = schema;
 
@@ -333,16 +334,13 @@ export async function usMirror(
         { temperature: 0.6, maxTokens: 400 },
       )
     ).content;
-    const j = raw.match(/\{[\s\S]*\}/);
-    if (j) {
-      const p = JSON.parse(j[0]) as Partial<UsMirror>;
-      if (p.throughline && p.divergence && p.starter) {
-        mirror = {
-          throughline: String(p.throughline),
-          divergence: String(p.divergence),
-          starter: String(p.starter),
-        };
-      }
+    const p = parseModelJson<Partial<UsMirror> | null>(raw, null);
+    if (p && p.throughline && p.divergence && p.starter) {
+      mirror = {
+        throughline: String(p.throughline),
+        divergence: String(p.divergence),
+        starter: String(p.starter),
+      };
     }
   } catch {
     /* model down - report not-ready rather than caching junk */

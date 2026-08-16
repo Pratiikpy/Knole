@@ -429,6 +429,19 @@ function TodayPage() {
   const [voiceErr, setVoiceErr] = useState<string | null>(null);
   const mediaRef = useRef<WavRecorder | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const reflectAbort = useRef<AbortController | null>(null);
+  // Mid-stream stop (khoj's interrupt): keeps whatever streamed, and clears the recovery markers -
+  // a reflection the person chose to stop must not resurrect on the next visit.
+  function stopReflection() {
+    reflectAbort.current?.abort();
+    reflectAbort.current = null;
+    try {
+      sessionStorage.removeItem("knole.pending.reflection");
+      sessionStorage.removeItem("knole.pending.draft");
+    } catch {
+      /* private mode */
+    }
+  }
   const filingFor = useRef<string | null>(null);
   // AI entry editing (khoj's search/replace engine): the model proposes small approve-or-skip
   // edits against a SNAPSHOT of the draft; nothing ever applies without the person choosing it.
@@ -615,7 +628,9 @@ function TodayPage() {
       return;
     }
     try {
+      reflectAbort.current = new AbortController();
       const res = await fetch("/journal/stream", {
+        signal: reflectAbort.current.signal,
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -702,10 +717,15 @@ function TodayPage() {
           .then((r) => setProgramToday(r.today))
           .catch(() => {});
       }
-    } catch {
-      setReflection("Something interrupted the reflection — try again in a moment.");
-      setReflected(true);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        setReflected(true); // keep whatever streamed - the person chose to stop
+      } else {
+        setReflection("Something interrupted the reflection — try again in a moment.");
+        setReflected(true);
+      }
     } finally {
+      reflectAbort.current = null;
       setLoading(false);
     }
   }
@@ -1643,6 +1663,15 @@ function TodayPage() {
                   {reflection}
                   {loading && (
                     <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-breathe bg-tan align-middle" />
+                  )}
+                  {loading && reflection && (
+                    <button
+                      onClick={stopReflection}
+                      className="ml-3 inline-flex translate-y-[-1px] items-center gap-1 rounded-full border border-rule px-2.5 py-0.5 align-middle text-[11px] not-italic text-muted-foreground transition-colors hover:border-tan/40 hover:text-ink"
+                    >
+                      <span className="inline-block h-[8px] w-[8px] rounded-[2px] bg-current opacity-70" />
+                      stop
+                    </button>
                   )}
                 </p>
                 {crisis && !loading && (

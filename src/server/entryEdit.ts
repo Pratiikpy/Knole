@@ -1,4 +1,5 @@
 import { chatPrivate } from "./sealed";
+import { parseModelJson } from "./llmJson";
 import { validateEdits, type ProposedEdit, type ValidatedEdit } from "../lib/editMatch";
 
 // AI entry editing — khoj's Obsidian SEARCH/REPLACE engine, brought to the journal's composer.
@@ -54,31 +55,24 @@ export async function proposeEntryEdits(
     ],
     { temperature: 0.3, maxTokens: 1600 },
   );
-  const m = r.content.match(/\{[\s\S]*\}/);
-  if (!m) return { edits: [], dropped: 0, note: "" };
-  let proposed: ProposedEdit[] = [];
-  let note = "";
-  try {
-    const parsed = JSON.parse(m[0]) as { edits?: unknown; note?: unknown };
-    note = typeof parsed.note === "string" ? parsed.note.slice(0, 200) : "";
-    proposed = (Array.isArray(parsed.edits) ? parsed.edits : [])
-      .filter(
-        (e): e is ProposedEdit =>
-          !!e &&
-          typeof (e as ProposedEdit).find === "string" &&
-          typeof (e as ProposedEdit).replace === "string" &&
-          (e as ProposedEdit).find.trim().length >= 3 &&
-          (e as ProposedEdit).find.length <= 400,
-      )
-      .map((e) => ({
-        find: e.find,
-        replace: String(e.replace).slice(0, 600),
-        why: typeof e.why === "string" ? e.why.slice(0, 80) : "",
-      }))
-      .slice(0, 6);
-  } catch {
-    return { edits: [], dropped: 0, note: "" };
-  }
+  const parsed = parseModelJson<{ edits?: unknown; note?: unknown } | null>(r.content, null);
+  if (!parsed) return { edits: [], dropped: 0, note: "" };
+  const note = typeof parsed.note === "string" ? parsed.note.slice(0, 200) : "";
+  const proposed: ProposedEdit[] = (Array.isArray(parsed.edits) ? parsed.edits : [])
+    .filter(
+      (e): e is ProposedEdit =>
+        !!e &&
+        typeof (e as ProposedEdit).find === "string" &&
+        typeof (e as ProposedEdit).replace === "string" &&
+        (e as ProposedEdit).find.trim().length >= 3 &&
+        (e as ProposedEdit).find.length <= 400,
+    )
+    .map((e) => ({
+      find: e.find,
+      replace: String(e.replace).slice(0, 600),
+      why: typeof e.why === "string" ? e.why.slice(0, 80) : "",
+    }))
+    .slice(0, 6);
   // khoj's atomic rule: validate every edit against the raw draft BEFORE any applies. Edits that
   // don't locate (the model paraphrased its own quote) are dropped and counted, never guessed at.
   const { valid, dropped } = validateEdits(draft, proposed);
