@@ -873,6 +873,26 @@
               </td>
               <td style="padding: 0.7rem 0">Live on the 0G mainnet router · balance-funded</td>
             </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>⭐ Self-custody mint (v1.1)</strong></td>
+              <td style="padding: 0.7rem 0.8rem">The user's OWN wallet signs the iMint - the mint transaction's <code>from</code> equals the token owner; no server key involved</td>
+              <td style="padding: 0.7rem 0">Token #2 · <a href="https://chainscan.0g.ai/tx/0x95cbf2125d86628386d7f43512cb65ac36655ab8d3da821dc68699611ec103ca" style="color: inherit">mint tx ↗</a> on <a href="https://chainscan.0g.ai/address/0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca" style="color: inherit">KnoleAgenticID v1.1 ↗</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>Proof-of-journaling anchor</strong></td>
+              <td style="padding: 0.7rem 0.8rem">One idempotent on-chain mark per journaled day (<code>JournalDayAnchor</code>) - the substrate streaks and staking settle against</td>
+              <td style="padding: 0.7rem 0"><a href="https://chainscan.0g.ai/address/0xdbD0fd283f00eb7c9E1f7521f66bAfd8cd0948e6" style="color: inherit">0xdbD0fd…948e6 ↗</a> · wired into every reflected save</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>⭐ Commitment staking</strong></td>
+              <td style="padding: 0.7rem 0.8rem"><code>KnoleCommitment</code>: no-oracle settlement read from the anchor; structurally can never pay more than staked; forfeits burn, provably</td>
+              <td style="padding: 0.7rem 0"><a href="https://chainscan.0g.ai/tx/0x9d1d551423d871643338d48970cfc4e9fa0c9daae868ebeba140ab0785a2c12e" style="color: inherit">real 0.05 OG stake ↗</a> · <a href="https://chainscan.0g.ai/tx/0xdef84079dee1c70fbaf0b0b0f59d27fb7b89ae7ad4c8d942d864dfb81d5ec3e7" style="color: inherit">cooling-off refund ↗</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(124, 101, 69, 0.12)">
+              <td style="padding: 0.7rem 0.8rem 0.7rem 0"><strong>On-chain memory grants</strong></td>
+              <td style="padding: 0.7rem 0.8rem">ERC-7857 <code>authorizeUsage</code>/<code>revoke</code> signed by the user's wallet; the live registry is the source of truth</td>
+              <td style="padding: 0.7rem 0">granted + revoked live · <a href="https://chainscan.0g.ai/address/0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca" style="color: inherit">registry ↗</a></td>
+            </tr>
           </tbody>
         </table>
         <p style="font-size: 11.5px; opacity: 0.62; margin-top: 0.8rem">
@@ -1257,6 +1277,97 @@
           />
           <figcaption>
             <strong>Night.</strong> A full dark theme across every surface, with no flash on load.
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- ════════ WAVE 3 ════════ -->
+      <div class="band" id="wave3" style="border-top: 2px solid var(--tan, #7c6545)">
+        <div class="kicker">WAVE 3 · BUILT IN THE WINDOW</div>
+        <h2>Wave 3: three contracts, five flagships, a daily gravity</h2>
+        <p>
+          Everything below shipped inside the wave-3 window and is live at knole.me — a hardened
+          ERC-7857 v1.1 with a <strong>102-test Foundry suite</strong> (unit + fuzz + invariants), a
+          proof-of-journaling anchor, a no-oracle staking escrow, and the product around them. Every
+          frame is a real screenshot from production, captured during verification.
+        </p>
+      </div>
+      <section class="section showcase" id="wave3-shots" style="margin-top: 28px">
+        <figure class="shot">
+          <img src="proof-shots/w3-duet.webp" width="1080" height="1750" loading="lazy" decoding="async"
+            alt="Duet - a repair question unlocked for both partners, with the weekly Us mirror below" />
+          <figcaption>
+            <strong>Duet — one question a day, for two.</strong> Neither partner can read the other's answer until both have written; the lock lives in the server's payload, not a promise. Streaks belong to the couple, quiz days reveal guesses beside truths, and the weekly <em>Us mirror</em> reflects on the pair from unlocked answers only.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-archetype.webp" width="1080" height="1377" loading="lazy" decoding="async"
+            alt="The Monthly Archetype - the current month sealed with a countdown, last month ready to open" />
+          <figcaption>
+            <strong>The Monthly Archetype.</strong> Who you were this month, named from your own words — and never without receipts: every claim carries a verbatim quote the server verifies against your actual entries before anything renders. Sealed until the 1st, for everyone, paid included.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-commit.webp" width="1080" height="1497" loading="lazy" decoding="async"
+            alt="Commit - stake it, show up, take it back; transparent rules with a link to the contract" />
+          <figcaption>
+            <strong>Commit — a commitment contract, never a wager.</strong> Stake OG against journaling N days; <code>KnoleCommitment</code> settles against the on-chain proof-of-journaling anchor with <em>no oracle at all</em>. You can never receive more than you staked; misses refund your completion share and burn the rest, provably. Proven with real money on mainnet — staked and refunded to the wei.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-wellbeing.webp" width="1080" height="1557" loading="lazy" decoding="async"
+            alt="Wellbeing - validated check-ins, the thought record, breathing and grounding exercises" />
+          <figcaption>
+            <strong>Wellbeing — a toolbox, not a couch.</strong> PHQ-9 and GAD-7 check-ins with change flags and an immediate crisis route on item 9, the five-step thought record, a field guide to thirteen thinking patterns, and calm guided exercises.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-passport.webp" width="1080" height="1900" loading="lazy" decoding="async"
+            alt="Memory Passport - the exact payload a granted agent would see, with iNFT provenance" />
+          <figcaption>
+            <strong>The Memory Passport.</strong> What your self-model contains, the <em>exact</em> payload a granted agent would receive per scope — inspectable, not asserted — and a portable bundle stamped with your iNFT's on-chain provenance.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-calendar.webp" width="1080" height="1417" loading="lazy" decoding="async"
+            alt="Calendar - connected day-run pills colored by feeling, with streak tiles" />
+          <figcaption>
+            <strong>The emotions calendar.</strong> Days colored by how they actually felt, consecutive days joining into runs — the shape of a habit, visible — with streak tiles and an analytics dashboard beneath.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-filing.webp" width="1080" height="1497" loading="lazy" decoding="async"
+            alt="After a reflection, the Index files the entry into typed memories before your eyes" />
+          <figcaption>
+            <strong>The filing strip.</strong> After a reflection, you watch the Index file what it learned — the actual extracted memories appear as typed chips, dated and grounded (mem0-grade extraction: transitions captured, relative dates resolved against the entry's own day).
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-sections.webp" width="956" height="1500" loading="lazy" decoding="async"
+            alt="The sectioned composer - What happened, How it felt, What you're glad of" />
+          <figcaption>
+            <strong>Sectioned entries.</strong> An optional structured page — what happened, how it felt, what you're glad of, what you're seeing, who mattered — whose placeholders do the gentle priming.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-nudge.webp" width="956" height="1549" loading="lazy" decoding="async"
+            alt="The daily reminder settings - a random moment in your window, silenced when you journal" />
+          <figcaption>
+            <strong>The nudge engine.</strong> One reminder a day at a fresh random moment inside your window — and only on days you haven't written. Journal first and it stays quiet. Delivered as real web push, dispatched by an idempotent cron.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-automations.webp" width="956" height="774" loading="lazy" decoding="async"
+            alt="Proactive check-ins - a scheduled question the journal answers itself" />
+          <figcaption>
+            <strong>Proactive check-ins.</strong> Say it in your own words — "every Sunday evening, ask how my week actually went" — and the journal asks itself on schedule, answers from your entries, and only notifies when the answer is worth your attention.
+          </figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="proof-shots/w3-milestone.webp" width="782" height="467" loading="lazy" decoding="async"
+            alt="A milestone card - this was your 5th entry" />
+          <figcaption>
+            <strong>Milestones.</strong> The 5th, the 10th, then every 25th — a one-time celebration at the moment of crossing, and a permanent mark on the timeline.
           </figcaption>
         </figure>
       </section>
