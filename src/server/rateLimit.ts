@@ -1,4 +1,4 @@
-import { getRequestIP } from "@tanstack/react-start/server";
+import { getRequestIP, getRequest } from "@tanstack/react-start/server";
 
 // In-memory fixed-window limiter. Protects the expensive LLM endpoints from abuse /
 // runaway cost. In-memory is fine for a single-instance deploy; a multi-instance
@@ -22,7 +22,15 @@ export function allow(key: string, limit: number, windowMs: number, now = Date.n
 function clientKey(scope: string): string {
   let ip = "local";
   try {
-    ip = getRequestIP({ xForwardedFor: true }) || "local";
+    // x-forwarded-for's LEFTMOST value is whatever the client sent - trivially rotated to get a
+    // fresh bucket per request. Prefer the platform-set headers, which a client cannot forge, and
+    // only fall back to XFF where no proxy identity exists (local dev).
+    const req = getRequest();
+    ip =
+      req.headers.get("x-vercel-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      getRequestIP({ xForwardedFor: true }) ||
+      "local";
   } catch {
     /* no request context (scripts/tests) */
   }

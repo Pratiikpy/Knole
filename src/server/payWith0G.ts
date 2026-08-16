@@ -1,10 +1,10 @@
 import { ethers } from "ethers";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { addCredits, getCredits } from "./billing";
 import { providerFor } from "./og";
 
-const { reflectionArtifacts } = schema;
+const { reflectionArtifacts, users } = schema;
 
 // Pay-with-0G (Part 7C) — top up credits by sending 0G to the treasury from the wallet you already
 // have, then claiming the transaction. The claim is verified fully on-chain (confirmed, to = treasury,
@@ -52,17 +52,44 @@ export async function claimOgPayment(userId: string, txHash: string): Promise<Cl
   if ((tx.to ?? "").toLowerCase() !== TREASURY) return { ok: false, reason: "wrong_recipient" };
   if (tx.value <= 0n) return { ok: false, reason: "zero_value" };
 
+  // The claimer must BE the sender. Without this, anyone watching the treasury could submit a
+  // stranger's tx hash first and take the credits that stranger paid for.
+  const [claimer] = await db
+    .select({ wallet: users.walletAddress, ck: users.clientKeyAddr })
+    .from(users)
+    .where(eq(users.id, userId));
+  const owned = [claimer?.wallet, claimer?.ck]
+    .filter(Boolean)
+    .map((a) => (a as string).toLowerCase());
+  if (!owned.includes((tx.from ?? "").toLowerCase())) {
+    return { ok: false, reason: "not_your_payment" };
+  }
+
   const credited = Number(tx.value / RATE_WEI);
   if (credited < 1) return { ok: false, reason: "too_small" };
 
-  // Record the claim first (the dedupe key), then credit.
-  await db.insert(reflectionArtifacts).values({
-    userId,
-    type: "state",
-    threadKey: "og-credit",
-    content: { txHash, credited, from: tx.from },
-    sources: {},
-  });
-  await addCredits(userId, credited);
+  // Atomic claim: the partial unique index on (thread_key, content->>'txHash') makes the INSERT
+  // itself the lock, so two concurrent claims of one tx can never both credit. A check-then-insert
+  // raced. If nothing was inserted, someone else already claimed it.
+  const claimed = (await db.execute(sql`
+    INSERT INTO reflection_artifacts (user_id, type, thread_key, content, sources)
+    VALUES (${userId}, 'state', 'og-credit',
+            ${JSON.stringify({ txHash, credited, from: tx.from })}::jsonb, '{}'::jsonb)
+    ON CONFLICT DO NOTHING
+    RETURNING id
+  `)) as unknown as unknown[];
+  if (!claimed.length) return { ok: false, reason: "already_claimed" };
+  try {
+    await addCredits(userId, credited);
+  } catch (e) {
+    // The claim row is the dedupe key: if crediting fails we must release it, or the user has paid
+    // real 0G and can never retry.
+    await db
+      .execute(
+        sql`DELETE FROM reflection_artifacts WHERE thread_key = 'og-credit' AND content->>'txHash' = ${txHash}`,
+      )
+      .catch(() => {});
+    throw e;
+  }
   return { ok: true, credited, credits: await getCredits(userId) };
 }

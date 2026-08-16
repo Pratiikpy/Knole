@@ -1,4 +1,5 @@
 import { currentUserId } from "./session";
+import { isSameOrigin } from "./sameOrigin";
 import { enforceRate } from "./rateLimit";
 import { detectCrisis, CRISIS_REPLY } from "./safety";
 import { reflectStream } from "./reflect";
@@ -13,10 +14,7 @@ import { background } from "./background";
  * stream a body, so this is a raw handler mounted in start.ts.
  */
 export async function handleOnboardStream(request: Request): Promise<Response> {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host)
-    return new Response("forbidden", { status: 403 });
+  if (!isSameOrigin(request)) return new Response("forbidden", { status: 403 });
   try {
     enforceRate("onboard-stream", 10, 60_000);
   } catch {

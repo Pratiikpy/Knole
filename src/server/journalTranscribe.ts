@@ -1,4 +1,5 @@
 import { requireUserId } from "./session";
+import { isSameOrigin } from "./sameOrigin";
 import { enforceRate } from "./rateLimit";
 import { transcribeAudio, transcribeConfigured } from "./transcribe";
 
@@ -14,9 +15,7 @@ export async function handleTranscribe(request: Request): Promise<Response> {
       headers: { "content-type": "application/json" },
     });
 
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host) return json(403, { error: "forbidden" });
+  if (!isSameOrigin(request)) return json(403, { error: "forbidden" });
 
   try {
     await requireUserId();

@@ -1,4 +1,5 @@
 import { saveEntry, saveReply, extractMemories, storeEntryOn0G } from "./engine";
+import { isSameOrigin } from "./sameOrigin";
 import { scoreEntryValence } from "./valence";
 import { storeSignals } from "./omission";
 import { recordReceipt } from "./receipts";
@@ -40,9 +41,7 @@ export async function handleStreamingReply(
   const txt = (status: number, body: string) => new Response(body, { status });
 
   // CSRF: same-origin POST only. A cross-site fetch carries a foreign (or no) Origin — reject it.
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host) return txt(403, "forbidden");
+  if (!isSameOrigin(request)) return txt(403, "forbidden");
 
   let userId: string;
   try {

@@ -1,4 +1,5 @@
 import { askMyLifeStream } from "./ask";
+import { isSameOrigin } from "./sameOrigin";
 import { gateAsk } from "./askPresets";
 import { currentUserId } from "./session";
 import { enforceRate } from "./rateLimit";
@@ -12,9 +13,7 @@ import { enforceRate } from "./rateLimit";
 export async function handleAskStream(request: Request): Promise<Response> {
   const txt = (status: number, body: string) => new Response(body, { status });
 
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host) return txt(403, "forbidden");
+  if (!isSameOrigin(request)) return txt(403, "forbidden");
 
   try {
     enforceRate("ask", 30, 60_000);

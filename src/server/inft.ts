@@ -192,10 +192,12 @@ export async function prepareClientMint(userId: string): Promise<ClientMintPrep>
   if (!inftConfigured()) return { error: "not-configured" };
   await ensureWalletCaptured(userId);
   const [u] = await db
-    .select({ wallet: users.walletAddress, clientKey: users.clientKeyAddr })
+    .select({ wallet: users.walletAddress })
     .from(users)
     .where(eq(users.id, userId));
-  const wallet = u?.wallet || u?.clientKey;
+  // ONLY the Privy-verified wallet. clientKeyAddr is self-declared at encryption enrollment with no
+  // proof of control, so trusting it here would let anyone claim a stranger's mint as their own.
+  const wallet = u?.wallet;
   if (!wallet) return { error: "no-wallet" };
   const existing = await inftStatus(userId);
   if (
@@ -247,11 +249,22 @@ export async function confirmClientMint(
   }
   if (!tokenId) return { error: "no-mint-event" };
   const [u] = await db
-    .select({ wallet: users.walletAddress, clientKey: users.clientKeyAddr })
+    .select({ wallet: users.walletAddress })
     .from(users)
     .where(eq(users.id, userId));
-  const expected = (u?.wallet || u?.clientKey || "").toLowerCase();
-  if (owner.toLowerCase() !== expected) return { error: "owner-mismatch" };
+  const expected = (u?.wallet ?? "").toLowerCase();
+  if (!expected || owner.toLowerCase() !== expected) return { error: "owner-mismatch" };
+
+  // One token, one account: without this, several accounts could each "confirm" the same public
+  // mint and every one of them would read as an iNFT holder (which unlocks paid entitlements).
+  const taken = (await db.execute(sql`
+    SELECT 1 FROM reflection_artifacts
+    WHERE thread_key = 'inft' AND user_id <> ${userId}
+      AND content->>'tokenId' = ${tokenId}
+      AND lower(content->>'contract') = ${NFT_ADDRESS.toLowerCase()}
+    LIMIT 1
+  `)) as unknown as unknown[];
+  if (taken.length) return { error: "already-claimed" };
 
   const c = contract();
   const datas = (await c.getIntelligentDatas(tokenId)) as { dataDescription: string }[];

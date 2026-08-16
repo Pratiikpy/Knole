@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { retrieveIdentityMemories } from "./engine";
@@ -11,7 +11,14 @@ const { reflectionArtifacts } = schema;
 // capsule never exposes raw entries, only the durable identity memories. (ERC-8004 on-chain
 // registration is the future upgrade; the grant model works today and is fully user-controlled.)
 
-const SECRET = process.env.KNOLE_KDF_SECRET ?? process.env.PRIVY_APP_SECRET ?? "knole-dev-secret";
+// No dev fallback: a hardcoded default would let anyone who has read this file forge a grant token
+// for any user id and redeem it at the public resolve endpoint. Missing config must fail loudly.
+const SECRET = process.env.KNOLE_KDF_SECRET ?? process.env.PRIVY_APP_SECRET ?? "";
+function requireSecret(): string {
+  if (!SECRET)
+    throw new Error("KNOLE_KDF_SECRET (or PRIVY_APP_SECRET) required to sign identity grants");
+  return SECRET;
+}
 const GRANT_KEY = "identity-grant";
 
 export type IdentityCapsule = {
@@ -42,7 +49,7 @@ export async function buildIdentityCapsule(userId: string): Promise<IdentityCaps
 const b64u = (s: string) => Buffer.from(s).toString("base64url");
 const unb64u = (s: string) => Buffer.from(s, "base64url").toString("utf8");
 function sign(payload: string): string {
-  return createHmac("sha256", SECRET).update(payload).digest("base64url");
+  return createHmac("sha256", requireSecret()).update(payload).digest("base64url");
 }
 
 type GrantPayload = { gid: string; uid: string; scope: string; exp: number };
@@ -78,7 +85,11 @@ export async function resolveGrant(token: string): Promise<ResolveResult> {
   if (dot < 1) return { ok: false, reason: "invalid" };
   const body = token.slice(0, dot);
   const mac = token.slice(dot + 1);
-  if (sign(body) !== mac) return { ok: false, reason: "invalid" };
+  const expected = sign(body);
+  // Constant-time: a plain !== leaks the MAC prefix through response timing.
+  if (expected.length !== mac.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(mac))) {
+    return { ok: false, reason: "invalid" };
+  }
   let payload: GrantPayload;
   try {
     payload = JSON.parse(unb64u(body)) as GrantPayload;
@@ -97,7 +108,13 @@ export async function resolveGrant(token: string): Promise<ResolveResult> {
   const g = row.content as { revoked?: boolean };
   if (g.revoked) return { ok: false, reason: "revoked" };
 
-  const capsule = await buildIdentityCapsule(payload.uid);
+  const full = await buildIdentityCapsule(payload.uid);
+  // The scope is a PROMISE the user made when they issued the token, and the passport page shows
+  // them exactly this shape. Serving the full capsule for a summary grant would break it silently.
+  const capsule: IdentityCapsule =
+    payload.scope === "full"
+      ? full
+      : { ...full, relationships: [], commitments: [], preferences: [] };
   return { ok: true, scope: payload.scope, capsule };
 }
 
