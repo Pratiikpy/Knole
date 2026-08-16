@@ -80,10 +80,10 @@ Trust is minimized at every layer:
 
 ## Why 0G
 
-| Layer          | How Knole uses it                         |
-| -------------- | ----------------------------------------- |
-| **0G Compute** | Sealed AI inference inside a TEE          |
-| **0G Storage** | Encrypted journal entries                 |
+| Layer          | How Knole uses it                                                                            |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| **0G Compute** | Sealed AI inference inside a TEE                                                             |
+| **0G Storage** | Encrypted journal entries                                                                    |
 | **0G Chain**   | Integrity roots + memory ownership (iNFT) + proof-of-journaling anchors + commitment staking |
 
 The **sealed 0G TEE is the primary inference path**, verified by hardware attestation on every response. If the enclave is ever unreachable, Knole falls back to the plain 0G model — honestly marked _not sealed_, never dressed up as the enclave — so an outage costs the seal, never your privacy (the text is already anonymized before any model) or capability.
@@ -94,11 +94,11 @@ Every major claim is verifiable — and here's the on-chain proof, live on the 0
 
 Three contracts, all deployed to **0G Aristotle mainnet**, all tested in a **102-test Foundry suite** (unit + fuzz + invariants):
 
-| Contract | Address | What it proves |
-| --- | --- | --- |
-| `KnoleAgenticID` (v1.1) | [`0x0Fdbe7…957ca`](https://chainscan.0g.ai/address/0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca) | a genuine ERC-7857 Agentic ID — raw transfers revert by spec, grants clear on transfer |
-| `JournalDayAnchor` | [`0xdbD0fd…948e6`](https://chainscan.0g.ai/address/0xdbD0fd283f00eb7c9E1f7521f66bAfd8cd0948e6) | proof-of-journaling: one idempotent on-chain mark per journaled day |
-| `KnoleCommitment` | [`0x76C30B…CE95`](https://chainscan.0g.ai/address/0x76C30B86A483E66e8F63264da13A18caf09fCE95) | habit staking that settles against the anchor with **no oracle** — and structurally can never pay out more than was staked |
+| Contract                | Address                                                                                        | What it proves                                                                                                                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KnoleAgenticID` (v1.1) | [`0x0Fdbe7…957ca`](https://chainscan.0g.ai/address/0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca) | a genuine ERC-7857 Agentic ID — raw transfers revert by spec, grants clear on transfer                                                                                                                        |
+| `JournalDayAnchor`      | [`0xBf3865…e28Ac`](https://chainscan.0g.ai/address/0xBf3865adb21Ad909BBDe235EDc9176C6d6fe28Ac) | proof-of-journaling: one idempotent on-chain mark per journaled day                                                                                                                                           |
+| `KnoleCommitment`       | [`0xD79fAc…0f415`](https://chainscan.0g.ai/address/0xD79fAc63E06BE184F5C4583BB35907D83670f415) | habit staking that settles against the anchor with **no oracle** — read as of the deadline, so the outcome is a fact about the window rather than a race; structurally can never pay out more than was staked |
 
 The memory token is a **genuine ERC-7857 Agentic ID** — not an ERC-721 wearing the name. Don't take our word for it; call the deployed contract yourself. Every value below is read from `KnoleAgenticID` on 0G Aristotle mainnet and is live on the [**/verify**](https://knole.me/verify) page, re-checked on each load:
 
