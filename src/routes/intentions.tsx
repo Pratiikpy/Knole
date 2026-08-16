@@ -42,6 +42,7 @@ function IntentionsPage() {
   const [note, setNote] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [movements, setMovements] = useState<Record<string, Movement | "loading">>({});
 
   const refresh = () =>
@@ -58,20 +59,31 @@ function IntentionsPage() {
 
   async function add(t: string, source: "user" | "suggested") {
     const v = t.trim();
-    if (!v) return;
+    // A double-tap (and the Cmd+Enter path) created several intentions at once, immediately
+    // tripping the user's own "hold 3 at a time" limit.
+    if (!v || adding) return;
+    setAdding(true);
     setNote(null);
-    const r = await create({ data: { text: v, source } });
-    if (!r.ok) {
-      setNote(
-        r.reason === "too_many"
-          ? `You can hold ${MAX_ACTIVE} at a time — release one first.`
-          : null,
-      );
-      return;
+    try {
+      const r = await create({ data: { text: v, source } });
+      if (!r.ok) {
+        setNote(
+          r.reason === "too_many"
+            ? `You can hold ${MAX_ACTIVE} at a time — release one first.`
+            : "Couldn't set that intention. Try again in a moment.",
+        );
+        return;
+      }
+      setText("");
+      setCandidates((c) => (c ? c.filter((x) => x !== t) : c));
+      refresh();
+    } catch {
+      // There was no catch at all: signed out or rate-limited meant a dead button and an
+      // unhandled rejection, with the note cleared so nothing at all was on screen.
+      setNote("Couldn't set that intention. Try again in a moment.");
+    } finally {
+      setAdding(false);
     }
-    setText("");
-    setCandidates((c) => (c ? c.filter((x) => x !== t) : c));
-    refresh();
   }
 
   async function doSuggest() {

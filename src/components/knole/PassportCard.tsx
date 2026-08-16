@@ -25,6 +25,7 @@ export function PassportCard() {
   const [view, setView] = useState<PassportView | null>(null);
   const [scope, setScope] = useState<"summary" | "full">("summary");
   const [exporting, setExporting] = useState(false);
+  const [dlError, setDlError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -43,13 +44,20 @@ export function PassportCard() {
     try {
       const bundle = await loadBundle();
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+      // Safari and Firefox need the anchor in the document, and the object URL must outlive the
+      // click - revoking on the next line killed the download before the fetch for it started.
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = "knole-passport.json";
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setDlError(null);
     } catch {
-      /* rate-limited or signed out — the button simply doesn't fire */
+      setDlError("Export didn't start — try again in a moment.");
     } finally {
       setExporting(false);
     }
@@ -153,6 +161,7 @@ export function PassportCard() {
           {exporting ? "Packing…" : "Export passport"}
         </button>
       </div>
+      {dlError && <p className="mt-3 text-[12px] text-ink-soft">{dlError}</p>}
     </div>
   );
 }

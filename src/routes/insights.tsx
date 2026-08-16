@@ -257,23 +257,40 @@ function InsightsPage() {
   // The loader returns fast (never blocks SSR on the ~60s compose). When it comes back `composing`,
   // fetch the composition here and swap it in, showing an anticipation state meanwhile.
   const [m, setM] = useState(loadedMirror);
+  const [mirrorFailed, setMirrorFailed] = useState(false);
   useEffect(() => {
     if (loadedMirror.composing)
       composeMirror()
         .then(setM)
-        .catch(() => {});
+        // A ~60s sealed LLM call is the most timeout-prone request in the app; without this the
+        // page sat on "Composing your mirror…" forever with no error and no retry.
+        .catch(() => setMirrorFailed(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const retryMirror = () => {
+    setMirrorFailed(false);
+    composeMirror()
+      .then(setM)
+      .catch(() => setMirrorFailed(true));
+  };
   const maxWeight = Math.max(1, ...m.themes.map((t) => t.weight));
   const markMirrorSeen = useServerFn(markMirrorSeenFn);
   const [play, setPlay] = useState(false);
   useEffect(() => {
+    // Property access on localStorage THROWS (SecurityError) in Safari private mode and with
+    // "block all cookies" — an uncaught throw here took out the first Mirror reveal entirely.
+    let alreadySeen = false;
+    try {
+      alreadySeen = !!localStorage.getItem("knole.mirror.ceremony.v1");
+    } catch {
+      alreadySeen = false;
+    }
     if (
       !m.composing &&
       m.phase === "revealed" &&
       m.firstReveal &&
       typeof window !== "undefined" &&
-      !localStorage.getItem("knole.mirror.ceremony.v1") &&
+      !alreadySeen &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
       setPlay(true);
@@ -287,8 +304,22 @@ function InsightsPage() {
           <div className="mx-auto max-w-[60ch]">
             <p className="mb-3 text-[11px] uppercase tracking-[0.22em] text-tan">Pattern Mirror</p>
             <h1 className="mb-8 font-display text-[44px] italic leading-[1.02]">
-              Composing your mirror…
+              {mirrorFailed ? "The mirror didn't come back." : "Composing your mirror…"}
             </h1>
+            {mirrorFailed && (
+              <div className="mb-8">
+                <p className="mb-4 text-[15px] leading-relaxed text-ink-soft">
+                  Composing takes a minute and the connection dropped. Nothing is lost — your
+                  entries are untouched.
+                </p>
+                <button
+                  onClick={retryMirror}
+                  className="rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper"
+                >
+                  Compose it again
+                </button>
+              </div>
+            )}
             <Composing label="Reading your fortnight — this takes a moment." />
           </div>
         </section>

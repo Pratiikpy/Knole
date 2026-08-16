@@ -164,6 +164,14 @@ function DuetPage() {
         setDraft("");
         setGuessDraft("");
         await refresh();
+      } else {
+        // {ok:false, reason:"already"|"no-couple"} used to be dropped: the button just went back
+        // to "Seal my answer" with nothing said, reachable from a second device or tab.
+        setError(
+          r.reason === "already"
+            ? "You've already answered today — pull to refresh to see it."
+            : "Couldn't send that. Refresh and try again.",
+        );
       }
     } catch {
       setError("Couldn't save your answer — it's still here. Try again.");
@@ -173,13 +181,19 @@ function DuetPage() {
   };
 
   const copyLink = (code: string) => {
-    navigator.clipboard
-      .writeText(`https://www.knole.me/duet?join=${code}`)
-      .then(() => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {});
+    const link = `https://www.knole.me/duet?join=${code}`;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("no clipboard");
+      navigator.clipboard
+        .writeText(link)
+        .then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => setError(`Copy didn't work — your code is ${code}`));
+    } catch {
+      setError(`Copy isn't available here — your code is ${code}`);
+    }
   };
 
   const partnerLabel = status?.state === "paired" ? (status.partnerName ?? "your person") : "";

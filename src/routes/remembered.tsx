@@ -21,7 +21,7 @@ export const Route = createFileRoute("/remembered")({
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function fmtDate(iso: string): string {
   const d = new Date(iso);
-  return `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, "0")}`;
+  return `${MONTHS[d.getMonth()]} ${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function RememberedPage() {
@@ -46,7 +46,7 @@ function RememberedPage() {
             setResponse("");
           }
         })
-        .catch(() => {});
+        .catch(() => setDeck([]));
       return;
     }
     if (deck.length) {
@@ -178,16 +178,21 @@ function RememberedPage() {
               <span className="absolute left-1/2 top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 animate-breathe rounded-full bg-tan/70 shadow-[0_0_18px_rgba(140,115,85,0.6)]" />
             </div>
 
-            {/* Knole's note — real */}
-            <div className="rounded-2xl border border-tan/30 bg-tan/[0.04] p-7 shadow-[0_30px_80px_-50px_rgba(140,115,85,0.4)]">
-              <div className="mb-3 flex items-baseline justify-between">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-tan">Knole</span>
-                <span className="font-display text-xs italic text-muted-foreground">now</span>
+            {/* Knole's note — written about THIS entry, so it only shows for the one it describes.
+                Leafing to another card used to blank it and leave "composing a note…" forever. */}
+            {(note || !deck) && (
+              <div className="rounded-2xl border border-tan/30 bg-tan/[0.04] p-7 shadow-[0_30px_80px_-50px_rgba(140,115,85,0.4)]">
+                <div className="mb-3 flex items-baseline justify-between">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-tan">Knole</span>
+                  <span className="font-display text-xs italic text-muted-foreground">now</span>
+                </div>
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
+                  {note || (
+                    <span className="italic text-muted-foreground/70">composing a note…</span>
+                  )}
+                </p>
               </div>
-              <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">
-                {note || <span className="italic text-muted-foreground/70">composing a note…</span>}
-              </p>
-            </div>
+            )}
           </div>
 
           {/* Respond */}

@@ -110,7 +110,8 @@ function WrappedPage() {
           </div>
 
           {/* The share card — exported to PNG client-side. Only derived shape, no raw entries. */}
-          <div className="mx-auto w-[360px]">
+          {/* w-[360px] overflowed a 360px viewport by exactly the page padding. */}
+          <div className="mx-auto w-full max-w-[360px]">
             <div
               ref={cardRef}
               className="relative overflow-hidden rounded-[20px] bg-paper p-8 ring-1 ring-rule"

@@ -122,13 +122,21 @@ function CreatePage() {
     }
   }
 
+  const [buying, setBuying] = useState<string | null>(null);
   async function buyPack(id: Pack["id"]) {
+    if (buying) return; // a double-tap opened two Stripe Checkout sessions
+    setBuying(id);
     try {
       const r = await buy({ data: { packId: id } });
-      if (r.ok) window.location.href = r.url;
+      if (r.ok) {
+        window.location.href = r.url;
+        return; // keep the button disabled through the redirect
+      }
+      setErr("Couldn't start checkout. Try again in a moment.");
     } catch {
-      /* ignore */
+      setErr("Couldn't start checkout. Try again in a moment.");
     }
+    setBuying(null);
   }
 
   return (

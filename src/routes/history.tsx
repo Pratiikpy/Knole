@@ -60,6 +60,7 @@ function HistoryPage() {
   const [trash, setTrash] = useState<TrashRow[]>([]);
   const [showTrash, setShowTrash] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
 
   const refresh = (tag?: string | null) =>
@@ -84,8 +85,18 @@ function HistoryPage() {
   };
 
   async function doDelete(id: string) {
+    const before = entries;
     setEntries((e) => (e ? e.filter((x) => x.id !== id) : e));
-    await del({ data: { entryId: id } }).catch(() => {});
+    try {
+      await del({ data: { entryId: id } });
+    } catch {
+      // On a privacy product, showing an entry as deleted when it is still there is the worst
+      // possible lie. Put it back and say so.
+      setEntries(before);
+      setActionError("That entry wasn't deleted — check your connection and try again.");
+      return;
+    }
+    setActionError(null);
     if (showTrash)
       loadTrash()
         .then((r) => setTrash(r.trash))
@@ -200,6 +211,12 @@ function HistoryPage() {
                 </Link>
               )}
             </div>
+          )}
+
+          {actionError && (
+            <p className="mb-4 rounded-xl border border-rule bg-card/60 px-4 py-3 text-[13px] text-ink-soft">
+              {actionError}
+            </p>
           )}
 
           {/* Entries */}

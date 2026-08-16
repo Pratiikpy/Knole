@@ -303,11 +303,17 @@ function TodayPage() {
   const startFilingPoll = (eid: string) => {
     setFiling(true);
     setFiled(null);
+    // Every chain is stamped with the entry it belongs to. Reflecting again inside the ~44s poll
+    // window used to let the OLD chain resolve and paint the PREVIOUS entry's memories under
+    // "Filed to your Index", then reschedule itself alongside the new one.
+    filingFor.current = eid;
     let tries = 0;
     const poll = () => {
+      if (filingFor.current !== eid) return; // superseded by a newer entry
       tries++;
       getFiled({ data: { entryId: eid } })
         .then((r) => {
+          if (filingFor.current !== eid) return;
           if (r.memories.length) {
             setFiled(r.memories);
             setFiling(false);
@@ -365,6 +371,17 @@ function TodayPage() {
   const [transcribing, setTranscribing] = useState(false);
   const [voiceErr, setVoiceErr] = useState<string | null>(null);
   const mediaRef = useRef<WavRecorder | null>(null);
+  const filingFor = useRef<string | null>(null);
+  // Leaving the page mid-recording left getUserMedia's tracks open — the browser kept showing the
+  // recording indicator and the mic was never released until a full reload.
+  useEffect(() => {
+    return () => {
+      filingFor.current = null;
+      const rec = mediaRef.current;
+      mediaRef.current = null;
+      if (rec) void rec.stop().catch(() => {});
+    };
+  }, []);
 
   // Cycle a calm "thinking" line while the reflection generates (~15-18s LLM call).
   useEffect(() => {
@@ -377,7 +394,10 @@ function TodayPage() {
   }, [loading]);
 
   async function handleReflect() {
-    if (!entry.trim()) return;
+    // `loading` is load-bearing: the Reflect BUTTON is disabled while streaming, but the textarea
+    // stays mounted, so holding Cmd+Enter fired N concurrent saves - N journal entries, N paid LLM
+    // calls, and two streams fighting over the same reflection state.
+    if (!entry.trim() || loading) return;
     setLoading(true);
     setReflection("");
     setRemembered(null);

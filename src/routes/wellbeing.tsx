@@ -237,18 +237,53 @@ function InstrumentFlow({
   } | null>(null);
   const idx = answers.length;
 
-  const answer = async (v: number) => {
-    const next = [...answers, v];
-    setAnswers(next);
-    if (next.length === def.items.length) {
-      try {
-        const r = await submit({ data: { instrument: inst, answers: next } });
-        if (!("error" in r)) setResult(r);
-      } catch {
-        /* keep the local state; the user can retry from home */
-      }
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const send = async (all: number[]) => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const r = await submit({ data: { instrument: inst, answers: all } });
+      if ("error" in r) throw new Error(String(r.error));
+      setResult(r);
+    } catch {
+      // A completed clinical instrument must never vanish. The answers stay in state and the
+      // user gets a real retry instead of a blank "10 of 9" screen with live buttons.
+      setSubmitError("That didn't send. Your answers are safe — try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const answer = async (v: number) => {
+    if (submitting || idx >= def.items.length) return;
+    const next = [...answers, v];
+    setAnswers(next);
+    if (next.length === def.items.length) await send(next);
+  };
+
+  // All questions answered but not yet accepted by the server: show progress or a retry, never
+  // an undefined question.
+  if (!result && idx >= def.items.length) {
+    return (
+      <div className="animate-fade-up rounded-2xl border border-rule bg-card/50 p-6 text-center">
+        {submitting ? (
+          <p className="font-display text-[18px] italic text-ink-soft">Scoring your answers…</p>
+        ) : (
+          <>
+            <p className="mb-4 text-[15px] text-ink-soft">{submitError ?? "Ready to score."}</p>
+            <button
+              onClick={() => send(answers)}
+              className="rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper"
+            >
+              Try again
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
 
   if (result) {
     return (

@@ -319,10 +319,21 @@ function CardPage() {
 
   async function downloadPng() {
     setBusy(true);
-    const blob = await toBlob();
-    if (blob) download(blob);
-    setBusy(false);
-    setNote("Saved — post it anywhere.");
+    try {
+      const blob = await toBlob();
+      // toBlob resolves null when the canvas can't encode (real on memory-constrained mobile
+      // Safari) — the download silently didn't happen while the UI still said "Saved".
+      if (!blob) {
+        setNote("Couldn't render the image here — try the share button instead.");
+        return;
+      }
+      download(blob);
+      setNote("Saved — post it anywhere.");
+    } catch {
+      setNote("Couldn't save the image — try again, or use share.");
+    } finally {
+      setBusy(false); // a throw used to leave both buttons disabled until a reload
+    }
   }
 
   function download(blob: Blob) {

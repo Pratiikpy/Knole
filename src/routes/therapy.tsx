@@ -31,6 +31,8 @@ function TherapyPage() {
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ cameUp: "", homework: "", howIFelt: "" });
   const [captured, setCaptured] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   async function runPrep() {
     setBusy(true);
@@ -88,8 +90,19 @@ function TherapyPage() {
 
   async function capture() {
     if (!form.cameUp.trim() && !form.homework.trim() && !form.howIFelt.trim()) return;
-    setCaptured(true);
-    await postFn({ data: form }).catch(() => {});
+    if (capturing) return;
+    setCapturing(true);
+    setCaptureError(null);
+    try {
+      await postFn({ data: form });
+      setCaptured(true); // only after it actually landed
+    } catch {
+      // The form used to be replaced by "Saved." before the request ran, so a failure destroyed
+      // notes the user had just written down after a session.
+      setCaptureError("That didn't save — your words are still here. Try again in a moment.");
+    } finally {
+      setCapturing(false);
+    }
   }
 
   const p = prep && prep.ready ? prep : null;
@@ -261,10 +274,12 @@ function TherapyPage() {
                 ))}
                 <button
                   onClick={capture}
-                  className="rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper"
+                  disabled={capturing}
+                  className="rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-paper transition-opacity disabled:opacity-50"
                 >
-                  Save & mark session
+                  {capturing ? "Saving…" : "Save & mark session"}
                 </button>
+                {captureError && <p className="mt-3 text-[13px] text-ink-soft">{captureError}</p>}
               </div>
             )}
           </div>

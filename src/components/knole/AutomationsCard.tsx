@@ -69,8 +69,16 @@ export function AutomationsCard() {
   };
 
   const del = async (id: string) => {
+    const before = rows;
     setRows((r) => (r ? r.filter((x) => x.id !== id) : r));
-    await remove({ data: { id } }).catch(() => {});
+    try {
+      await remove({ data: { id } });
+    } catch {
+      // A swallowed failure left the automation live — still sending its scheduled push — while
+      // the row looked deleted and came back on the next load.
+      setRows(before);
+      setError("That automation wasn't removed — try again.");
+    }
   };
 
   const flip = async (row: AutomationRow) => {

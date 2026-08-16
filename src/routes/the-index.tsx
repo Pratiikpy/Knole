@@ -98,7 +98,9 @@ const typeAccent: Record<string, string> = {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function fmtDate(iso: string): string {
   const d = new Date(iso);
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  // Local, not UTC: an entry written at 9pm in New York was labelled the NEXT day here while
+  // /history (which formats locally) showed the right one - two screens, one entry, two dates.
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
 const voicePhrase: Record<string, string> = {
@@ -217,6 +219,12 @@ function TheIndex() {
     const id = editing;
     const content = draft.trim();
     const prev = facts.find((x) => x.id === id)?.content;
+    // An emptied box used to blank the card while the server call was skipped - it looked deleted
+    // and came back on reload. Empty means "no change"; forget is the delete affordance.
+    if (!content) {
+      setEditing(null);
+      return;
+    }
     setFacts((arr) => arr.map((x) => (x.id === id ? { ...x, content } : x)));
     setEditing(null);
     if (content) {
