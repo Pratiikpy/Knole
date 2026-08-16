@@ -114,6 +114,7 @@ import {
   duetAnniversary,
   duetShape,
 } from "./duet";
+import { passportView, passportBundle } from "./passport";
 import {
   archetypeReveal,
   archetypeTimeline,
@@ -984,6 +985,19 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   const { plan } = await getBilling(userId);
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
+});
+
+// ── the Memory Passport (B5) ──
+
+export const passportFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return passportView(userId);
+});
+
+export const passportBundleFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  enforceRate("passport-export", 6, 60_000);
+  return passportBundle(userId);
 });
 
 // ── the Monthly Archetype Reveal (B3) ──

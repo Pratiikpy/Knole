@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { PrivyProvider, useWallets } from "@privy-io/react-auth";
 import { Shell } from "@/components/knole/Shell";
+import { PassportCard } from "@/components/knole/PassportCard";
 import { ogChain } from "@/lib/ogChain";
 import { resolveSigner } from "@/lib/walletSigner";
 import {
@@ -210,6 +211,8 @@ function IdentityPage() {
           )}
 
           <OnchainGrantsCard />
+
+          <PassportCard />
         </div>
       </section>
     </Shell>
