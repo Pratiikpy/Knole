@@ -484,6 +484,7 @@ function TodayPage() {
   // If a pending marker survives from a previous visit, fetch the finished reply and show it -
   // with the filing strip and deepen loop wired up as if the stream had ended normally.
   const [recovered, setRecovered] = useState(false);
+  const [recoveringNote, setRecoveringNote] = useState<string | null>(null);
   useEffect(() => {
     let pending: string | null = null;
     try {
@@ -497,16 +498,35 @@ function TodayPage() {
     } catch {
       /* ignore */
     }
-    getReply({ data: { entryId: pending } })
-      .then((r) => {
-        if (!r.reply) return;
-        setReflection(r.reply);
-        setReflected(true);
-        setRecovered(true);
-        setEntryId(pending);
-        startFilingPoll(pending!);
-      })
-      .catch(() => {});
+    // The reply may still be WRITING server-side (a reload two seconds into the stream) - poll
+    // for up to a minute before giving up, and say so while waiting.
+    let cancelled = false;
+    const attempt = (n: number) => {
+      getReply({ data: { entryId: pending! } })
+        .then((r) => {
+          if (cancelled) return;
+          if (r.reply) {
+            setRecoveringNote(null);
+            setReflection(r.reply);
+            setReflected(true);
+            setRecovered(true);
+            setEntryId(pending);
+            startFilingPoll(pending!);
+            return;
+          }
+          if (n < 8) {
+            setRecoveringNote("Your reflection is still finishing — it'll appear here.");
+            window.setTimeout(() => attempt(n + 1), 7000);
+          } else {
+            setRecoveringNote(null);
+          }
+        })
+        .catch(() => setRecoveringNote(null));
+    };
+    attempt(0);
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Leaving the page mid-recording left getUserMedia's tracks open — the browser kept showing the
@@ -1567,6 +1587,15 @@ function TodayPage() {
                     {reflectingMsgs[msgIdx]}
                   </span>
                 </div>
+              </div>
+            )}
+
+            {recoveringNote && !reflected && (
+              <div className="animate-fade-up mt-6 flex items-center gap-2.5 rounded-2xl border border-tan/30 bg-tan/[0.04] px-5 py-3.5">
+                <span className="size-2 shrink-0 animate-breathe rounded-full bg-tan/70" />
+                <span className="font-display text-[14px] italic text-ink-soft">
+                  {recoveringNote}
+                </span>
               </div>
             )}
 
