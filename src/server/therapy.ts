@@ -23,6 +23,8 @@ export type SessionPrep = {
   wins: { text: string; date: string }[];
   talkingPoints: { point: string; quote: string; date: string }[];
   unresolved: string[];
+  // Wellbeing check-ins since roughly the last session - validated numbers a clinician can use.
+  measures: { instrument: string; score: number; band: string; date: string }[];
 };
 
 // The "since last session" threshold, resolved entirely in SQL to avoid any naive-timestamp/timezone
@@ -67,6 +69,7 @@ export async function sessionPrep(userId: string): Promise<SessionPrep> {
       wins: [],
       talkingPoints: [],
       unresolved: [],
+      measures: [],
     };
   }
 
@@ -123,6 +126,24 @@ export async function sessionPrep(userId: string): Promise<SessionPrep> {
     .map((w) => ({ text: String(w.text), date: String(w.date ?? "") }))
     .slice(0, 2);
 
+  // Validated measures since the window opened — the numbers a clinician can actually use,
+  // with the wellbeing page's "the session brief can carry them" promise made true.
+  const measureRows = (await db.execute(sql`
+    SELECT instrument, score, created_at FROM instrument_scores
+    WHERE user_id = ${userId} AND created_at >= ${SINCE_SQL(userId)}
+    ORDER BY created_at DESC LIMIT 6
+  `)) as unknown as Record<string, unknown>[];
+  const { bandFor } = await import("./wellbeing");
+  const measures = measureRows.map((r) => ({
+    instrument: String(r.instrument)
+      .toUpperCase()
+      .replace("PHQ9", "PHQ-9")
+      .replace("GAD7", "GAD-7"),
+    score: Number(r.score),
+    band: bandFor(String(r.instrument) as "phq9" | "gad7", Number(r.score)),
+    date: String(r.created_at).slice(0, 10),
+  }));
+
   return {
     ready: true,
     since,
@@ -132,6 +153,7 @@ export async function sessionPrep(userId: string): Promise<SessionPrep> {
     wins,
     talkingPoints,
     unresolved,
+    measures,
   };
 }
 

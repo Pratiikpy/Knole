@@ -196,6 +196,27 @@ function TherapyPage() {
                 </div>
               )}
 
+              {/* Validated measures — the numbers a clinician can use, from /wellbeing check-ins. */}
+              {p.measures.length > 0 && (
+                <div>
+                  <div className="mb-3 text-[10px] uppercase tracking-[0.2em] text-tan">
+                    Check-ins since last session
+                  </div>
+                  <div className="space-y-1.5">
+                    {p.measures.map((m, i) => (
+                      <p key={i} className="text-[14px] text-ink-soft">
+                        {m.instrument}: <span className="tabular-nums">{m.score}</span>{" "}
+                        <span className="text-muted-foreground">({m.band})</span>
+                        <span className="ml-2 text-[11px] text-muted-foreground">— {m.date}</span>
+                      </p>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                    PHQ-9 and GAD-7, self-reported in Knole — screening numbers, not a diagnosis.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center gap-4 border-t border-rule pt-6">
                 <button
                   onClick={() => copyForSession(p)}

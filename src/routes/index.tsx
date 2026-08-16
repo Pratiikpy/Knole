@@ -252,6 +252,40 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* THE WAVE-3 FLAGSHIPS — the surfaces no other journal has, each one line, each honest. */}
+      <section className="border-t border-rule px-6 py-24">
+        <div className="mx-auto max-w-[64ch]">
+          <p className="mb-4 text-[11px] uppercase tracking-[0.22em] text-tan">
+            And things no journal has done
+          </p>
+          <div className="grid gap-x-8 gap-y-10 md:grid-cols-2">
+            {[
+              {
+                t: "Duet",
+                b: "One question a day, for two. Neither of you can read the other's answer until you've both written — the seal is enforced by the server, not a promise.",
+              },
+              {
+                t: "The Monthly Archetype",
+                b: "Who you were this month, named from your own words — never without receipts. Every claim quotes you verbatim, verified against your real entries.",
+              },
+              {
+                t: "Commit",
+                b: "Stake it, show up, take it back. The chain itself counts your journaled days — and you can never receive more than you staked. Nobody profits from a miss.",
+              },
+              {
+                t: "Wellbeing",
+                b: "A toolbox, not a couch: validated check-ins, the thought record, breathing and grounding — wellness tools inside a journal that already knows your week.",
+              },
+            ].map((c) => (
+              <div key={c.t}>
+                <h3 className="font-display text-2xl italic">{c.t}</h3>
+                <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{c.b}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* EVERYDAY, BUT PRIVATE — the assistant surfaces, so a visitor knows Knole isn't only a
           backward-looking journal: it researches the live web and makes images, all on 0G. */}
       <section className="border-t border-rule px-6 py-24">
