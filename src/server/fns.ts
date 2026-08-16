@@ -189,6 +189,23 @@ export const journalFn = createServerFn({ method: "POST" })
     };
   });
 
+// Draft-marker recovery: when a reload landed before the response headers (so no entry id was
+// ever known client-side), find the finished reply by the draft it was written from.
+export const replyForDraftFn = createServerFn({ method: "POST" })
+  .validator(z.object({ draft: z.string().min(10).max(400) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const rows = (await db.execute(sql`
+      SELECT r.text, e.id AS entry_id FROM replies r
+      JOIN entries e ON e.id = r.parent_entry_id
+      WHERE e.user_id = ${userId} AND r.is_ai = true AND e.type = 'journal'
+        AND e.created_at > now() - interval '30 minutes'
+        AND e.text LIKE ${data.draft.replace(/[%_]/g, "") + "%"}
+      ORDER BY e.created_at DESC LIMIT 1
+    `)) as unknown as { text: string; entry_id: string }[];
+    return { reply: rows[0]?.text ?? null, entryId: rows[0]?.entry_id ?? null };
+  });
+
 // AI entry editing (khoj's Obsidian search/replace engine): propose small approve-or-skip edits
 // to the DRAFT, never a rewrite. Free like reflection - polishing your words is daily practice.
 export const proposeEntryEditsFn = createServerFn({ method: "POST" })

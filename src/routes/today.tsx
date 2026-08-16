@@ -26,6 +26,7 @@ import {
   memoriesForEntryFn,
   replyForEntryFn,
   proposeEntryEditsFn,
+  replyForDraftFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
@@ -352,6 +353,7 @@ function TodayPage() {
   // what it learned. Polls briefly; if extraction filed nothing (or is slow), the strip just fades.
   const getFiled = useServerFn(memoriesForEntryFn);
   const getReply = useServerFn(replyForEntryFn);
+  const findReply = useServerFn(replyForDraftFn);
   const [filed, setFiled] = useState<{ id: string; type: string; content: string }[] | null>(null);
   const [filing, setFiling] = useState(false);
   const filingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -487,14 +489,17 @@ function TodayPage() {
   const [recoveringNote, setRecoveringNote] = useState<string | null>(null);
   useEffect(() => {
     let pending: string | null = null;
+    let pendingDraft: string | null = null;
     try {
       pending = sessionStorage.getItem("knole.pending.reflection");
+      pendingDraft = sessionStorage.getItem("knole.pending.draft");
     } catch {
       return;
     }
-    if (!pending) return;
+    if (!pending && !pendingDraft) return;
     try {
       sessionStorage.removeItem("knole.pending.reflection");
+      sessionStorage.removeItem("knole.pending.draft");
     } catch {
       /* ignore */
     }
@@ -502,7 +507,10 @@ function TodayPage() {
     // for up to a minute before giving up, and say so while waiting.
     let cancelled = false;
     const attempt = (n: number) => {
-      getReply({ data: { entryId: pending! } })
+      const call = pending
+        ? getReply({ data: { entryId: pending } })
+        : findReply({ data: { draft: pendingDraft! } });
+      call
         .then((r) => {
           if (cancelled) return;
           if (r.reply) {
@@ -510,8 +518,11 @@ function TodayPage() {
             setReflection(r.reply);
             setReflected(true);
             setRecovered(true);
-            setEntryId(pending);
-            startFilingPoll(pending!);
+            const eid = pending ?? (r as { entryId?: string }).entryId ?? null;
+            if (eid) {
+              setEntryId(eid);
+              startFilingPoll(eid);
+            }
             return;
           }
           if (n < 8) {
@@ -555,6 +566,13 @@ function TodayPage() {
     // stays mounted, so holding Cmd+Enter fired N concurrent saves - N journal entries, N paid LLM
     // calls, and two streams fighting over the same reflection state.
     if (!entry.trim() || loading) return;
+    // Recovery marker, set BEFORE any network: a reload one second in still knows a reflection
+    // was in flight. Upgraded to the precise entry id once the response headers arrive.
+    try {
+      sessionStorage.setItem("knole.pending.draft", entry.trim().slice(0, 300));
+    } catch {
+      /* private mode */
+    }
     setLoading(true);
     setReflection("");
     setRemembered(null);
@@ -652,6 +670,7 @@ function TodayPage() {
       setReflected(true);
       try {
         sessionStorage.removeItem("knole.pending.reflection"); // stream completed - nothing to recover
+        sessionStorage.removeItem("knole.pending.draft");
       } catch {
         /* private mode */
       }
