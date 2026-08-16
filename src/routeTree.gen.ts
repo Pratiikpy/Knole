@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as YearRouteImport } from './routes/year'
 import { Route as WrappedRouteImport } from './routes/wrapped'
+import { Route as WellbeingRouteImport } from './routes/wellbeing'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as TodayRouteImport } from './routes/today'
@@ -28,13 +29,16 @@ import { Route as IdentityRouteImport } from './routes/identity'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as FutureRouteImport } from './routes/future'
 import { Route as ExtensionRouteImport } from './routes/extension'
+import { Route as DuetRouteImport } from './routes/duet'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as CommitRouteImport } from './routes/commit'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CardRouteImport } from './routes/card'
 import { Route as CanvasRouteImport } from './routes/canvas'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AskRouteImport } from './routes/ask'
+import { Route as ArchetypeRouteImport } from './routes/archetype'
 import { Route as IndexRouteImport } from './routes/index'
 
 const YearRoute = YearRouteImport.update({
@@ -45,6 +49,11 @@ const YearRoute = YearRouteImport.update({
 const WrappedRoute = WrappedRouteImport.update({
   id: '/wrapped',
   path: '/wrapped',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WellbeingRoute = WellbeingRouteImport.update({
+  id: '/wellbeing',
+  path: '/wellbeing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyRoute = VerifyRouteImport.update({
@@ -132,9 +141,19 @@ const ExtensionRoute = ExtensionRouteImport.update({
   path: '/extension',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DuetRoute = DuetRouteImport.update({
+  id: '/duet',
+  path: '/duet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommitRoute = CommitRouteImport.update({
+  id: '/commit',
+  path: '/commit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -167,6 +186,11 @@ const AskRoute = AskRouteImport.update({
   path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArchetypeRoute = ArchetypeRouteImport.update({
+  id: '/archetype',
+  path: '/archetype',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -175,13 +199,16 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/archetype': typeof ArchetypeRoute
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
   '/calendar': typeof CalendarRoute
   '/canvas': typeof CanvasRoute
   '/card': typeof CardRoute
   '/chat': typeof ChatRoute
+  '/commit': typeof CommitRoute
   '/create': typeof CreateRoute
+  '/duet': typeof DuetRoute
   '/extension': typeof ExtensionRoute
   '/future': typeof FutureRoute
   '/history': typeof HistoryRoute
@@ -199,18 +226,22 @@ export interface FileRoutesByFullPath {
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
   '/verify': typeof VerifyRoute
+  '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/archetype': typeof ArchetypeRoute
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
   '/calendar': typeof CalendarRoute
   '/canvas': typeof CanvasRoute
   '/card': typeof CardRoute
   '/chat': typeof ChatRoute
+  '/commit': typeof CommitRoute
   '/create': typeof CreateRoute
+  '/duet': typeof DuetRoute
   '/extension': typeof ExtensionRoute
   '/future': typeof FutureRoute
   '/history': typeof HistoryRoute
@@ -228,19 +259,23 @@ export interface FileRoutesByTo {
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
   '/verify': typeof VerifyRoute
+  '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/archetype': typeof ArchetypeRoute
   '/ask': typeof AskRoute
   '/assistant': typeof AssistantRoute
   '/calendar': typeof CalendarRoute
   '/canvas': typeof CanvasRoute
   '/card': typeof CardRoute
   '/chat': typeof ChatRoute
+  '/commit': typeof CommitRoute
   '/create': typeof CreateRoute
+  '/duet': typeof DuetRoute
   '/extension': typeof ExtensionRoute
   '/future': typeof FutureRoute
   '/history': typeof HistoryRoute
@@ -258,6 +293,7 @@ export interface FileRoutesById {
   '/today': typeof TodayRoute
   '/upgrade': typeof UpgradeRoute
   '/verify': typeof VerifyRoute
+  '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
 }
@@ -265,13 +301,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/archetype'
     | '/ask'
     | '/assistant'
     | '/calendar'
     | '/canvas'
     | '/card'
     | '/chat'
+    | '/commit'
     | '/create'
+    | '/duet'
     | '/extension'
     | '/future'
     | '/history'
@@ -289,18 +328,22 @@ export interface FileRouteTypes {
     | '/today'
     | '/upgrade'
     | '/verify'
+    | '/wellbeing'
     | '/wrapped'
     | '/year'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/archetype'
     | '/ask'
     | '/assistant'
     | '/calendar'
     | '/canvas'
     | '/card'
     | '/chat'
+    | '/commit'
     | '/create'
+    | '/duet'
     | '/extension'
     | '/future'
     | '/history'
@@ -318,18 +361,22 @@ export interface FileRouteTypes {
     | '/today'
     | '/upgrade'
     | '/verify'
+    | '/wellbeing'
     | '/wrapped'
     | '/year'
   id:
     | '__root__'
     | '/'
+    | '/archetype'
     | '/ask'
     | '/assistant'
     | '/calendar'
     | '/canvas'
     | '/card'
     | '/chat'
+    | '/commit'
     | '/create'
+    | '/duet'
     | '/extension'
     | '/future'
     | '/history'
@@ -347,19 +394,23 @@ export interface FileRouteTypes {
     | '/today'
     | '/upgrade'
     | '/verify'
+    | '/wellbeing'
     | '/wrapped'
     | '/year'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArchetypeRoute: typeof ArchetypeRoute
   AskRoute: typeof AskRoute
   AssistantRoute: typeof AssistantRoute
   CalendarRoute: typeof CalendarRoute
   CanvasRoute: typeof CanvasRoute
   CardRoute: typeof CardRoute
   ChatRoute: typeof ChatRoute
+  CommitRoute: typeof CommitRoute
   CreateRoute: typeof CreateRoute
+  DuetRoute: typeof DuetRoute
   ExtensionRoute: typeof ExtensionRoute
   FutureRoute: typeof FutureRoute
   HistoryRoute: typeof HistoryRoute
@@ -377,6 +428,7 @@ export interface RootRouteChildren {
   TodayRoute: typeof TodayRoute
   UpgradeRoute: typeof UpgradeRoute
   VerifyRoute: typeof VerifyRoute
+  WellbeingRoute: typeof WellbeingRoute
   WrappedRoute: typeof WrappedRoute
   YearRoute: typeof YearRoute
 }
@@ -395,6 +447,13 @@ declare module '@tanstack/react-router' {
       path: '/wrapped'
       fullPath: '/wrapped'
       preLoaderRoute: typeof WrappedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wellbeing': {
+      id: '/wellbeing'
+      path: '/wellbeing'
+      fullPath: '/wellbeing'
+      preLoaderRoute: typeof WellbeingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify': {
@@ -516,11 +575,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExtensionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/duet': {
+      id: '/duet'
+      path: '/duet'
+      fullPath: '/duet'
+      preLoaderRoute: typeof DuetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create': {
       id: '/create'
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/commit': {
+      id: '/commit'
+      path: '/commit'
+      fullPath: '/commit'
+      preLoaderRoute: typeof CommitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -565,6 +638,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/archetype': {
+      id: '/archetype'
+      path: '/archetype'
+      fullPath: '/archetype'
+      preLoaderRoute: typeof ArchetypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -577,13 +657,16 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArchetypeRoute: ArchetypeRoute,
   AskRoute: AskRoute,
   AssistantRoute: AssistantRoute,
   CalendarRoute: CalendarRoute,
   CanvasRoute: CanvasRoute,
   CardRoute: CardRoute,
   ChatRoute: ChatRoute,
+  CommitRoute: CommitRoute,
   CreateRoute: CreateRoute,
+  DuetRoute: DuetRoute,
   ExtensionRoute: ExtensionRoute,
   FutureRoute: FutureRoute,
   HistoryRoute: HistoryRoute,
@@ -601,6 +684,7 @@ const rootRouteChildren: RootRouteChildren = {
   TodayRoute: TodayRoute,
   UpgradeRoute: UpgradeRoute,
   VerifyRoute: VerifyRoute,
+  WellbeingRoute: WellbeingRoute,
   WrappedRoute: WrappedRoute,
   YearRoute: YearRoute,
 }

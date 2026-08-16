@@ -429,8 +429,9 @@ function DuetPage() {
                     </div>
                   ) : (
                     <p className="text-[13px] leading-relaxed text-muted-foreground">
-                      The mirror reads a week of unlocked answers — you two have{" "}
-                      {mirror.unlockedDays} of {mirror.needed} days it needs. Keep answering.
+                      {mirror.unlockedDays >= mirror.needed
+                        ? "The mirror is being written from this week's answers — it'll be here on your next visit."
+                        : `The mirror reads a week of unlocked answers — you two have ${mirror.unlockedDays} of ${mirror.needed} days it needs. Keep answering.`}
                     </p>
                   )}
                 </div>
