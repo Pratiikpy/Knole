@@ -6,9 +6,32 @@ import {KnoleCommitment} from "../KnoleCommitment.sol";
 
 contract MockAnchor {
     mapping(address => uint32) public journaledDayCount;
+    mapping(address => uint64[]) private _days;
 
+    /// n journaling days ending today, matching the real anchor's ascending, append-only shape.
+    /// The written history is bounded (a real user cannot have journaled more days than have
+    /// elapsed, and fuzzers hand us absurd counts) while the cumulative counter keeps the raw n.
     function setCount(address user, uint32 n) external {
-        journaledDayCount[user] = n;
+        delete _days[user];
+        uint64 today = uint64(block.timestamp / 1 days);
+        uint64 m = n;
+        // A user cannot have journaled more days than have elapsed; the cumulative counter and the
+        // day list must agree, exactly as they do in the deployed anchor.
+        if (m > today) m = today;
+        journaledDayCount[user] = uint32(m);
+        for (uint64 i = 0; i < m; i++) _days[user].push(today - (m - 1 - i));
+    }
+
+    function countAtDay(address user, uint64 day) external view returns (uint32) {
+        uint64[] storage ds = _days[user];
+        uint256 lo = 0;
+        uint256 hi = ds.length;
+        while (lo < hi) {
+            uint256 mid = (lo + hi) / 2;
+            if (ds[mid] <= day) lo = mid + 1;
+            else hi = mid;
+        }
+        return uint32(lo);
     }
 }
 
@@ -21,6 +44,8 @@ contract CommitmentTest is Test {
     address stranger = address(0x51);
 
     function setUp() public {
+        // A realistic clock: day arithmetic in the mock anchor looks backwards from "today".
+        vm.warp(1000 days);
         anchor = new MockAnchor();
         cmt = new KnoleCommitment(address(anchor), charity);
         vm.deal(alice, 100 ether);
@@ -160,7 +185,7 @@ contract CommitmentTest is Test {
         vm.warp(block.timestamp + 14 days + 49 hours);
         vm.prank(stranger);
         cmt.settle(id); // permissionless finalization once the appeal window closes
-        (, , , , , , , KnoleCommitment.State st,) = cmt.commitments(id);
+        (, , , , , , , KnoleCommitment.State st,,) = cmt.commitments(id);
         assertEq(uint8(st), uint8(KnoleCommitment.State.Settled));
     }
 
@@ -241,10 +266,9 @@ contract CommitmentTest is Test {
         uint96 stake = uint96(bound(stakeRaw, 0.05 ether, 100 ether));
         uint32 a = uint32(bound(achieved, 0, 200));
         vm.deal(alice, stake);
-        anchor.setCount(alice, 1000);
         vm.prank(alice);
         uint256 id = cmt.commit{value: stake}(g, g + 10, KnoleCommitment.Dest.Burn);
-        anchor.setCount(alice, 1000 + a);
+        anchor.setCount(alice, a); // a days journaled, all inside the window
         vm.warp(block.timestamp + uint256(g + 11) * 1 days);
         uint32 grace = cmt.GRACE_DAYS();
         vm.prank(alice);

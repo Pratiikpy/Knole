@@ -10,7 +10,7 @@ const { users } = schema;
 // every transaction is signed by the USER's own wallet - the stake never touches our keys.
 
 const COMMITMENT_ADDRESS =
-  process.env.COMMITMENT_ADDRESS ?? "0x76C30B86A483E66e8F63264da13A18caf09fCE95";
+  process.env.COMMITMENT_ADDRESS ?? "0xD79fAc63E06BE184F5C4583BB35907D83670f415";
 const RPC =
   process.env.OG_NETWORK === "testnet" ? "https://evmrpc-testnet.0g.ai" : "https://evmrpc.0g.ai";
 const CHAIN_ID = process.env.OG_NETWORK === "testnet" ? 16602 : 16661;
@@ -67,6 +67,9 @@ export async function commitContext(userId: string): Promise<CommitContext> {
   const p = provider();
   const c = new ethers.Contract(COMMITMENT_ADDRESS, ABI, p);
   const rows: CommitmentRow[] = [];
+  // Grace comes from the CONTRACT. Hard-coding "+2" meant that pointing at a deployment with a
+  // different GRACE_DAYS would have the UI promise a claim the chain then reverts.
+  const graceDays = Number(await c.GRACE_DAYS().catch(() => 2n));
   if (wallet) {
     const favored: boolean = await c.userFavor().catch(() => false);
     const ids: bigint[] = await c.commitmentsOf(wallet).catch(() => []);
@@ -78,7 +81,7 @@ export async function commitContext(userId: string): Promise<CommitContext> {
       const now = Date.now();
       const claimableNow =
         STATE[Number(cm.state)] === "active" &&
-        (favored || achieved >= goal || (now > windowEnd && achieved + 2 >= goal));
+        (favored || achieved >= goal || (now > windowEnd && achieved + graceDays >= goal));
       rows.push({
         id: id.toString(),
         stake: ethers.formatEther(cm.stake),

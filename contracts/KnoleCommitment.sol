@@ -7,6 +7,8 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 interface IJournalDayAnchor {
     function journaledDayCount(address user) external view returns (uint32);
+    /// Days journaled as of the END of UTC day `day` — the deadline-safe read.
+    function countAtDay(address user, uint64 day) external view returns (uint32);
 }
 
 /**
@@ -72,6 +74,12 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
         Dest dest;
         State state;
         uint64 pairId; // 0 = solo; shared id links friend challenges (funds stay per-staker)
+        // The last UTC day that counts toward this commitment. Settlement reads the anchor's
+        // HISTORICAL count as of this day, so the result is a fact about the window rather than
+        // about when someone happened to call: previously the count was read live at exit time,
+        // which meant days journaled months late still satisfied the goal, and a stranger calling
+        // settle first could freeze a number the staker was still improving.
+        uint64 windowEndDay;
     }
 
     uint256 public nextId = 1;
@@ -147,6 +155,10 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
         internal
         returns (uint256 id)
     {
+        // userFavor means the anchoring pipeline is known-broken: every new commitment would be
+        // instantly refundable and mean nothing. Stop taking them rather than take money for a
+        // promise the contract can no longer keep.
+        if (userFavor) revert BadParams();
         if (msg.value < MIN_STAKE || msg.value > MAX_STAKE) revert BadParams();
         if (goalDays < MIN_GOAL || windowDays < goalDays || windowDays > MAX_WINDOW_DAYS) revert BadParams();
 
@@ -160,7 +172,8 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
             windowEnd: uint64(block.timestamp + uint256(windowDays) * 1 days),
             dest: dest,
             state: State.Active,
-            pairId: pairId
+            pairId: pairId,
+            windowEndDay: uint64((block.timestamp + uint256(windowDays) * 1 days) / 1 days)
         });
         byStaker[msg.sender].push(id);
         emit Committed(id, msg.sender, msg.value, goalDays, commitments[id].windowEnd, dest, pairId);
@@ -168,10 +181,15 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
 
     // ── progress ─────────────────────────────────────────
 
+    /// Days journaled INSIDE the window. While the window is open this is the live count; once it
+    /// closes it is the anchor's historical count as of the final day — permanently fixed, so it
+    /// cannot drift with later journaling and does not depend on who calls first.
     function achievedDays(uint256 id) public view returns (uint32) {
         Commitment storage c = commitments[id];
-        uint32 now_ = anchor.journaledDayCount(c.staker);
-        return now_ > c.startCount ? now_ - c.startCount : 0;
+        uint32 counted = block.timestamp > c.windowEnd
+            ? anchor.countAtDay(c.staker, c.windowEndDay)
+            : anchor.journaledDayCount(c.staker);
+        return counted > c.startCount ? counted - c.startCount : 0;
     }
 
     // ── exits ────────────────────────────────────────────
@@ -197,7 +215,9 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
         if (!favored) {
             // At window end the automatic, retroactive grace applies; before it, the full goal must be hit.
             if (block.timestamp > c.windowEnd) {
-                if (achieved + GRACE_DAYS < c.goalDays) revert GoalNotReached();
+                // uint256 math: a saturated anchor count would have panicked in uint32 and locked
+                // the stake permanently.
+                if (uint256(achieved) + GRACE_DAYS < c.goalDays) revert GoalNotReached();
             } else {
                 if (achieved < c.goalDays) revert GoalNotReached();
             }
@@ -212,6 +232,9 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
     /// or by the staker themselves at window end (accepting their partial immediately).
     function settle(uint256 id) external nonReentrant {
         Commitment storage c = commitments[id];
+        // An id that was never created has state Active(0) and windowEnd 0, so every guard below
+        // passed: settle(999999) succeeded and emitted a phantom Released for anyone to index.
+        if (c.staker == address(0)) revert BadParams();
         if (c.state != State.Active) revert NotActive();
         if (block.timestamp <= c.windowEnd) revert WindowNotOver();
         if (msg.sender != c.staker && block.timestamp <= c.windowEnd + APPEAL_DELAY) {
@@ -220,7 +243,7 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
 
         uint32 achieved = achievedDays(id);
         // Grace and userFavor both resolve to a full release, whoever calls.
-        if (userFavor || achieved + GRACE_DAYS >= c.goalDays) {
+        if (userFavor || uint256(achieved) + GRACE_DAYS >= c.goalDays) {
             c.state = State.Released;
             emit Released(id, c.staker, c.stake, achieved);
             payable(c.staker).sendValue(c.stake);
@@ -233,7 +256,12 @@ contract KnoleCommitment is Ownable, ReentrancyGuard {
         emit Settled(id, c.staker, refund, forfeit, achieved);
         if (refund > 0) payable(c.staker).sendValue(refund);
         if (forfeit > 0) {
-            payable(c.dest == Dest.Burn ? BURN : charity).sendValue(forfeit);
+            // A charity address that reverts on receive would otherwise revert the WHOLE
+            // settlement, stranding the staker's refund with no exit but the global userFavor
+            // switch. Burn is a codeless address and always accepts, so it is the safe fallback.
+            address dest_ = c.dest == Dest.Burn ? BURN : charity;
+            (bool sent, ) = dest_.call{value: forfeit}("");
+            if (!sent) payable(BURN).sendValue(forfeit);
         }
     }
 

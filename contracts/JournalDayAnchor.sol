@@ -23,6 +23,11 @@ contract JournalDayAnchor is AccessControl {
     mapping(address => uint32) public journaledDayCount;
     // user => (last recorded day index + 1); +1 so day 0 is distinguishable from "never"
     mapping(address => uint64) private _lastDayPlus1;
+    // user => every UTC day index they journaled, strictly ascending (one push per recorded day).
+    // This is what makes a settlement a fact about a WINDOW rather than about when someone happened
+    // to call: a contract can ask how many days had been journaled as of a past deadline, instead
+    // of reading a cumulative counter that keeps growing after the window closes.
+    mapping(address => uint64[]) private _days;
 
     event DayJournaled(address indexed user, uint64 indexed day, uint32 newCount);
 
@@ -42,6 +47,7 @@ contract JournalDayAnchor is AccessControl {
         uint64 day = currentDay();
         if (_lastDayPlus1[user] == day + 1) return; // already recorded today
         _lastDayPlus1[user] = day + 1;
+        _days[user].push(day);
         uint32 count = ++journaledDayCount[user];
         emit DayJournaled(user, day, count);
     }
@@ -53,8 +59,29 @@ contract JournalDayAnchor is AccessControl {
             address user = users[i];
             if (user == address(0) || _lastDayPlus1[user] == day + 1) continue;
             _lastDayPlus1[user] = day + 1;
+            _days[user].push(day);
             emit DayJournaled(user, day, ++journaledDayCount[user]);
         }
+    }
+
+    /// How many distinct UTC days `user` had journaled as of the END of day `day` (inclusive).
+    /// Binary search over the ascending day list — the deadline-safe counterpart to
+    /// journaledDayCount, which only ever reports "now".
+    function countAtDay(address user, uint64 day) external view returns (uint32) {
+        uint64[] storage ds = _days[user];
+        uint256 lo = 0;
+        uint256 hi = ds.length;
+        while (lo < hi) {
+            uint256 mid = (lo + hi) / 2;
+            if (ds[mid] <= day) lo = mid + 1;
+            else hi = mid;
+        }
+        return uint32(lo);
+    }
+
+    /// Every day index recorded for `user` (ascending). Small by construction: one entry per day.
+    function journaledDays(address user) external view returns (uint64[] memory) {
+        return _days[user];
     }
 
     function lastJournaledDay(address user) external view returns (bool ever, uint64 day) {
