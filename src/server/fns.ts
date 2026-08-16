@@ -114,6 +114,13 @@ import {
   duetAnniversary,
   duetShape,
 } from "./duet";
+import {
+  archetypeReveal,
+  archetypeTimeline,
+  sealedMonthProgress,
+  previousMonthKey,
+  ARCHETYPES,
+} from "./archetypes";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
 import { exportMindfile } from "./mindfile";
@@ -978,6 +985,36 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
 });
+
+// ── the Monthly Archetype Reveal (B3) ──
+
+export const archetypeStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  const [sealed, timeline] = await Promise.all([
+    sealedMonthProgress(userId),
+    archetypeTimeline(userId),
+  ]);
+  const { plan } = await getBilling(userId);
+  const unlimited = plan === "deep" || !!(await inftStatus(userId));
+  return { sealed, timeline, taxonomy: ARCHETYPES, letterUnlocked: unlimited };
+});
+
+export const archetypeRevealFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      monthKey: z
+        .string()
+        .regex(/^\d{4}-\d{2}$/)
+        .optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await currentUserId();
+    enforceRate("archetype", 10, 60_000);
+    const settings = await getSettings(userId);
+    const monthKey = data.monthKey ?? previousMonthKey(settings?.timezone || "UTC");
+    return archetypeReveal(userId, monthKey);
+  });
 
 // ── Duet (B1): couples journaling — both-answer-to-unlock, enforced server-side ──
 

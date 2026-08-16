@@ -574,3 +574,29 @@ export const coupleMirrors = pgTable(
   },
   (t) => [uniqueIndex("couple_mirrors_week_uniq").on(t.coupleId, t.weekKey)],
 );
+
+// ── monthly archetype reveals (B3) ───────────────────────
+// One row per user per month, written the first time the completed month is opened. content
+// carries the letter + VERIFIED evidence quotes; archetype_id is null for thin months.
+export const archetypeReveals = pgTable(
+  "archetype_reveals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    monthKey: text("month_key").notNull(), // YYYY-MM
+    archetypeId: text("archetype_id"),
+    entryCount: integer("entry_count").default(0).notNull(),
+    content: jsonb("content")
+      .$type<{
+        archetypeId: string;
+        letter: string;
+        claims: { claim: string; quote: string; entryDate: string }[];
+        thin?: boolean;
+      }>()
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("archetype_reveals_month_uniq").on(t.userId, t.monthKey)],
+);
