@@ -3,13 +3,7 @@
   "name": "Save to Knole",
   "version": "0.2.0",
   "description": "Highlight anything on the web and save it to your Knole memory - or journal a thought from anywhere with one hotkey.",
-  "permissions": [
-    "activeTab",
-    "contextMenus",
-    "notifications",
-    "scripting",
-    "storage"
-  ],
+  "permissions": ["activeTab", "contextMenus", "notifications", "scripting", "storage"],
   "host_permissions": [
     "https://www.knole.me/*",
     "https://knole.me/*",

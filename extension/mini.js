@@ -12,7 +12,8 @@
 
   const host = document.createElement("div");
   host.id = "knole-mini-host";
-  host.style.cssText = "all:initial; position:fixed; z-index:2147483647; inset:0; pointer-events:none;";
+  host.style.cssText =
+    "all:initial; position:fixed; z-index:2147483647; inset:0; pointer-events:none;";
   const root = host.attachShadow({ mode: "closed" });
 
   const selection = (window.getSelection()?.toString() ?? "").trim().slice(0, 1500);
@@ -73,7 +74,8 @@
       } else {
         busy = false;
         saveBtn.removeAttribute("disabled");
-        hint.textContent = (res && res.error) || "Couldn't save — check your token in the Knole popup.";
+        hint.textContent =
+          (res && res.error) || "Couldn't save — check your token in the Knole popup.";
       }
     });
   };
