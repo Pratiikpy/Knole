@@ -53,9 +53,17 @@ jobs:
           KNOLE_KDF_SECRET: ${{ secrets.KNOLE_KDF_SECRET }}
           VITE_PRIVY_APP_ID: ${{ secrets.VITE_PRIVY_APP_ID }}
           PRIVY_APP_SECRET: ${{ secrets.PRIVY_APP_SECRET }}
+          OWNER_REPO: ${{ github.repository_owner }}/knole-app
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "No DATABASE_URL secret configured — skipping the test gate."
+            # Forks legitimately have no secrets. On this repo, a missing DATABASE_URL means a
+            # deleted or rotated secret, and silently passing would leave a permanently green,
+            # empty gate — so only skip when we are genuinely not on the main repository.
+            if [ "$GITHUB_REPOSITORY" = "$OWNER_REPO" ]; then
+              echo "DATABASE_URL is missing on the main repository — the test gate cannot run."
+              exit 1
+            fi
+            echo "No DATABASE_URL secret configured (fork) — skipping the test gate."
             exit 0
           fi
           npm run evals

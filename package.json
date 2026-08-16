@@ -61,7 +61,11 @@
     "seed:inft": "tsx src/server/seed-inft.run.ts",
     "record:demo": "node scripts/demo-video/record-demo-v3.mjs && node scripts/demo-video/to-mp4.mjs",
     "worker": "tsx src/server/worker.run.ts",
-    "setup:stripe": "node scripts/setup-stripe.mjs"
+    "setup:stripe": "node scripts/setup-stripe.mjs",
+    "typecheck": "tsc --noEmit",
+    "verify:build": "tsc --noEmit && eslint . --max-warnings=99",
+    "migrate": "tsx scripts/migrate.ts",
+    "vercel-build": "npm run migrate && npm run verify:build && vite build && npm run build:worker"
   },
   "dependencies": {
     "@0gfoundation/0g-compute-ts-sdk": "^0.9.0",
