@@ -1500,11 +1500,17 @@ function TodayPage() {
                                   {part.text}
                                 </span>
                               ) : part.kind === "del" ? (
-                                <del key={k} className="bg-rose-500/10 text-ink-soft/60">
+                                <del
+                                  key={k}
+                                  className="mr-1 rounded-sm bg-rose-500/10 px-0.5 text-ink-soft/60"
+                                >
                                   {part.text}
                                 </del>
                               ) : (
-                                <ins key={k} className="bg-tan/[0.18] text-ink no-underline">
+                                <ins
+                                  key={k}
+                                  className="rounded-sm bg-tan/[0.18] px-0.5 text-ink no-underline"
+                                >
                                   {part.text}
                                 </ins>
                               ),
