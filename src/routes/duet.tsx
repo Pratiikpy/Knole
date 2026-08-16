@@ -224,7 +224,8 @@ function DuetPage() {
                 </span>
                 {status.streak.totalDays > 0 && (
                   <span className="rounded-full border border-rule px-3 py-1.5 text-[12px] text-muted-foreground">
-                    {status.streak.totalDays} days answered, both of you
+                    {status.streak.totalDays} {status.streak.totalDays === 1 ? "day" : "days"}{" "}
+                    answered, both of you
                   </span>
                 )}
               </div>

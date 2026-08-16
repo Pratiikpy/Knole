@@ -170,10 +170,13 @@ export async function duetStatus(userId: string): Promise<DuetStatus> {
     .where(and(eq(coupleAnswers.coupleId, couple.id), eq(coupleAnswers.dateKey, yKey)));
   const iAnsweredY = yesterday.some((a) => a.userId === userId);
   const theyAnsweredY = yesterday.some((a) => a.userId === partner.userId);
+  // Repair needs a "before" to lapse FROM: only fire when a both-answered day exists earlier
+  // than yesterday - a couple's first day is a beginning, not a lapse.
+  const hasHistory = days.some((d) => d < yKey);
   const repair =
-    days.length > 0 && !theyAnsweredY && iAnsweredY
+    hasHistory && !theyAnsweredY && iAnsweredY
       ? ("partner-lapsed" as const)
-      : days.length > 0 && !iAnsweredY && !theyAnsweredY
+      : hasHistory && !iAnsweredY && !theyAnsweredY
         ? ("both-lapsed" as const)
         : null;
 
