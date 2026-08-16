@@ -600,3 +600,21 @@ export const archetypeReveals = pgTable(
   },
   (t) => [uniqueIndex("archetype_reveals_month_uniq").on(t.userId, t.monthKey)],
 );
+
+// ── wellbeing instruments (B4) ───────────────────────────
+// PHQ-9 / GAD-7 check-ins (both public domain - Pfizer: no permission required). Biweekly cadence,
+// answers kept item-by-item so MCID change flags and the item-9 crisis gate work from real data.
+export const instrumentScores = pgTable(
+  "instrument_scores",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    instrument: text("instrument").notNull(), // phq9 | gad7
+    answers: jsonb("answers").$type<number[]>().notNull(), // 0-3 per item
+    score: integer("score").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("instrument_scores_user_idx").on(t.userId, t.instrument, t.createdAt)],
+);

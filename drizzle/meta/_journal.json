@@ -218,6 +218,13 @@
       "when": 1786847845435,
       "tag": "0030_heavy_captain_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1786849500985,
+      "tag": "0031_green_penance",
+      "breakpoints": true
     }
   ]
 }

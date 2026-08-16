@@ -34,6 +34,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/future", label: "Future Self", hint: "A letter from who you're becoming" },
       { to: "/programs", label: "Programs", hint: "Guided reflection tracks" },
       { to: "/intentions", label: "Intentions", hint: "What you said you'd do" },
+      { to: "/wellbeing", label: "Wellbeing", hint: "Check-ins, breathing, untangling" },
       { to: "/therapy", label: "Therapy prep", hint: "A brief for your next session" },
     ],
   },

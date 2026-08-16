@@ -115,6 +115,7 @@ import {
   duetShape,
 } from "./duet";
 import { passportView, passportBundle } from "./passport";
+import { INSTRUMENTS, OPTIONS, DISTORTIONS, submitInstrument, wellbeingStatus } from "./wellbeing";
 import {
   archetypeReveal,
   archetypeTimeline,
@@ -986,6 +987,79 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
 });
+
+// ── wellbeing check-ins + the thinking-pattern library (B4) ──
+
+export const wellbeingStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  const status = await wellbeingStatus(userId);
+  return { ...status, instruments: INSTRUMENTS, options: OPTIONS, distortions: DISTORTIONS };
+});
+
+export const submitInstrumentFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      instrument: z.enum(["phq9", "gad7"]),
+      answers: z.array(z.number().int().min(0).max(3)).min(7).max(9),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("instrument", 10, 60_000);
+    return submitInstrument(userId, data.instrument, data.answers);
+  });
+
+// The thought record saves as a SECTIONED entry - it rides the whole existing pipeline
+// (embedding, extraction, valence, receipts) instead of becoming a parallel data island.
+export const saveThoughtRecordFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      situation: z.string().min(1).max(2000),
+      thought: z.string().min(1).max(2000),
+      feeling: z.string().min(1).max(200),
+      intensityBefore: z.number().int().min(0).max(100),
+      distortions: z.array(z.string().max(40)).max(4),
+      reframe: z.string().min(1).max(2000),
+      intensityAfter: z.number().int().min(0).max(100),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("thought-record", 15, 60_000);
+    const names = data.distortions
+      .map((id) => DISTORTIONS.find((d) => d.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+    const text = [
+      `What happened:
+${data.situation}`,
+      `The automatic thought:
+"${data.thought}"`,
+      `How it felt:
+${data.feeling} (${data.intensityBefore}/100)`,
+      names
+        ? `The patterns at work:
+${names}`
+        : null,
+      `A fairer way to say it:
+${data.reframe}`,
+      `After writing it down:
+${data.feeling} (${data.intensityAfter}/100)`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const row = await saveEntry(userId, text, undefined, "journal", {
+      tags: ["thought-record"],
+      sections: {
+        situation: data.situation,
+        thought: data.thought,
+        feeling: `${data.feeling} (${data.intensityBefore} -> ${data.intensityAfter})`,
+        reframe: data.reframe,
+      },
+    });
+    background(extractMemories(userId, row.id, text), "extractMemories");
+    return { ok: true, entryId: row.id, relief: data.intensityBefore - data.intensityAfter };
+  });
 
 // ── the Memory Passport (B5) ──
 
