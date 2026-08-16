@@ -546,10 +546,31 @@ export const coupleAnswers = pgTable(
     dateKey: text("date_key").notNull(), // YYYY-MM-DD in the couple's timezone
     questionId: text("question_id").notNull(),
     text: text("text").notNull(),
+    // Quiz days: alongside your own answer you also guess your partner's. Revealed with the
+    // unlock, guess beside truth - the "how well do you know them" mechanic.
+    guess: text("guess"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
     uniqueIndex("couple_answers_once").on(t.coupleId, t.userId, t.dateKey),
     index("couple_answers_couple_date_idx").on(t.coupleId, t.dateKey),
   ],
+);
+
+// One "Us" mirror per couple per ISO week - the AI reflection over both partners' unlocked
+// answers. Cached at couple level so both partners read the SAME mirror.
+export const coupleMirrors = pgTable(
+  "couple_mirrors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    coupleId: uuid("couple_id")
+      .notNull()
+      .references(() => couples.id, { onDelete: "cascade" }),
+    weekKey: text("week_key").notNull(), // YYYY-Www
+    content: jsonb("content")
+      .$type<{ throughline: string; divergence: string; starter: string }>()
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("couple_mirrors_week_uniq").on(t.coupleId, t.weekKey)],
 );

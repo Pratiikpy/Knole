@@ -10,8 +10,12 @@ import {
   duetAnswerFn,
   duetNameFn,
   duetLeaveFn,
+  duetMirrorFn,
+  duetAnniversaryFn,
+  duetShapeFn,
 } from "@/server/fns";
-import type { DuetStatus } from "@/server/duet";
+import type { DuetStatus, UsMirror, DuetAnniversary } from "@/server/duet";
+import { DuetShapeCard } from "@/components/knole/DuetShapeCard";
 
 export const Route = createFileRoute("/duet")({
   // The invite link carries ?join=CODE — the partner lands here and pairs in one tap.
@@ -55,6 +59,20 @@ function DuetPage() {
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState("");
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [guessDraft, setGuessDraft] = useState("");
+  const getMirror = useServerFn(duetMirrorFn);
+  const [mirror, setMirror] = useState<
+    | { ready: true; mirror: UsMirror }
+    | { ready: false; unlockedDays: number; needed: number }
+    | null
+  >(null);
+  const getAnniversary = useServerFn(duetAnniversaryFn);
+  const [anniversary, setAnniversary] = useState<DuetAnniversary | null>(null);
+  const getShape = useServerFn(duetShapeFn);
+  const [shape, setShape] = useState<{
+    days: { dateKey: string; category: string }[];
+    sinceDays: number;
+  } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = () =>
@@ -67,6 +85,20 @@ function DuetPage() {
             : "Couldn't reach the server — try again in a moment.",
         ),
       );
+
+  useEffect(() => {
+    if (status?.state !== "paired") return;
+    getMirror()
+      .then((m) => setMirror(m))
+      .catch(() => {});
+    getAnniversary()
+      .then((r) => setAnniversary(r.anniversary))
+      .catch(() => {});
+    getShape()
+      .then((r) => setShape(r.shape))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status?.state]);
 
   useEffect(() => {
     // A pending ?join=CODE pairs first, then the normal status load takes over.
@@ -119,9 +151,18 @@ function DuetPage() {
     if (!draft.trim() || sending) return;
     setSending(true);
     try {
-      const r = await doAnswer({ data: { text: draft } });
+      const r = await doAnswer({
+        data: {
+          text: draft,
+          guess:
+            status?.state === "paired" && status.quizDay && guessDraft.trim()
+              ? guessDraft
+              : undefined,
+        },
+      });
       if (r.ok) {
         setDraft("");
+        setGuessDraft("");
         await refresh();
       }
     } catch {
@@ -266,6 +307,12 @@ function DuetPage() {
                   {status.question.text}
                 </p>
 
+                {status.quizDay && !status.myAnswer && (
+                  <p className="mt-3 rounded-xl bg-tan/[0.08] px-3 py-2 text-[12px] text-tan">
+                    Quiz day — answer for yourself, then guess what they'll say. Guesses reveal
+                    beside the truth.
+                  </p>
+                )}
                 {!status.myAnswer ? (
                   <>
                     <textarea
@@ -279,6 +326,15 @@ function DuetPage() {
                       }
                       className="mt-5 w-full resize-none rounded-xl border border-rule bg-paper/60 px-4 py-3 font-display text-[17px] leading-relaxed text-ink placeholder:text-muted-foreground/50 focus:border-tan/40 focus:outline-none"
                     />
+                    {status.quizDay && (
+                      <textarea
+                        value={guessDraft}
+                        onChange={(e) => setGuessDraft(e.target.value)}
+                        rows={2}
+                        placeholder={`And your guess: what will ${partnerLabel} say?`}
+                        className="mt-2 w-full resize-none rounded-xl border border-dashed border-rule bg-paper/40 px-4 py-3 text-[14px] leading-relaxed text-ink placeholder:text-muted-foreground/50 focus:border-tan/40 focus:outline-none"
+                      />
+                    )}
                     <button
                       onClick={() => void send()}
                       disabled={sending || !draft.trim()}
@@ -324,12 +380,82 @@ function DuetPage() {
                         {status.myAnswer}
                       </p>
                     </div>
+                    {status.quizDay && (status.myGuess || status.partnerGuess) && (
+                      <div className="rounded-xl border border-dashed border-rule p-4">
+                        <div className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                          the guesses
+                        </div>
+                        {status.myGuess && (
+                          <p className="text-[13px] leading-relaxed text-ink-soft">
+                            You guessed they'd say:{" "}
+                            <span className="font-display italic">"{status.myGuess}"</span>
+                          </p>
+                        )}
+                        {status.partnerGuess && (
+                          <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">
+                            They guessed you'd say:{" "}
+                            <span className="font-display italic">"{status.partnerGuess}"</span>
+                          </p>
+                        )}
+                        <p className="mt-2 text-[11px] text-muted-foreground/70">
+                          How close were you? That's tonight's conversation.
+                        </p>
+                      </div>
+                    )}
                     <p className="text-[12px] text-muted-foreground">
                       Unlocked — you both showed up today. Tomorrow brings a new question.
                     </p>
                   </div>
                 )}
               </div>
+
+              {/* the weekly Us mirror */}
+              {mirror && (
+                <div className="mt-6 rounded-2xl border border-rule bg-card/50 p-6">
+                  <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-tan">
+                    The Us mirror · this week
+                  </div>
+                  {mirror.ready ? (
+                    <div className="space-y-3">
+                      <p className="text-[14px] leading-relaxed text-ink-soft">
+                        {mirror.mirror.throughline}
+                      </p>
+                      <p className="text-[13px] leading-relaxed text-muted-foreground">
+                        {mirror.mirror.divergence}
+                      </p>
+                      <p className="border-l-2 border-tan/40 pl-3 font-display text-[15px] italic leading-relaxed text-ink">
+                        {mirror.mirror.starter}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[13px] leading-relaxed text-muted-foreground">
+                      The mirror reads a week of unlocked answers — you two have{" "}
+                      {mirror.unlockedDays} of {mirror.needed} days it needs. Keep answering.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* anniversary — the pair's on-this-day */}
+              {anniversary && (
+                <div className="mt-6 rounded-2xl border border-tan/30 bg-tan/[0.05] p-6">
+                  <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-tan">
+                    On this day, {anniversary.ago}
+                  </div>
+                  <p className="font-display text-[16px] italic text-ink">{anniversary.question}</p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
+                    You said: "{anniversary.mine.slice(0, 200)}"
+                  </p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
+                    They said: "{anniversary.theirs.slice(0, 200)}"
+                  </p>
+                </div>
+              )}
+
+              {/* the shape card — the pair's history as pure form */}
+              {shape && shape.days.length > 0 && (
+                <DuetShapeCard days={shape.days} sinceDays={shape.sinceDays} />
+              )}
 
               {/* housekeeping */}
               <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-rule pt-4">

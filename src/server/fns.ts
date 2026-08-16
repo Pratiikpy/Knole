@@ -110,6 +110,9 @@ import {
   leaveCouple,
   setDuetName,
   answerDuet,
+  usMirror,
+  duetAnniversary,
+  duetShape,
 } from "./duet";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
@@ -998,12 +1001,30 @@ export const duetJoinFn = createServerFn({ method: "POST" })
   });
 
 export const duetAnswerFn = createServerFn({ method: "POST" })
-  .validator(z.object({ text: z.string().min(1).max(4000) }))
+  .validator(
+    z.object({ text: z.string().min(1).max(4000), guess: z.string().max(2000).optional() }),
+  )
   .handler(async ({ data }) => {
     const userId = await requireUserId();
     enforceRate("duet-answer", 20, 60_000);
-    return answerDuet(userId, data.text);
+    return answerDuet(userId, data.text, data.guess);
   });
+
+// The weekly Us mirror - one AI reflection over both partners' unlocked answers, cached per week.
+export const duetMirrorFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return usMirror(userId);
+});
+
+export const duetAnniversaryFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return { anniversary: await duetAnniversary(userId) };
+});
+
+export const duetShapeFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return { shape: await duetShape(userId) };
+});
 
 export const duetNameFn = createServerFn({ method: "POST" })
   .validator(z.object({ name: z.string().max(40) }))
