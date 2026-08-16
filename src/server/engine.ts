@@ -136,6 +136,35 @@ export type Recalled = {
   score: number;
 };
 
+// Postgres full-text stopwords do the heavy lifting inside to_tsvector; this only has to stop
+// tsquery syntax characters from reaching the parser and cap how many terms we OR together.
+// One arm's top-rank contribution in the RRF fusion below (k = 60).
+const RRF_UNIT = 1 / 61;
+
+const LEX_STOP = new Set(
+  (
+    "the a an and or but if then than that this these those i you he she it we they me my your his " +
+    "her its our their of to in on at for with from by as is are was were be been being do does " +
+    "did have has had not no so just about into over under again very can will would should could " +
+    "what when where who whom which how why all any both each few more most other some such only " +
+    "own same too s t don now"
+  ).split(" "),
+);
+
+/** Turn free text into an OR tsquery of its most distinctive terms (empty string if none). */
+export function toOrTsQuery(text: string, max = 12): string {
+  const seen = new Set<string>();
+  const terms: string[] = [];
+  for (const raw of text.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+    if (raw.length < 3 || LEX_STOP.has(raw)) continue;
+    if (seen.has(raw)) continue;
+    seen.add(raw);
+    terms.push(raw);
+    if (terms.length >= max) break;
+  }
+  return terms.join(" | ");
+}
+
 export async function retrieveMemories(
   userId: string,
   queryVec: number[],
@@ -143,7 +172,13 @@ export async function retrieveMemories(
   queryText?: string,
 ): Promise<Recalled[]> {
   const lit = toVectorLiteral(queryVec);
-  const useHybrid = !!queryText && queryText.trim().length > 0;
+  // plainto_tsquery ANDs EVERY word of its input, and the caller passes whole journal entries -
+  // so the lexical arm required one memory to contain every content word of the entry and matched
+  // nothing at all in practice (measured: adding 8 unrelated words to a query that matched took it
+  // from 1 hit to 0). The hybrid was paying for a full tsvector scan and getting pure vector back.
+  // Distinctive terms, OR'd, ranked by ts_rank: that is what the fusion was always meant to fuse.
+  const lexQuery = toOrTsQuery(queryText ?? "");
+  const useHybrid = !!queryText && queryText.trim().length > 0 && lexQuery.length > 0;
   // RRF hybrid: fuse vector (semantic) + lexical (exact keyword) rankings so exact
   // names/terms the embedding underweights still surface. Pure vector otherwise.
   const rows = useHybrid
@@ -158,12 +193,12 @@ export async function retrieveMemories(
         lex AS (
           SELECT id, content, source_quote, created_at,
                  row_number() OVER (
-                   ORDER BY ts_rank(to_tsvector('english', content), plainto_tsquery('english', ${queryText})) DESC
+                   ORDER BY ts_rank(to_tsvector('english', content), to_tsquery('english', ${lexQuery})) DESC
                  ) AS rnk
           FROM memories
           WHERE user_id = ${userId} AND status IN ('active', 'pinned')
-            AND to_tsvector('english', content) @@ plainto_tsquery('english', ${queryText})
-          ORDER BY ts_rank(to_tsvector('english', content), plainto_tsquery('english', ${queryText})) DESC
+            AND to_tsvector('english', content) @@ to_tsquery('english', ${lexQuery})
+          ORDER BY ts_rank(to_tsvector('english', content), to_tsquery('english', ${lexQuery})) DESC
           LIMIT 40
         )
         SELECT COALESCE(vec.id, lex.id) AS id,
@@ -200,7 +235,11 @@ export async function retrieveMemories(
       const byId = new Map(result.map((r) => [r.id, r]));
       const pullIds: string[] = [];
       for (const ent of ents) {
-        const w = entityBoostWeight(ent.sim, ent.memoryIds.length);
+        // RRF scores top out around 1/61 + 1/61 = 0.033, while the raw boost reaches 0.5 - roughly
+        // 15x larger, so ANY entity match used to override the fused ranking entirely and the
+        // fusion this function is built around was dead whenever the entity arm fired. Scaled so a
+        // perfect entity match is worth at most what being #1 in one arm is worth.
+        const w = entityBoostWeight(ent.sim, ent.memoryIds.length) * 2 * RRF_UNIT;
         for (const mid of ent.memoryIds) {
           const hit = byId.get(mid);
           if (hit) hit.score += w;
@@ -220,7 +259,7 @@ export async function retrieveMemories(
             content: String(r.content),
             sourceQuote: r.source_quote == null ? null : String(r.source_quote),
             createdAt: r.created_at == null ? null : String(r.created_at),
-            score: entityBoostWeight(ent.sim, ent.memoryIds.length),
+            score: entityBoostWeight(ent.sim, ent.memoryIds.length) * 2 * RRF_UNIT,
           });
         }
       }
