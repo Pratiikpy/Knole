@@ -55,7 +55,7 @@ function utcInMinutes(deltaMinutes: number): Date {
 export function computeNextFire(
   prefs: NudgePrefs,
   tz: string,
-  opts: { clampToNow?: boolean } = {},
+  opts: { clampToNow?: boolean; afterToday?: boolean } = {},
 ): Date {
   const { minutes: nowMin } = localNow(tz);
   const start = ((prefs.windowStartMin % MIN_PER_DAY) + MIN_PER_DAY) % MIN_PER_DAY;
@@ -72,6 +72,10 @@ export function computeNextFire(
     target = lo + Math.floor(Math.random() * (end - lo + 1));
     if (target <= nowMin) target += MIN_PER_DAY; // window already passed → tomorrow's window
   }
+  // After a fire, the next one belongs to a LATER DAY. Without this the random draw could land
+  // again inside today's remaining window - and then again - so a single user could receive
+  // several "one a day" pushes in one afternoon.
+  if (opts.afterToday && target <= end) target += MIN_PER_DAY;
   return utcInMinutes(target - nowMin);
 }
 
@@ -177,7 +181,7 @@ async function hasEntryToday(userId: string, tz: string): Promise<boolean> {
   const { dateKey } = localNow(tz);
   const rows = (await db.execute(sql`
     SELECT 1 FROM entries
-    WHERE user_id = ${userId} AND deleted_at IS NULL
+    WHERE user_id = ${userId} AND deleted_at IS NULL AND type <> 'saved'
       AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date = ${dateKey}::date
     LIMIT 1
   `)) as unknown as unknown[];
@@ -228,7 +232,11 @@ export async function dispatchDueNudges(): Promise<{
     }
     await db
       .update(nudgeSettings)
-      .set({ lastFiredAt: now, nextFireAt: computeNextFire(prefs, zone), updatedAt: now })
+      .set({
+        lastFiredAt: now,
+        nextFireAt: computeNextFire(prefs, zone, { afterToday: true }),
+        updatedAt: now,
+      })
       .where(eq(nudgeSettings.userId, s.userId));
   }
 

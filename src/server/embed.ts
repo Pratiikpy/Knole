@@ -8,7 +8,12 @@ let extractorP: Promise<FeatureExtractionPipeline> | null = null;
 function getExtractor(): Promise<FeatureExtractionPipeline> {
   if (!extractorP) {
     configureXenovaCache();
-    extractorP = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    // Never cache a rejection: one transient download failure would otherwise break every embed —
+    // and therefore every save — for the life of the instance.
+    extractorP = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2").catch((e) => {
+      extractorP = null;
+      throw e;
+    }) as Promise<FeatureExtractionPipeline>;
   }
   return extractorP;
 }

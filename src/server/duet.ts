@@ -95,7 +95,16 @@ export async function joinCouple(
     .where(eq(coupleMembers.coupleId, couple.id));
   if (members.length >= 2) return { ok: false, reason: "full" };
   if (members.some((m) => m.userId === userId)) return { ok: false, reason: "self" };
-  await db.insert(coupleMembers).values({ coupleId: couple.id, userId });
+  // Atomic seat check: two people redeeming the same invite link at once both passed the read
+  // above, and a third member breaks both-answer-to-unlock (they would be paired against the
+  // creator and could read that partner's answer). The INSERT itself now enforces the cap.
+  const seated = (await db.execute(sql`
+    INSERT INTO couple_members (couple_id, user_id)
+    SELECT ${couple.id}, ${userId}
+    WHERE (SELECT count(*) FROM couple_members WHERE couple_id = ${couple.id}) < 2
+    RETURNING id
+  `)) as unknown as unknown[];
+  if (!seated.length) return { ok: false, reason: "full" };
   return { ok: true };
 }
 

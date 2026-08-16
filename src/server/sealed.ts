@@ -109,10 +109,15 @@ export async function chatPrivate(
 export async function* chatPrivateStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number } = {},
-): AsyncGenerator<string, { sealed: boolean; anonymised: boolean; chatID: string | null }, void> {
+): AsyncGenerator<
+  string,
+  { sealed: boolean; anonymised: boolean; chatID: string | null; partial?: boolean },
+  void
+> {
   const { messages: anon, map, ok } = await anonymiseMessages(messages);
   let acc = "";
   let emitted = "";
+  let truncated = false;
   let sealed = false;
   let chatID: string | null = null;
   try {
@@ -133,6 +138,18 @@ export async function* chatPrivateStream(
     ({ sealed, chatID } = step.value);
   } catch (e) {
     console.error("stream path failed, falling back to non-stream:", (e as Error).message);
+    truncated = true;
+  }
+
+  if (acc && truncated) {
+    // The model died mid-sentence. Emitting the stump silently let a half-reflection be SAVED and
+    // anchored as the user's real reply. Say so instead, and mark the result partial.
+    const finalText = deAnonymise(acc, map);
+    if (finalText.length > emitted.length && finalText.startsWith(emitted)) {
+      yield finalText.slice(emitted.length);
+    }
+    yield "\n\n(That reply was cut short — the connection dropped mid-thought.)";
+    return { sealed, anonymised: ok, chatID, partial: true };
   }
 
   if (acc) {

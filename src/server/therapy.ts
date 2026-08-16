@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { dayKey } from "./dateKey";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
 import { computeThemes } from "./themes";
@@ -51,12 +52,12 @@ export async function sessionPrep(userId: string): Promise<SessionPrep> {
   const rows = (await db.execute(sql`
     SELECT text, created_at, valence FROM entries
     WHERE user_id = ${userId} AND deleted_at IS NULL AND created_at >= ${SINCE_SQL(userId)}
-    ORDER BY created_at ASC
+    ORDER BY created_at DESC
     LIMIT 25
   `)) as unknown as Record<string, unknown>[];
   const entries: EntryLite[] = rows.map((r) => ({
     text: String(r.text),
-    date: String(r.created_at).slice(0, 10),
+    date: dayKey(r.created_at),
     valence: r.valence == null ? null : Number(r.valence),
   }));
   if (entries.length < 3) {
@@ -141,7 +142,7 @@ export async function sessionPrep(userId: string): Promise<SessionPrep> {
       .replace("GAD7", "GAD-7"),
     score: Number(r.score),
     band: bandFor(String(r.instrument) as "phq9" | "gad7", Number(r.score)),
-    date: String(r.created_at).slice(0, 10),
+    date: dayKey(r.created_at),
   }));
 
   return {

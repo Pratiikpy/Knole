@@ -38,7 +38,10 @@ export function getDemoUserId(): Promise<string> {
         .values({ privyId, email: `${privyId}@knole.local` })
         .returning({ id: users.id });
       return ins[0].id;
-    })();
+    })().catch((e) => {
+      demoUserIdP = null; // a transient DB error must not poison this for the whole instance
+      throw e;
+    });
   }
   return demoUserIdP;
 }
@@ -279,6 +282,7 @@ export async function retrieveEntries(
     SELECT id, text, created_at, 1 - (embedding <=> ${lit}::vector) AS score
     FROM entries
     WHERE user_id = ${userId} AND embedding IS NOT NULL AND deleted_at IS NULL
+      AND type <> 'chat'
     ORDER BY embedding <=> ${lit}::vector
     LIMIT ${k}
   `);
@@ -409,16 +413,17 @@ export async function extractMemories(userId: string, entryId: string, entryText
   const saved: { id: string; content: string }[] = [];
   for (const it of items) {
     if (!it?.content) continue;
-    const type = it.type && VALID_TYPES.has(it.type) ? it.type : "fact";
-    // How sure the model is this memory is true + durable. Clamp to a sane floor so a missing/garbage
-    // value still lands at the old default. Earned higher later by recall + a user edit.
-    const conf = Math.max(0.3, Math.min(1, Number(it.confidence) || 0.7));
-    const ch = hash(normalize(it.content));
-    const v = await embed(it.content);
-    const vlit = toVectorLiteral(v);
+    try {
+      const type = it.type && VALID_TYPES.has(it.type) ? it.type : "fact";
+      // How sure the model is this memory is true + durable. Clamp to a sane floor so a missing/garbage
+      // value still lands at the old default. Earned higher later by recall + a user edit.
+      const conf = Math.max(0.3, Math.min(1, Number(it.confidence) || 0.7));
+      const ch = hash(normalize(it.content));
+      const v = await embed(it.content);
+      const vlit = toVectorLiteral(v);
 
-    // reconcile: does this update/replace a similar-but-different existing memory?
-    const sim = (await db.execute(sql`
+      // reconcile: does this update/replace a similar-but-different existing memory?
+      const sim = (await db.execute(sql`
       SELECT id, content, status, user_verified_at, 1 - (embedding <=> ${vlit}::vector) AS score
       FROM memories
       WHERE user_id = ${userId} AND status IN ('active', 'pinned')
@@ -426,40 +431,41 @@ export async function extractMemories(userId: string, entryId: string, entryText
       ORDER BY embedding <=> ${vlit}::vector
       LIMIT 1
     `)) as unknown as Record<string, unknown>[];
-    let supersededId: string | null = null;
-    if (sim[0] && Number(sim[0].score) >= 0.45) {
-      const verdict = await judgeMemory(String(sim[0].content), it.content);
-      if (verdict === "duplicate") {
-        // NOOP: reinforce the existing memory instead of storing a near-duplicate
-        await db.execute(sql`
+      let supersededId: string | null = null;
+      if (sim[0] && Number(sim[0].score) >= 0.45) {
+        const verdict = await judgeMemory(String(sim[0].content), it.content);
+        if (verdict === "duplicate") {
+          // NOOP: reinforce the existing memory instead of storing a near-duplicate
+          await db.execute(sql`
           UPDATE memories SET recall_count = recall_count + 1, updated_at = now()
           WHERE id = ${String(sim[0].id)} AND user_id = ${userId}
         `);
-        saved.push({ id: String(sim[0].id), content: String(sim[0].content) });
-        continue;
+          saved.push({ id: String(sim[0].id), content: String(sim[0].content) });
+          continue;
+        }
+        // update: supersede the prior memory — but never one the user controls. A pin
+        // (pinned-survival) or a hand-edit (user_verified_at, the user-edit-wins lock) outranks
+        // the engine's inference; the new memory is added alongside it, for the user to reconcile.
+        const userControlled =
+          String(sim[0].status) === "pinned" || sim[0].user_verified_at != null;
+        if (verdict === "update" && !userControlled) {
+          supersededId = String(sim[0].id);
+        }
       }
-      // update: supersede the prior memory — but never one the user controls. A pin
-      // (pinned-survival) or a hand-edit (user_verified_at, the user-edit-wins lock) outranks
-      // the engine's inference; the new memory is added alongside it, for the user to reconcile.
-      const userControlled = String(sim[0].status) === "pinned" || sim[0].user_verified_at != null;
-      if (verdict === "update" && !userControlled) {
-        supersededId = String(sim[0].id);
-      }
-    }
 
-    // content-hash UPSERT dedup (memori): reinforce on conflict instead of duplicating
-    // Map the model's int handles back to real memory ids (only in-range handles survive).
-    const linkedIds = Array.isArray(it.linked)
-      ? Array.from(
-          new Set(
-            it.linked
-              .map((n) => linkCandidates[Number(n) - 1]?.id)
-              .filter((id): id is string => !!id),
-          ),
-        )
-      : [];
-    const linkedJson = linkedIds.length ? JSON.stringify(linkedIds) : null;
-    const res = await db.execute(sql`
+      // content-hash UPSERT dedup (memori): reinforce on conflict instead of duplicating
+      // Map the model's int handles back to real memory ids (only in-range handles survive).
+      const linkedIds = Array.isArray(it.linked)
+        ? Array.from(
+            new Set(
+              it.linked
+                .map((n) => linkCandidates[Number(n) - 1]?.id)
+                .filter((id): id is string => !!id),
+            ),
+          )
+        : [];
+      const linkedJson = linkedIds.length ? JSON.stringify(linkedIds) : null;
+      const res = await db.execute(sql`
       INSERT INTO memories
         (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance, linked_ids)
       VALUES
@@ -468,27 +474,33 @@ export async function extractMemories(userId: string, entryId: string, entryText
         DO UPDATE SET recall_count = memories.recall_count + 1, updated_at = now()
       RETURNING id, content
     `);
-    const row = (res as unknown as Record<string, unknown>[])[0];
-    const newId = row ? String(row.id) : null;
+      const row = (res as unknown as Record<string, unknown>[])[0];
+      const newId = row ? String(row.id) : null;
 
-    // supersede-not-delete: keep the old memory, mark it invalid (bi-temporal)
-    if (supersededId && newId && supersededId !== newId) {
-      await db.execute(sql`
+      // supersede-not-delete: keep the old memory, mark it invalid (bi-temporal)
+      if (supersededId && newId && supersededId !== newId) {
+        await db.execute(sql`
         UPDATE memories SET status = 'superseded', invalid_at = now(), invalidated_by = ${newId}, updated_at = now()
         WHERE id = ${supersededId} AND user_id = ${userId}
       `);
-      await logHistory(supersededId, userId, "superseded", null, { by: newId });
-    }
-    if (row) {
-      saved.push({ id: String(row.id), content: String(row.content) });
-      // Entity store (mem0): record proper names this memory mentions - the third retrieval arm.
-      if (Array.isArray(it.entities) && it.entities.length) {
-        await upsertEntities(
-          userId,
-          String(row.id),
-          it.entities.filter((e): e is string => typeof e === "string").slice(0, 6),
-        ).catch(() => {});
+        await logHistory(supersededId, userId, "superseded", null, { by: newId });
       }
+      if (row) {
+        saved.push({ id: String(row.id), content: String(row.content) });
+        // Entity store (mem0): record proper names this memory mentions - the third retrieval arm.
+        if (Array.isArray(it.entities) && it.entities.length) {
+          await upsertEntities(
+            userId,
+            String(row.id),
+            it.entities.filter((e): e is string => typeof e === "string").slice(0, 6),
+          ).catch(() => {});
+        }
+      }
+    } catch (e) {
+      // One item's reconcile call or embed timing out must not discard the memories after it.
+      // Extraction runs in the background, so an escaping throw silently lost the rest of the
+      // entry's memories with nothing surfaced to the user.
+      console.error("extractMemories: item failed, continuing:", (e as Error).message);
     }
   }
   return saved;
@@ -691,6 +703,8 @@ export async function updateSettings(
     proactivityPaused: boolean;
   }>,
 ) {
+  // Every field is optional, so an empty object reaches drizzle and throws "No values to set".
+  if (!Object.keys(patch).length) return;
   await db.update(users).set(patch).where(eq(users.id, userId));
 }
 

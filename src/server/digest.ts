@@ -1,4 +1,5 @@
 import { sql, eq } from "drizzle-orm";
+import { dayKey } from "./dateKey";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
 import { inQuietHours, hourInTz } from "./proactivity";
@@ -23,7 +24,7 @@ export async function buildWeeklyDigest(userId: string): Promise<WeeklyDigest | 
   `)) as unknown as Record<string, unknown>[];
   if (rows.length < 2) return null;
   const entryCount = rows.length;
-  const dayCount = new Set(rows.map((r) => String(r.created_at).slice(0, 10))).size;
+  const dayCount = new Set(rows.map((r) => dayKey(r.created_at))).size;
   const context = rows.map((r, i) => `[${i + 1}] ${String(r.text)}`).join("\n");
   const r = await chatPrivate(
     [

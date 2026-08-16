@@ -64,3 +64,4 @@ cache_forge/
 # internal wave planning docs - never public
 WAVE3_PLAN.md
 WAVE3_LOG.md
+cache/

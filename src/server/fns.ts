@@ -1119,9 +1119,11 @@ export const archetypeStatusFn = createServerFn({ method: "GET" }).handler(async
 export const archetypeRevealFn = createServerFn({ method: "POST" })
   .validator(
     z.object({
+      // (0[1-9]|1[0-2]) — a bare \d{2} accepted "2026-13", which built '2026-13-01'::date and
+      // returned an unhandled 500. The year is bounded too, so junk months can't seed junk rows.
       monthKey: z
         .string()
-        .regex(/^\d{4}-\d{2}$/)
+        .regex(/^20\d{2}-(0[1-9]|1[0-2])$/)
         .optional(),
     }),
   )

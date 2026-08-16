@@ -1,4 +1,5 @@
 import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { dayKey } from "./dateKey";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
 
@@ -292,7 +293,7 @@ export async function archetypeReveal(
   // of an entry carries its month-signal fine.
   const listing = rows
     .slice(0, 60)
-    .map((r, i) => `${i + 1}. (${String(r.created_at).slice(0, 10)}) ${r.text.slice(0, 300)}`)
+    .map((r, i) => `${i + 1}. (${dayKey(r.created_at)}) ${r.text.slice(0, 300)}`)
     .join("\n");
 
   let parsed: { archetypeId?: unknown; letter?: unknown; claims?: unknown } | null = null;
@@ -332,9 +333,20 @@ export async function archetypeReveal(
       const quote = typeof cc.quote === "string" ? cc.quote.trim() : "";
       const claim = typeof cc.claim === "string" ? cc.claim.trim() : "";
       if (!row || !quote || !claim) continue;
-      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/[""]/g, '"');
+      // Fold the curly punctuation iOS/macOS autocorrect inserts. The previous character class
+      // was two ASCII quotes (a no-op), so a quote the model returned with a straight apostrophe
+      // never matched an entry typed with a curly one - the reveal then failed verification and
+      // refused to render, permanently, for anyone journaling on an Apple device.
+      const norm = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .replace(/[‘’‛′]/g, "'")
+          .replace(/[“”‟″]/g, '"')
+          .replace(/[–—]/g, "-")
+          .trim();
       if (!norm(row.text).includes(norm(quote))) continue; // fabricated quote - discarded
-      claims.push({ claim, quote, entryDate: String(row.created_at).slice(0, 10) });
+      claims.push({ claim, quote, entryDate: dayKey(row.created_at) });
     }
   }
   // A reveal without verified evidence does not render - regenerate next visit instead of caching.

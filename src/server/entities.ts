@@ -35,16 +35,17 @@ export async function upsertEntities(
       ORDER BY embedding <=> ${lit}::vector LIMIT 1
     `)) as unknown as Record<string, unknown>[];
     if (near && Number(near.sim) >= MERGE_SIM) {
-      const ids = new Set((near.memory_ids as string[] | null) ?? []);
-      ids.add(memoryId);
-      await db
-        .update(memoryEntities)
-        .set({
-          memoryIds: [...ids],
-          mentionCount: sql`${memoryEntities.mentionCount} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(eq(memoryEntities.id, String(near.id)));
+      // Append in SQL, not read-modify-write: two memories extracted concurrently that mention the
+      // same entity used to silently drop one link, making that memory unreachable via this arm.
+      await db.execute(sql`
+        UPDATE memory_entities
+        SET memory_ids = CASE
+              WHEN memory_ids @> ${JSON.stringify([memoryId])}::jsonb THEN memory_ids
+              ELSE memory_ids || ${JSON.stringify([memoryId])}::jsonb END,
+            mention_count = mention_count + 1,
+            updated_at = now()
+        WHERE id = ${String(near.id)}
+      `);
     } else {
       await db.insert(memoryEntities).values({
         userId,

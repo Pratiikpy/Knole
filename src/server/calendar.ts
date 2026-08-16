@@ -31,7 +31,7 @@ async function userTz(userId: string): Promise<string> {
 async function journaledDays(userId: string, tz: string): Promise<string[]> {
   const rows = (await db.execute(sql`
     SELECT DISTINCT to_char((created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
-    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL
+    FROM entries WHERE user_id = ${userId} AND deleted_at IS NULL AND type <> 'saved'
     ORDER BY 1 ASC
   `)) as unknown as { day: string }[];
   return rows.map((r) => String(r.day));

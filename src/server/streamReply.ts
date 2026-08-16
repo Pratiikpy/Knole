@@ -104,6 +104,7 @@ export async function handleStreamingReply(
       // for-await discards it, so iterate manually — the anchored receipt must record what actually
       // served this reply, not the config-level default.
       let genSealed: boolean | undefined;
+      let clientGone = false;
       try {
         const it = gen[Symbol.asyncIterator]();
         for (;;) {
@@ -114,7 +115,17 @@ export async function handleStreamingReply(
             break;
           }
           full += step.value;
-          controller.enqueue(enc.encode(step.value));
+          // The reader may be gone (tab closed, navigation, mobile backgrounding). Enqueueing then
+          // throws — and that used to abandon the reply, the memories, the valence, the signals and
+          // the receipt. Generation is already paid for, so keep consuming and persist below; only
+          // the delivery stops.
+          if (!clientGone) {
+            try {
+              controller.enqueue(enc.encode(step.value));
+            } catch {
+              clientGone = true;
+            }
+          }
         }
         // Persist the reply + extract memories BEFORE closing so serverless keeps the function alive
         // through the write; extraction itself rides background()/waitUntil.
@@ -151,7 +162,11 @@ export async function handleStreamingReply(
           controller.enqueue(enc.encode("Something interrupted me — try again in a moment."));
         }
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed by the disconnect — nothing to flush */
+        }
       }
     },
   });
