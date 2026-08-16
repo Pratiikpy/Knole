@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pruneRateLimits } from "./rateLimit";
+import { pruneRateLimits } from "./rateLimitStore";
 import { db } from "../db";
 import { runDreaming } from "./dreaming";
 import { storeEntryOn0G } from "./engine";

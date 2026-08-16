@@ -1,6 +1,5 @@
 import { getRequestIP, getRequest } from "@tanstack/react-start/server";
-import { sql } from "drizzle-orm";
-import { db } from "../db";
+import { bumpBucket } from "./rateLimitStore";
 
 // Fixed-window limiter protecting the expensive LLM / chain / payment endpoints from abuse and
 // runaway cost.
@@ -68,20 +67,7 @@ export async function enforceRateDurable(
   }
   const key = clientKey(scope);
   try {
-    const rows = (await db.execute(sql`
-      INSERT INTO rate_limits (bucket_key, count, reset_at)
-      VALUES (${key}, 1, now() + (${windowMs} * interval '1 millisecond'))
-      ON CONFLICT (bucket_key) DO UPDATE
-        SET count = CASE
-              WHEN rate_limits.reset_at <= now() THEN 1
-              ELSE rate_limits.count + 1 END,
-            reset_at = CASE
-              WHEN rate_limits.reset_at <= now()
-              THEN now() + (${windowMs} * interval '1 millisecond')
-              ELSE rate_limits.reset_at END
-      RETURNING count
-    `)) as unknown as { count: number }[];
-    if (Number(rows[0]?.count ?? 0) > limit) {
+    if ((await bumpBucket(key, windowMs)) > limit) {
       throw new Error("You're moving fast — give Knole a moment and try again.");
     }
   } catch (e) {
@@ -89,14 +75,6 @@ export async function enforceRateDurable(
     if ((e as Error).message.startsWith("You're moving fast")) throw e;
     console.error("durable rate limit unavailable, allowing:", (e as Error).message);
   }
-}
-
-/** Drop expired buckets. Called from the nightly worker so the table cannot grow unbounded. */
-export async function pruneRateLimits(): Promise<number> {
-  const rows = (await db.execute(
-    sql`DELETE FROM rate_limits WHERE reset_at < now() - interval '1 hour' RETURNING bucket_key`,
-  )) as unknown as unknown[];
-  return rows.length;
 }
 
 /** Non-throwing IP-scoped allow check — for handlers that return a 429 rather than throw. */
