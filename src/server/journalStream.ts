@@ -1,6 +1,6 @@
 import { reflectStream, LENSES, type Lens } from "./reflect";
 import { embed } from "./embed";
-import { retrieveMemories } from "./engine";
+import { retrieveMemories, personaBlock } from "./engine";
 import { handleStreamingReply } from "./streamReply";
 import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
 import { eq } from "drizzle-orm";
@@ -75,14 +75,17 @@ export function handleJournalStream(request: Request): Promise<Response> {
     const entryCreatedAt =
       capturedFor === "yesterday" ? await yesterdayEveningFor(userId) : undefined;
     const qVec = await embed(entry);
-    const recalled = await retrieveMemories(userId, qVec, 6, entry);
+    const [recalled, persona] = await Promise.all([
+      retrieveMemories(userId, qVec, 6, entry),
+      personaBlock(userId).catch(() => ""),
+    ]);
     return {
       entryText: entry,
       entryKind: "journal" as const,
       entryCreatedAt,
       entrySections,
       qVec,
-      gen: reflectStream(entry, recalled, lens),
+      gen: reflectStream(entry, recalled, lens, persona),
       headers: {
         "x-knole-recalled": encodeURIComponent(
           JSON.stringify(

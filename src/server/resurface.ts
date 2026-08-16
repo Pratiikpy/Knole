@@ -82,3 +82,40 @@ async function cachedResurface(userId: string, entryDate: string): Promise<strin
     return null;
   }
 }
+
+// ── the flashback deck (storypad/June) ───────────────────
+// A day-stable hand of past entries to leaf through - older than a week so it reads as memory,
+// weighted toward emotionally charged days (|valence|), sampled deterministically per day so the
+// deck holds still for 24 hours instead of reshuffling on every visit.
+export type FlashbackCard = { id: string; text: string; date: string; label: string | null };
+
+export async function flashbackDeck(userId: string, n = 7): Promise<FlashbackCard[]> {
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const rows = (await db.execute(sql`
+    SELECT id, text, created_at, valence_label
+    FROM entries
+    WHERE user_id = ${userId} AND type = 'journal' AND deleted_at IS NULL
+      AND created_at < now() - interval '7 days'
+      AND length(text) > 60
+    ORDER BY (abs(coalesce(valence, 0)) + 0.15) * (('x' || substr(md5(id::text || ${dateKey}), 1, 8))::bit(32)::bigint::float / 4294967295.0) DESC
+    LIMIT ${n * 3}
+  `)) as unknown as Record<string, unknown>[];
+  // Prefix de-dup: templated or repeated entries (imports, programs) collapse to one card each,
+  // so the hand actually spans different days of the life instead of one refrain.
+  const seen = new Set<string>();
+  const cards: FlashbackCard[] = [];
+  for (const r of rows) {
+    const text = String(r.text);
+    const key = text.slice(0, 60).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cards.push({
+      id: String(r.id),
+      text,
+      date: String(r.created_at),
+      label: r.valence_label == null ? null : String(r.valence_label),
+    });
+    if (cards.length >= n) break;
+  }
+  return cards;
+}

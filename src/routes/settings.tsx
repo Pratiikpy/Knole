@@ -78,6 +78,7 @@ function SettingsPage() {
   const [quietStart, setQuietStart] = useState(hourToStr(settings?.quietHoursStart));
   const [quietEnd, setQuietEnd] = useState(hourToStr(settings?.quietHoursEnd));
   const [voice, setVoice] = useState(settings?.voice ?? "structural");
+  const [personaBio, setPersonaBio] = useState(settings?.personaBio ?? "");
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState<string | null>(null);
   const doImport = useServerFn(importFn);
@@ -468,6 +469,31 @@ function SettingsPage() {
                 </label>
               ))}
             </fieldset>
+
+            {/* Personas-as-data (khoj): the person's own words about who they are and how Knole
+                should be with them, injected verbatim into every reflection and chat. */}
+            <div className="mt-4 rounded-xl border border-rule bg-card/50 p-5">
+              <div className="mb-1 text-[14px] text-ink">In your own words</div>
+              <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
+                Tell Knole who you are and how to be with you — "I'm a nurse on night shifts, don't
+                romanticize being tired" changes every reflection that follows.
+              </p>
+              <textarea
+                value={personaBio}
+                onChange={(e) => setPersonaBio(e.target.value)}
+                onBlur={() => {
+                  if (personaBio !== (settings?.personaBio ?? ""))
+                    persist({ personaBio: personaBio.trim() || null });
+                }}
+                rows={3}
+                maxLength={800}
+                placeholder="Who you are, what matters, what to never do…"
+                className="w-full resize-none rounded-xl border border-rule bg-transparent px-4 py-3 text-[13px] leading-relaxed text-ink placeholder:text-muted-foreground/50 focus:border-tan/40 focus:outline-none"
+              />
+              <p className="mt-1 text-right text-[10px] text-muted-foreground/60">
+                {personaBio.length}/800 · saves when you click away
+              </p>
+            </div>
           </Group>
 
           {/* Import your history — the refugee wedge */}

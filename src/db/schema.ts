@@ -80,6 +80,10 @@ export const users = pgTable("users", {
   freqDial: integer("freq_dial").default(3), // nudges/week, downward-only
   proactivityPaused: boolean("proactivity_paused").default(false),
   voice: text("voice").default("structural"),
+  // Personas-as-data (khoj): a short self-written bio - who this person is and how Knole should
+  // be with them - appended verbatim to the chat/reflection system prompts. The model stays fixed;
+  // the persona is data.
+  personaBio: text("persona_bio"),
   // "Save to Knole" extension: sha256 of the user's high-entropy token (the raw token is
   // shown once and never stored). null until they generate one.
   extensionTokenHash: text("extension_token_hash"),

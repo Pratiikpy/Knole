@@ -190,6 +190,13 @@
       "when": 1786811971768,
       "tag": "0026_small_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1786844711855,
+      "tag": "0027_supreme_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

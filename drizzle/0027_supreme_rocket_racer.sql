@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "persona_bio" text;

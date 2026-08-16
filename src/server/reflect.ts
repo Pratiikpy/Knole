@@ -43,7 +43,7 @@ const RUMINATION_GUARD = `\n\nTwo things to hold, always:
 - If the entry is looping or fixating on the same fear or grievance, gently name the loop itself and offer one small shift in how to see it — do NOT spiral down with them or pile on more worry.
 - If the day holds something good, even something small, don't rush past it to get to what's wrong.`;
 
-function buildMessages(entry: string, memories: MemoryHint[], lens: Lens): ChatMsg[] {
+function buildMessages(entry: string, memories: MemoryHint[], lens: Lens, persona = ""): ChatMsg[] {
   const memoryBlock = memories.length
     ? `\n\nYou already remember these things about this person from before. Weave in AT MOST ONE, naturally, and only if it genuinely connects to what they wrote — never list them, never say you have notes:\n${memories
         .map((m) => `- ${m.content}`)
@@ -51,7 +51,7 @@ function buildMessages(entry: string, memories: MemoryHint[], lens: Lens): ChatM
     : "";
   const system = (LENSES[lens] ?? LENSES.gentle).system + RUMINATION_GUARD;
   return [
-    { role: "system", content: system + memoryBlock },
+    { role: "system", content: system + persona + memoryBlock },
     { role: "user", content: entry },
   ];
 }
@@ -61,8 +61,9 @@ export async function reflect(
   entry: string,
   memories: MemoryHint[] = [],
   lens: Lens = "gentle",
+  persona = "",
 ): Promise<string> {
-  const r = await chatPrivate(buildMessages(entry, memories, lens), {
+  const r = await chatPrivate(buildMessages(entry, memories, lens, persona), {
     temperature: 0.7,
     // glm-5.1 is a thinking model — it spends tokens reasoning before the reply, so a low ceiling
     // (400) starved it into EMPTY content and forced every reflection down the slow fallback chain.
@@ -73,8 +74,13 @@ export async function reflect(
 }
 
 /** Streaming sibling of reflect() for TTFT — same prompt, yields de-anonymised deltas. */
-export function reflectStream(entry: string, memories: MemoryHint[] = [], lens: Lens = "gentle") {
-  return chatPrivateStream(buildMessages(entry, memories, lens), {
+export function reflectStream(
+  entry: string,
+  memories: MemoryHint[] = [],
+  lens: Lens = "gentle",
+  persona = "",
+) {
+  return chatPrivateStream(buildMessages(entry, memories, lens, persona), {
     temperature: 0.7,
     maxTokens: 1200,
   });

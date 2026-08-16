@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
-import { resurfaceFn, resurfaceNoteFn, respondFn } from "@/server/fns";
+import { resurfaceFn, resurfaceNoteFn, respondFn, flashbackDeckFn } from "@/server/fns";
 import { Composing } from "@/components/knole/Composing";
 import { isAuthRequired } from "@/lib/authError";
 import { useEffect, useState } from "react";
@@ -25,7 +25,36 @@ function fmtDate(iso: string): string {
 }
 
 function RememberedPage() {
-  const { entry, note: initialNote } = Route.useLoaderData();
+  const { entry: loaderEntry, note: initialNote } = Route.useLoaderData();
+  // The flashback deck (storypad/June): a day-stable hand of older entries to leaf through.
+  // The loader's resurfaced entry deals the first card; "another memory" draws from the deck.
+  const getDeck = useServerFn(flashbackDeckFn);
+  const [deck, setDeck] = useState<{ id: string; text: string; date: string }[] | null>(null);
+  const [deckIdx, setDeckIdx] = useState(-1);
+  const entry = deckIdx >= 0 && deck ? deck[deckIdx] : loaderEntry;
+  const drawNext = () => {
+    if (!deck) {
+      getDeck()
+        .then((r) => {
+          const cards = r.deck.filter((c) => c.text !== loaderEntry?.text);
+          setDeck(cards);
+          if (cards.length) {
+            setDeckIdx(0);
+            setNote("");
+            setSent(false);
+            setResponse("");
+          }
+        })
+        .catch(() => {});
+      return;
+    }
+    if (deck.length) {
+      setDeckIdx((i) => (i + 1) % deck.length);
+      setNote("");
+      setSent(false);
+      setResponse("");
+    }
+  };
   const getNote = useServerFn(resurfaceNoteFn);
   const [note, setNote] = useState(initialNote);
   // The loader returns fast (no LLM); compose the note here so SSR never blocks on inference.
@@ -106,6 +135,12 @@ function RememberedPage() {
               <p className="whitespace-pre-line font-display text-[22px] italic leading-snug text-ink-soft">
                 {entry.text}
               </p>
+              <button
+                onClick={drawNext}
+                className="mt-4 text-[12px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+              >
+                another memory →
+              </button>
             </div>
 
             {/* Thread */}

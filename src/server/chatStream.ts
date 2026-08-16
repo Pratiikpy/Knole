@@ -1,6 +1,6 @@
 import { chatReplyStream, gatherChatContext, type Turn } from "./chat";
 import { embed } from "./embed";
-import { retrieveMemories } from "./engine";
+import { retrieveMemories, personaBlock } from "./engine";
 import { handleStreamingReply } from "./streamReply";
 import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
 
@@ -40,15 +40,16 @@ export function handleChatStream(request: Request): Promise<Response> {
     const qVec = await embed(message);
     // Base memory recall and the multi-step journal search run concurrently — the planner only
     // costs latency when the model actually decides the past is needed.
-    const [memories, searched] = await Promise.all([
+    const [memories, searched, persona] = await Promise.all([
       retrieveMemories(userId, qVec, 6, message),
       gatherChatContext(userId, history, message),
+      personaBlock(userId).catch(() => ""),
     ]);
     return {
       entryText: message,
       entryKind: "chat" as const,
       qVec,
-      gen: chatReplyStream(history, message, memories, searched),
+      gen: chatReplyStream(history, message, memories, searched, persona),
       // Recalled memories ride in a header (mirrors journalStream) so the body stays pure reply text
       // and the client can show the "it remembered" receipts.
       headers: {

@@ -102,7 +102,7 @@ import {
   deleteAutomation,
   toggleAutomation,
 } from "./automations";
-import { resurface, resurfaceNote } from "./resurface";
+import { resurface, resurfaceNote, flashbackDeck } from "./resurface";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
 import { exportMindfile } from "./mindfile";
@@ -968,6 +968,12 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
 });
 
+// The flashback deck: a day-stable hand of older entries to leaf through on /remembered.
+export const flashbackDeckFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return { deck: await flashbackDeck(userId) };
+});
+
 // The filing strip (memex's processing-placeholder pattern): what the extractor filed from one
 // entry, polled briefly after a reflection so the person watches the Index organize itself.
 export const memoriesForEntryFn = createServerFn({ method: "GET" })
@@ -1073,11 +1079,14 @@ export const updateSettingsFn = createServerFn({ method: "POST" })
       quietHoursStart: z.number().int().min(0).max(23).optional(),
       quietHoursEnd: z.number().int().min(0).max(23).optional(),
       voice: z.enum(["warm", "structural", "honest", "curious"]).optional(),
+      personaBio: z.string().max(800).nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const userId = await requireUserId();
-    await updateSettings(userId, data);
+    const patch = { ...data };
+    if (typeof patch.personaBio === "string") patch.personaBio = patch.personaBio.trim() || null;
+    await updateSettings(userId, patch);
     return { ok: true };
   });
 

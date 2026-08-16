@@ -88,6 +88,7 @@ function buildMessages(
   message: string,
   memories: { content: string }[],
   searched: ChatSearchHit[] = [],
+  persona = "",
 ): ChatMsg[] {
   const memBlock = memories.length
     ? `\n\nThings you remember about this person:\n${memories.map((m) => `- ${m.content}`).join("\n")}`
@@ -96,7 +97,7 @@ function buildMessages(
     ? `\n\nFrom their journal (dated — ground any claims about their past in these, and say the date when it helps):\n${searched.map((s) => `- [${s.date}] ${s.text.slice(0, 260)}`).join("\n")}`
     : "";
   return [
-    { role: "system", content: CHAT_SYS + memBlock + searchBlock },
+    { role: "system", content: CHAT_SYS + persona + memBlock + searchBlock },
     ...history.slice(-10).map((t) => ({ role: t.role, content: t.content }) as ChatMsg),
     { role: "user", content: message },
   ];
@@ -127,8 +128,9 @@ export function chatReplyStream(
   message: string,
   memories: { content: string }[],
   searched: ChatSearchHit[] = [],
+  persona = "",
 ) {
-  return chatPrivateStream(buildMessages(history, message, memories, searched), {
+  return chatPrivateStream(buildMessages(history, message, memories, searched, persona), {
     temperature: 0.8,
     maxTokens: 500,
   });

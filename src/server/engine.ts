@@ -665,6 +665,7 @@ export async function getSettings(userId: string) {
       quietHoursStart: users.quietHoursStart,
       quietHoursEnd: users.quietHoursEnd,
       voice: users.voice,
+      personaBio: users.personaBio,
       timezone: users.timezone,
       proactivityPaused: users.proactivityPaused,
       ageAffirmedAt: users.ageAffirmedAt,
@@ -686,10 +687,23 @@ export async function updateSettings(
     quietHoursStart: number;
     quietHoursEnd: number;
     voice: string;
+    personaBio: string | null;
     proactivityPaused: boolean;
   }>,
 ) {
   await db.update(users).set(patch).where(eq(users.id, userId));
+}
+
+/** The persona block (khoj: persona is data, the model stays fixed). Empty string when unset. */
+export async function personaBlock(userId: string): Promise<string> {
+  const [u] = await db.select({ bio: users.personaBio }).from(users).where(eq(users.id, userId));
+  const bio = (u?.bio ?? "").trim();
+  return bio
+    ? `
+
+About this person, in their own words (honor it):
+${bio.slice(0, 800)}`
+    : "";
 }
 
 // ── provenance X-ray: where a memory came from ───────────
