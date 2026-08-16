@@ -1078,7 +1078,11 @@ function TodayPage() {
               </span>
             )}
             <p className="font-display text-[18px] italic text-muted-foreground">
-              {capturedFor === "yesterday" ? "What did yesterday hold" : prompt}.
+              {(() => {
+                const p = capturedFor === "yesterday" ? "What did yesterday hold" : prompt;
+                // Library prompts carry their own question marks — never stack ".": "Why now?."
+                return /[.?!…]$/.test(p) ? p : `${p}.`;
+              })()}
             </p>
 
             {!sectionsMode ? (
