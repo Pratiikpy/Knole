@@ -115,6 +115,7 @@ import {
   duetShape,
 } from "./duet";
 import { passportView, passportBundle } from "./passport";
+import { commitContext, encodeCommit, encodeAction } from "./commitment";
 import { INSTRUMENTS, OPTIONS, DISTORTIONS, submitInstrument, wellbeingStatus } from "./wellbeing";
 import {
   archetypeReveal,
@@ -987,6 +988,34 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
 });
+
+// ── KnoleCommitment (B2): stake it, journal N days, get it back ──
+
+export const commitContextFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return commitContext(userId);
+});
+
+export const encodeCommitFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      goalDays: z.number().int().min(3).max(120),
+      windowDays: z.number().int().min(3).max(120),
+    }),
+  )
+  .handler(async ({ data }) => {
+    if (data.windowDays < data.goalDays) return { error: "window-too-short" as const };
+    return encodeCommit(data.goalDays, data.windowDays);
+  });
+
+export const encodeCommitActionFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      action: z.enum(["coolOff", "release", "settle"]),
+      id: z.string().regex(/^\d+$/),
+    }),
+  )
+  .handler(async ({ data }) => encodeAction(data.action, data.id));
 
 // ── wellbeing check-ins + the thinking-pattern library (B4) ──
 
