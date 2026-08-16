@@ -24,10 +24,13 @@ import {
   entryMilestoneFn,
   companionCommentFn,
   memoriesForEntryFn,
+  replyForEntryFn,
+  proposeEntryEditsFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
 import { startWavRecording, type WavRecorder } from "@/lib/wavRecorder";
+import { wordDiff } from "@/lib/editMatch";
 
 export const Route = createFileRoute("/today")({
   // The yesterday capture slot (history timeline) opens today's editor in backfill mode. The key
@@ -61,12 +64,62 @@ const SECTIONS = [
   { key: "people", label: "Who mattered today", ph: "Names, and what passed between you." },
 ] as const;
 
+// Two-step blank-page prompts (khoj's category -> concrete-starter pattern): a chip picks the
+// territory, then five concrete first lines make starting effortless. A starter prefills the
+// composer only while the page is still blank - it never stomps written words.
 const prompts = [
   "A high point",
   "Something you're looking forward to",
   "A struggle",
+  "A knot to untangle",
+  "Someone on my mind",
   "Just open space",
 ];
+
+const STARTERS: Record<string, string[]> = {
+  "A high point": [
+    "The best ten minutes of today were ",
+    "Something small went right: ",
+    "I surprised myself today when ",
+    "I want to remember how it felt when ",
+    "Today I finally ",
+  ],
+  "Something you're looking forward to": [
+    "I keep thinking ahead to ",
+    "The thing pulling me forward right now is ",
+    "If next week goes well, ",
+    "I'm quietly excited about ",
+    "I've been counting down to ",
+  ],
+  "A struggle": [
+    "The heaviest part of today was ",
+    "I keep circling back to ",
+    "What I haven't said out loud yet: ",
+    "Today asked more of me than I had, because ",
+    "I'm tired in a way that ",
+  ],
+  "A knot to untangle": [
+    "The decision I'm avoiding is ",
+    "If I'm honest, the real question is ",
+    "Both options cost me something: ",
+    "What I'd tell a friend in my position: ",
+    "The thing making this harder than it should be is ",
+  ],
+  "Someone on my mind": [
+    "I can't stop thinking about what ",
+    "Things with ",
+    "What I wish I'd said today: ",
+    "I noticed something about ",
+    "The conversation I keep replaying is ",
+  ],
+  "Just open space": [
+    "Right now I feel ",
+    "Today, in one honest sentence: ",
+    "Nobody knows that I ",
+    "The thought I keep pushing away is ",
+    "If today had a title, it would be ",
+  ],
+};
 
 // Reflection lenses — the same memory, a different voice. Blunt is the anti-sycophancy mode.
 const lenses = [
@@ -298,6 +351,7 @@ function TodayPage() {
   // The filing strip (memex's processing placeholder): after a reflection, watch the Index file
   // what it learned. Polls briefly; if extraction filed nothing (or is slow), the strip just fades.
   const getFiled = useServerFn(memoriesForEntryFn);
+  const getReply = useServerFn(replyForEntryFn);
   const [filed, setFiled] = useState<{ id: string; type: string; content: string }[] | null>(null);
   const [filing, setFiling] = useState(false);
   const filingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -372,7 +426,89 @@ function TodayPage() {
   const [transcribing, setTranscribing] = useState(false);
   const [voiceErr, setVoiceErr] = useState<string | null>(null);
   const mediaRef = useRef<WavRecorder | null>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const filingFor = useRef<string | null>(null);
+  // AI entry editing (khoj's search/replace engine): the model proposes small approve-or-skip
+  // edits against a SNAPSHOT of the draft; nothing ever applies without the person choosing it.
+  type PanelEdit = {
+    find: string;
+    replace: string;
+    why: string;
+    start: number;
+    end: number;
+    original: string;
+  };
+  type EditPanel = {
+    snapshot: string;
+    edits: PanelEdit[];
+    note: string;
+    dropped: number;
+    selected: boolean[];
+  };
+  const [editPanel, setEditPanel] = useState<EditPanel | null>(null);
+  const [editBusy, setEditBusy] = useState<string | null>(null);
+  const [editErr, setEditErr] = useState<string | null>(null);
+  const proposeEdits = useServerFn(proposeEntryEditsFn);
+  async function runTidy(mode: "tidy" | "clearer" | "shorter") {
+    if (editBusy) return;
+    const snapshot = entry;
+    setEditBusy(mode);
+    setEditErr(null);
+    setEditPanel(null);
+    try {
+      const r = await proposeEdits({ data: { draft: snapshot, mode } });
+      if (!r.edits.length) {
+        setEditErr(r.note || "Nothing to tidy — this already reads clean.");
+        return;
+      }
+      setEditPanel({ ...r, snapshot, selected: r.edits.map(() => true) });
+    } catch {
+      setEditErr("Couldn't fetch suggestions — try again in a moment.");
+    } finally {
+      setEditBusy(null);
+    }
+  }
+  function applySelectedEdits() {
+    if (!editPanel) return;
+    const chosen = editPanel.edits.filter((_, i) => editPanel.selected[i]);
+    // Back-to-front application against the snapshot keeps every span valid.
+    let out = editPanel.snapshot;
+    for (const e of [...chosen].sort((a, b) => b.start - a.start)) {
+      out = out.slice(0, e.start) + e.replace + out.slice(e.end);
+    }
+    setEntry(out);
+    setEditPanel(null);
+  }
+
+  // Finished-while-away recovery: a reflection whose tab closed mid-stream completed server-side.
+  // If a pending marker survives from a previous visit, fetch the finished reply and show it -
+  // with the filing strip and deepen loop wired up as if the stream had ended normally.
+  const [recovered, setRecovered] = useState(false);
+  useEffect(() => {
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem("knole.pending.reflection");
+    } catch {
+      return;
+    }
+    if (!pending) return;
+    try {
+      sessionStorage.removeItem("knole.pending.reflection");
+    } catch {
+      /* ignore */
+    }
+    getReply({ data: { entryId: pending } })
+      .then((r) => {
+        if (!r.reply) return;
+        setReflection(r.reply);
+        setReflected(true);
+        setRecovered(true);
+        setEntryId(pending);
+        startFilingPoll(pending!);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Leaving the page mid-recording left getUserMedia's tracks open — the browser kept showing the
   // recording indicator and the mic was never released until a full reload.
   useEffect(() => {
@@ -469,6 +605,15 @@ function TodayPage() {
       // The entry id lets the person answer the reflection's question and keep going (the deepen loop).
       const eid = res.headers.get("x-knole-entry-id");
       setEntryId(eid);
+      // Finished-while-away marker: if the tab dies mid-stream, the reply still completes
+      // server-side - the next visit recovers it (see the mount effect below).
+      if (eid) {
+        try {
+          sessionStorage.setItem("knole.pending.reflection", eid);
+        } catch {
+          /* private mode */
+        }
+      }
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let acc = "";
@@ -485,6 +630,11 @@ function TodayPage() {
         setReflection(acc);
       }
       setReflected(true);
+      try {
+        sessionStorage.removeItem("knole.pending.reflection"); // stream completed - nothing to recover
+      } catch {
+        /* private mode */
+      }
       // The celebration moment: if this save crossed a milestone, say so once, right here.
       if (eid) {
         checkMilestone({ data: { entryId: eid } })
@@ -1086,6 +1236,24 @@ function TodayPage() {
             })}
           </div>
 
+          {/* Step two: concrete first lines for the chosen territory, only while the page is blank. */}
+          {!reflected && entry.trim().length === 0 && STARTERS[prompt] && (
+            <div className="animate-fade-up mb-4 flex flex-wrap gap-1.5">
+              {STARTERS[prompt].map((line) => (
+                <button
+                  key={line}
+                  onClick={() => {
+                    setEntry(line);
+                    taRef.current?.focus();
+                  }}
+                  className="rounded-xl border border-dashed border-rule px-3 py-1.5 text-left font-display text-[13px] italic text-muted-foreground transition-colors hover:border-tan/40 hover:text-ink"
+                >
+                  {line.trim()}…
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="rounded-2xl border border-rule bg-card/50 p-8">
             {/* Backfill mode: the yesterday slot on the timeline opens the editor dated to
                 yesterday evening, so a missed day can still be closed honestly. */}
@@ -1118,6 +1286,7 @@ function TodayPage() {
 
             {!sectionsMode ? (
               <textarea
+                ref={taRef}
                 value={entry}
                 onFocus={warmOnIntent}
                 onChange={(e) => {
@@ -1219,6 +1388,119 @@ function TodayPage() {
               {voiceErr && <span className="text-[11px] text-tan">{voiceErr}</span>}
             </div>
 
+            {/* Tidy (khoj's AI edit engine): surgical, approve-or-skip suggestions on the draft. */}
+            {!reflected && !loading && entry.trim().length > 80 && (
+              <div className="mt-4">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Polish
+                  </span>
+                  {(
+                    [
+                      ["tidy", "Tidy"],
+                      ["clearer", "Clearer"],
+                      ["shorter", "Shorter"],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => void runTidy(mode)}
+                      disabled={!!editBusy}
+                      className="rounded-full border border-rule px-3 py-1.5 text-[12px] text-muted-foreground transition-colors hover:border-tan/40 hover:text-ink disabled:opacity-50"
+                    >
+                      {editBusy === mode ? "Reading…" : label}
+                    </button>
+                  ))}
+                  {editErr && <span className="text-[11px] text-muted-foreground">{editErr}</span>}
+                </div>
+
+                {editPanel && editPanel.snapshot === entry && (
+                  <div className="animate-fade-up mt-3 rounded-2xl border border-tan/30 bg-tan/[0.04] p-5">
+                    {editPanel.note && (
+                      <p className="mb-3 font-display text-[14px] italic text-ink-soft">
+                        {editPanel.note}
+                      </p>
+                    )}
+                    <div className="space-y-2.5">
+                      {editPanel.edits.map((e, i) => (
+                        <button
+                          key={i}
+                          onClick={() =>
+                            setEditPanel((p) =>
+                              p
+                                ? { ...p, selected: p.selected.map((v, j) => (j === i ? !v : v)) }
+                                : p,
+                            )
+                          }
+                          className={
+                            "block w-full rounded-xl border p-3 text-left transition-colors " +
+                            (editPanel.selected[i]
+                              ? "border-tan/40 bg-card/60"
+                              : "border-rule bg-card/20 opacity-50")
+                          }
+                        >
+                          <div className="mb-1.5 flex items-center gap-2">
+                            <span
+                              className={
+                                "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-[9px] " +
+                                (editPanel.selected[i]
+                                  ? "border-tan bg-tan/20 text-tan"
+                                  : "border-rule text-transparent")
+                              }
+                            >
+                              ✓
+                            </span>
+                            <span className="text-[10px] uppercase tracking-[0.14em] text-tan">
+                              {e.why || "suggested edit"}
+                            </span>
+                          </div>
+                          <p className="text-[13px] leading-relaxed">
+                            {wordDiff(e.original, e.replace).map((part, k) =>
+                              part.kind === "same" ? (
+                                <span key={k} className="text-ink-soft">
+                                  {part.text}
+                                </span>
+                              ) : part.kind === "del" ? (
+                                <del key={k} className="bg-rose-500/10 text-ink-soft/60">
+                                  {part.text}
+                                </del>
+                              ) : (
+                                <ins key={k} className="bg-tan/[0.18] text-ink no-underline">
+                                  {part.text}
+                                </ins>
+                              ),
+                            )}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex items-center gap-3">
+                      <button
+                        onClick={applySelectedEdits}
+                        disabled={!editPanel.selected.some(Boolean)}
+                        className="rounded-full bg-ink px-4 py-2 text-[12px] font-medium text-paper disabled:opacity-50"
+                      >
+                        Apply {editPanel.selected.filter(Boolean).length}{" "}
+                        {editPanel.selected.filter(Boolean).length === 1 ? "edit" : "edits"}
+                      </button>
+                      <button
+                        onClick={() => setEditPanel(null)}
+                        className="text-[12px] text-muted-foreground hover:text-ink"
+                      >
+                        keep it as written
+                      </button>
+                      {editPanel.dropped > 0 && (
+                        <span className="text-[11px] text-muted-foreground/70">
+                          {editPanel.dropped} suggestion{editPanel.dropped === 1 ? "" : "s"}{" "}
+                          didn&apos;t match
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {!reflected && entry.trim().length > 10 && (
               <div className="mt-6">
                 <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -1293,6 +1575,11 @@ function TodayPage() {
                 data-testid="reflection"
                 className="animate-fade-up mt-8 border-l-2 border-tan/40 pl-6"
               >
+                {recovered && (
+                  <p className="mb-3 text-[11px] uppercase tracking-[0.18em] text-tan">
+                    Finished while you were away
+                  </p>
+                )}
                 {remembered && (
                   <div className="mb-3">
                     <MemoryPill label={remembered.label} receipts={remembered.receipts} />

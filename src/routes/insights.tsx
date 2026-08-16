@@ -255,24 +255,61 @@ function InsightsPage() {
   const { mirror: loadedMirror, mood, baseline } = Route.useLoaderData();
   const composeMirror = useServerFn(mirrorComposeFn);
   // The loader returns fast (never blocks SSR on the ~60s compose). When it comes back `composing`,
-  // fetch the composition here and swap it in, showing an anticipation state meanwhile.
+  // stream the composition here with a live train of thought - the longest wait in the product
+  // narrates itself instead of freezing on one line. Falls back to the plain server fn if the
+  // stream can't be read.
   const [m, setM] = useState(loadedMirror);
   const [mirrorFailed, setMirrorFailed] = useState(false);
+  const [composeStatus, setComposeStatus] = useState<string | null>(null);
+  const streamCompose = async () => {
+    setMirrorFailed(false);
+    try {
+      const res = await fetch("/mirror/stream", { method: "POST" });
+      if (!res.ok || !res.body) throw new Error(String(res.status));
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      let got = false;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        for (;;) {
+          const a = acc.indexOf("");
+          if (a < 0) break;
+          const b = acc.indexOf("", a + 1);
+          if (b < 0) break;
+          try {
+            const j = JSON.parse(acc.slice(a + 1, b));
+            if (j.status) setComposeStatus(String(j.status));
+            if (j.mirror) {
+              setM(j.mirror);
+              got = true;
+            }
+            if (j.error) throw new Error(String(j.error));
+          } catch (err) {
+            if ((err as Error).message === "compose-failed") throw err;
+          }
+          acc = acc.slice(b + 1);
+        }
+      }
+      if (!got) throw new Error("no mirror frame");
+    } catch {
+      // The stream path failed - try the plain fn once before declaring failure.
+      try {
+        setM(await composeMirror());
+      } catch {
+        setMirrorFailed(true);
+      }
+    } finally {
+      setComposeStatus(null);
+    }
+  };
   useEffect(() => {
-    if (loadedMirror.composing)
-      composeMirror()
-        .then(setM)
-        // A ~60s sealed LLM call is the most timeout-prone request in the app; without this the
-        // page sat on "Composing your mirror…" forever with no error and no retry.
-        .catch(() => setMirrorFailed(true));
+    if (loadedMirror.composing) void streamCompose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const retryMirror = () => {
-    setMirrorFailed(false);
-    composeMirror()
-      .then(setM)
-      .catch(() => setMirrorFailed(true));
-  };
+  const retryMirror = () => void streamCompose();
   const maxWeight = Math.max(1, ...m.themes.map((t) => t.weight));
   const markMirrorSeen = useServerFn(markMirrorSeenFn);
   const [play, setPlay] = useState(false);
@@ -318,6 +355,17 @@ function InsightsPage() {
                 >
                   Compose it again
                 </button>
+              </div>
+            )}
+            {!mirrorFailed && (
+              <div className="mb-2 flex items-center gap-2.5">
+                <span className="size-2 shrink-0 animate-breathe rounded-full bg-tan/70" />
+                <p
+                  key={composeStatus ?? "start"}
+                  className="animate-fade-up font-display text-[16px] italic text-muted-foreground"
+                >
+                  {composeStatus ?? "Reading back through your entries"}…
+                </p>
               </div>
             )}
             <Composing label="Reading your fortnight — this takes a moment." />

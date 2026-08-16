@@ -1,4 +1,5 @@
 import { createStart, createMiddleware, createCsrfMiddleware } from "@tanstack/react-start";
+import { handleMirrorStream } from "./server/mirrorStream";
 import { setResponseHeaders, getRequest } from "@tanstack/react-start/server";
 
 import { renderErrorPage } from "./lib/error-page";
@@ -119,7 +120,9 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
                     ? handleAssistantStream
                     : path === "/onboard/stream"
                       ? handleOnboardStream
-                      : null;
+                      : path === "/mirror/stream"
+                        ? handleMirrorStream
+                        : null;
   if (!handler) return next();
   if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
   return handler(request);

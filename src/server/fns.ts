@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { reflect } from "./reflect";
 import { sensingProvenance } from "./sensingProvenance";
@@ -78,6 +80,7 @@ import {
 import { storeSignals, latestRadar } from "./omission";
 import { buildYearInOnePage } from "./consolidate";
 import { detectCrisis, CRISIS_REPLY } from "./safety";
+import { proposeEntryEdits } from "./entryEdit";
 import {
   enrollClientEnc,
   disableClientEnc,
@@ -184,6 +187,40 @@ export const journalFn = createServerFn({ method: "POST" })
       reflection,
       recalled: recalled.map((r) => ({ content: r.content, quote: r.sourceQuote })),
     };
+  });
+
+// AI entry editing (khoj's Obsidian search/replace engine): propose small approve-or-skip edits
+// to the DRAFT, never a rewrite. Free like reflection - polishing your words is daily practice.
+export const proposeEntryEditsFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      draft: z.string().min(60).max(20000),
+      mode: z.enum(["tidy", "clearer", "shorter", "custom"]),
+      custom: z.string().max(300).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    enforceRate("entry-edit", 10, 60_000);
+    await requireUserId();
+    return proposeEntryEdits(data.draft, data.mode, data.custom);
+  });
+
+// Finished-while-away recovery (khoj's interrupted-turn resume, one better): since the stream
+// keeps consuming after a disconnect, the reply COMPLETES server-side - this fetches it so a
+// closed tab mid-reflection costs nothing. Owner-scoped; recent entries only, so a stale
+// sessionStorage marker can't resurrect something old.
+export const replyForEntryFn = createServerFn({ method: "GET" })
+  .validator(z.object({ entryId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const rows = (await db.execute(sql`
+      SELECT r.text FROM replies r
+      JOIN entries e ON e.id = r.parent_entry_id
+      WHERE r.parent_entry_id = ${data.entryId} AND e.user_id = ${userId}
+        AND r.is_ai = true AND e.created_at > now() - interval '6 hours'
+      ORDER BY r.created_at DESC LIMIT 1
+    `)) as unknown as { text: string }[];
+    return { reply: rows[0]?.text ?? null };
   });
 
 export const listMemoriesFn = createServerFn({ method: "GET" }).handler(async () => {
