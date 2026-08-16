@@ -103,6 +103,14 @@ import {
   toggleAutomation,
 } from "./automations";
 import { resurface, resurfaceNote, flashbackDeck } from "./resurface";
+import {
+  duetStatus,
+  createCoupleInvite,
+  joinCouple,
+  leaveCouple,
+  setDuetName,
+  answerDuet,
+} from "./duet";
 import { generateExtensionToken } from "./extensionAuth";
 import { importHistory } from "./import";
 import { exportMindfile } from "./mindfile";
@@ -966,6 +974,48 @@ export const askPresetsFn = createServerFn({ method: "GET" }).handler(async () =
   const { plan } = await getBilling(userId);
   const unlimited = plan === "deep" || !!(await inftStatus(userId));
   return { presets: ASK_PRESETS, freeCustomPerDay: FREE_CUSTOM_PER_DAY, unlimited };
+});
+
+// ── Duet (B1): couples journaling — both-answer-to-unlock, enforced server-side ──
+
+export const duetStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return duetStatus(userId);
+});
+
+export const duetInviteFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  enforceRate("duet-invite", 10, 60_000);
+  return createCoupleInvite(userId);
+});
+
+export const duetJoinFn = createServerFn({ method: "POST" })
+  .validator(z.object({ code: z.string().min(4).max(24) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("duet-join", 10, 60_000);
+    return joinCouple(userId, data.code);
+  });
+
+export const duetAnswerFn = createServerFn({ method: "POST" })
+  .validator(z.object({ text: z.string().min(1).max(4000) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    enforceRate("duet-answer", 20, 60_000);
+    return answerDuet(userId, data.text);
+  });
+
+export const duetNameFn = createServerFn({ method: "POST" })
+  .validator(z.object({ name: z.string().max(40) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    await setDuetName(userId, data.name);
+    return { ok: true };
+  });
+
+export const duetLeaveFn = createServerFn({ method: "POST" }).handler(async () => {
+  const userId = await requireUserId();
+  return { ok: await leaveCouple(userId) };
 });
 
 // The flashback deck: a day-stable hand of older entries to leaf through on /remembered.

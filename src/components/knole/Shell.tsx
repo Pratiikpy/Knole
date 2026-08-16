@@ -21,6 +21,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/research", label: "Private Research", hint: "Anonymized web search, on 0G" },
       { to: "/assistant", label: "Ask Knole", hint: "A private general assistant" },
       { to: "/chat", label: "Chat", hint: "Talk it through, day to day" },
+      { to: "/duet", label: "Duet", hint: "One question a day, for two" },
     ],
   },
   {

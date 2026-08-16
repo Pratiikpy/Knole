@@ -502,3 +502,54 @@ export const memoryEntities = pgTable(
     index("memory_entities_emb_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
   ],
 );
+
+// ── Duet: couples journaling (B1) ────────────────────────
+// One shared question a day; NEITHER partner can read the other's answer until both have written
+// (enforced server-side - the provable-privacy edge). The couple's timezone is fixed at creation
+// (the creator's), so "today's question" is the same instant for both partners.
+export const couples = pgTable("couples", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  inviteCode: text("invite_code").unique().notNull(),
+  timezone: text("timezone").default("UTC").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const coupleMembers = pgTable(
+  "couple_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    coupleId: uuid("couple_id")
+      .notNull()
+      .references(() => couples.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name"),
+    joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("couple_members_user_uniq").on(t.userId), // one couple per user
+    index("couple_members_couple_idx").on(t.coupleId),
+  ],
+);
+
+export const coupleAnswers = pgTable(
+  "couple_answers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    coupleId: uuid("couple_id")
+      .notNull()
+      .references(() => couples.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dateKey: text("date_key").notNull(), // YYYY-MM-DD in the couple's timezone
+    questionId: text("question_id").notNull(),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("couple_answers_once").on(t.coupleId, t.userId, t.dateKey),
+    index("couple_answers_couple_date_idx").on(t.coupleId, t.dateKey),
+  ],
+);
