@@ -201,6 +201,7 @@ function TodayPage() {
   const doQuickCheckIn = useServerFn(quickCheckInFn);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkedInMood, setCheckedInMood] = useState("");
+  const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInNote, setCheckInNote] = useState("");
   const [checkInEnergy, setCheckInEnergy] = useState<"low" | "mid" | "high" | null>(null);
   const [checkInActs, setCheckInActs] = useState<string[]>([]);
@@ -743,6 +744,9 @@ function TodayPage() {
       /* ignore */
     }
     if (demoGated) return; // ephemeral in the demo
+    // Optimistic acknowledgement is deliberate; silently BINNING the data was not. A failure used
+    // to lose the mood, energy, activities and note, and both the in-memory flag and the day
+    // marker then blocked any retry until tomorrow.
     void doQuickCheckIn({
       data: {
         mood,
@@ -751,7 +755,16 @@ function TodayPage() {
         activities: checkInActs.length ? checkInActs : undefined,
         rel: checkInRel ?? undefined,
       },
-    }).catch(() => {});
+    }).catch(() => {
+      setCheckedIn(false);
+      setCheckedInMood("");
+      try {
+        localStorage.removeItem("knole.checkin.done");
+      } catch {
+        /* ignore */
+      }
+      setCheckInError("That check-in didn't save — tap again when you're back online.");
+    });
   };
 
   const dismissRadar = () => {
@@ -902,6 +915,7 @@ function TodayPage() {
               <p className="mb-4 font-display text-[17px] italic text-ink-soft">
                 One tap before the page — how's today landing?
               </p>
+              {checkInError && <p className="mb-4 text-[13px] text-ink-soft">{checkInError}</p>}
               {/* Optional structured detail (#33): what shaped today + energy, then tap a mood to log. */}
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {CHECKIN_ACTIVITIES.map((a) => {

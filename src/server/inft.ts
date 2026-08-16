@@ -152,18 +152,24 @@ export async function mintMemoryINFT(userId: string): Promise<INFTRecord | { err
   // path (the user's Privy wallet calling the public iMint) is offered in the UI as the primary flow.
   const tx = await c.iMintWithRole(wallet, datas);
   const rcpt = await tx.wait();
-  let tokenId = "1";
-  try {
-    for (const log of rcpt?.logs ?? []) {
+  // No fallback id. Defaulting to "1" meant an unparseable receipt recorded a token that may
+  // belong to somebody else, and every later evolve() would then run against THAT token.
+  let tokenId = "";
+  for (const log of rcpt?.logs ?? []) {
+    try {
       const parsed = c.interface.parseLog(log);
       // ERC-721 mint = Transfer from the zero address.
       if (parsed?.name === "Transfer" && parsed.args.from === ethers.ZeroAddress) {
         tokenId = String(parsed.args.tokenId);
         break;
       }
+    } catch {
+      /* not one of ours - keep scanning the remaining logs */
     }
-  } catch {
-    /* fall back to "1" if the event can't be parsed */
+  }
+  if (!tokenId) {
+    console.error(`iNFT mint ${rcpt?.hash ?? tx.hash}: no Transfer event found; not recording`);
+    return { error: "no-mint-event" };
   }
   const rec: INFTRecord = {
     tokenId,

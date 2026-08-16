@@ -285,14 +285,26 @@ function OnchainGrantsCard() {
         params: [{ from: ctx.wallet, to: call.to, data: call.data }],
       })) as string;
       // Poll the live registry until the change lands, so the list is honest, not optimistic.
+      let confirmed = false;
       for (let i = 0; i < 12; i++) {
         await new Promise((r) => setTimeout(r, 2500));
         const now = await listOnchain();
         const has = now.grants.some((g) => g.toLowerCase() === target.toLowerCase());
         if (revoke ? !has : has) {
           setGrants(now.grants);
+          confirmed = true;
           break;
         }
+      }
+      // The poll had no failure branch, so a reverted or stuck transaction fell through to the
+      // success message anyway - the page claimed an on-chain grant that does not exist.
+      if (!confirmed) {
+        setMsg({
+          kind: "err",
+          text: "The transaction hasn't shown up on-chain yet. Check the explorer before relying on it.",
+          tx,
+        });
+        return;
       }
       setMsg({
         kind: "ok",

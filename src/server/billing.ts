@@ -169,10 +169,22 @@ export async function handleStripeWebhook(
           // A one-time credit pack — add the credits from (server-set) metadata, once paid.
           const credits = Number(s.metadata?.credits ?? 0);
           if (credits > 0 && s.payment_status === "paid") {
-            await db.execute(sql`
-              UPDATE users SET credits = credits + ${credits}
-              WHERE id = ${userId} AND stripe_customer_id = ${String(s.customer)}
-            `);
+            // Stripe delivers at-least-once, and a retried delivery used to add the credits AGAIN.
+            // The event id is the idempotency key: claim it first, and only credit if the claim
+            // was ours. (Plan flips are naturally idempotent; this branch was the exception.)
+            const claimed = (await db.execute(sql`
+              INSERT INTO reflection_artifacts (user_id, type, thread_key, content, sources)
+              VALUES (${userId}, 'state', 'stripe-event',
+                      ${JSON.stringify({ eventId: event.id, credits })}::jsonb, '{}'::jsonb)
+              ON CONFLICT DO NOTHING
+              RETURNING id
+            `)) as unknown as unknown[];
+            if (claimed.length) {
+              await db.execute(sql`
+                UPDATE users SET credits = credits + ${credits}
+                WHERE id = ${userId} AND stripe_customer_id = ${String(s.customer)}
+              `);
+            }
           }
         } else {
           await db

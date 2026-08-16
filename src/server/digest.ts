@@ -36,7 +36,14 @@ export async function buildWeeklyDigest(userId: string): Promise<WeeklyDigest | 
     ],
     { temperature: 0.6, maxTokens: 200 },
   ).catch(() => null);
-  const throughline = r?.content.trim() || "A quiet week of showing up. That counts.";
+  // No canned throughline. Sending "A quiet week of showing up" as the user's personal weekly
+  // reflection is worse than sending nothing - and the gate artifact then marked the week as
+  // delivered, so the REAL digest was lost for another six days.
+  const throughline = r?.content.trim();
+  if (!throughline) {
+    console.error("digest: model returned nothing; skipping this week rather than mailing filler");
+    return null;
+  }
   return { throughline, entryCount, dayCount };
 }
 
