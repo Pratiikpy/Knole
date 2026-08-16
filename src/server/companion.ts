@@ -55,7 +55,7 @@ export async function companionComment(
   const [existing] = await db
     .select({ move: entryComments.move, text: entryComments.text })
     .from(entryComments)
-    .where(eq(entryComments.entryId, entryId));
+    .where(and(eq(entryComments.entryId, entryId), eq(entryComments.userId, userId)));
   // A recorded skip is a decision, not an absence — silence must not re-roll into a comment later.
   if (existing)
     return existing.move === "skip" ? null : { move: existing.move, text: existing.text };
