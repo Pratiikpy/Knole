@@ -64,3 +64,47 @@ function notify(title, message) {
     message: message || "",
   });
 }
+
+// ── Journal Mini (khoj's global-hotkey capture) ──────────────────────────────
+// The hotkey injects a tiny shadow-DOM composer into the current page; the save round-trips
+// through here so the content script never holds the token. A thought without a highlight is
+// saved as a REAL journal entry server-side (streaks, nudges and the on-chain day all count it).
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "journal-mini") return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) return;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["mini.js"] });
+  } catch {
+    // chrome:// pages and the web store block injection — the popup still works there.
+    notify("Journal Mini can't open here", "Try it on a normal page, or use the Knole tab.");
+  }
+});
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.kind !== "knole-mini-save") return false;
+  (async () => {
+    const { knoleToken } = await chrome.storage.sync.get("knoleToken");
+    if (!knoleToken) {
+      sendResponse({ ok: false, error: "Add your Knole token first (click the Knole icon)." });
+      return;
+    }
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${knoleToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ thought: String(msg.thought || "").slice(0, 2000) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      sendResponse(
+        res.ok && data.ok
+          ? { ok: true }
+          : { ok: false, error: data.error || `Knole returned ${res.status}.` },
+      );
+    } catch {
+      sendResponse({ ok: false, error: "Couldn't reach Knole — check your connection." });
+    }
+  })();
+  return true; // async sendResponse
+});

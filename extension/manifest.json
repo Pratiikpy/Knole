@@ -1,15 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Save to Knole",
-  "version": "0.1.0",
-  "description": "Highlight anything on the web and save it to your Knole memory in one click.",
-  "permissions": ["contextMenus", "storage", "notifications"],
+  "version": "0.2.0",
+  "description": "Highlight anything on the web and save it to your Knole memory - or journal a thought from anywhere with one hotkey.",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
   "host_permissions": [
     "https://www.knole.me/*",
     "https://knole.me/*",
     "https://knole-app.vercel.app/*"
   ],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html", "default_title": "Save to Knole" },
-  "icons": { "128": "icon128.png" }
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to Knole"
+  },
+  "icons": {
+    "128": "icon128.png"
+  },
+  "commands": {
+    "journal-mini": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+J",
+        "mac": "Command+Shift+J"
+      },
+      "description": "Journal a thought from anywhere (Journal Mini)"
+    }
+  }
 }

@@ -31,11 +31,20 @@ export async function handleExtensionSave(
   }
 
   const highlight = (body.highlight ?? "").trim();
-  if (!highlight) return { ok: false, status: 400, error: "highlight is required" };
-  if (highlight.length > 5000) return { ok: false, status: 400, error: "highlight too long" };
-
   const source = (body.source ?? "").trim().slice(0, 300);
   const thought = (body.thought ?? "").trim().slice(0, 2000);
+
+  // Journal Mini: a thought WITHOUT a highlight is the person journaling from wherever they are —
+  // a real journal entry (counts for streaks, nudge suppression, the on-chain day), not a clip.
+  if (!highlight && thought) {
+    const vec = await embed(thought);
+    const entry = await saveEntry(userId, thought, vec, "journal");
+    background(extractMemories(userId, entry.id, thought), "extractMemories(extension)");
+    return { ok: true, entryId: entry.id };
+  }
+
+  if (!highlight) return { ok: false, status: 400, error: "highlight is required" };
+  if (highlight.length > 5000) return { ok: false, status: 400, error: "highlight too long" };
   // Compose: the user's optional thought, then the quoted highlight, then its source.
   const text = [thought, `"${highlight}"`, source && `— ${source}`].filter(Boolean).join("\n\n");
 
