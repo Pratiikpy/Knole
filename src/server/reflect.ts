@@ -43,13 +43,19 @@ const RUMINATION_GUARD = `\n\nTwo things to hold, always:
 - If the entry is looping or fixating on the same fear or grievance, gently name the loop itself and offer one small shift in how to see it — do NOT spiral down with them or pile on more worry.
 - If the day holds something good, even something small, don't rush past it to get to what's wrong.`;
 
+// PII is tokenised before any model sees it, so the model has no way to know whether a person is a
+// he, a she, or neither — and left to itself it guesses, which is how a user's friend ends up
+// called "him" in a reflection about their own life. Names are the natural way to refer to someone
+// here anyway; "they" covers the rest.
+const PRONOUN_GUARD = `\n\nNever assume anyone's gender. Refer to other people by the name the entry uses, or as "they" — never "he" or "she" unless the person's own words did first.`;
+
 function buildMessages(entry: string, memories: MemoryHint[], lens: Lens, persona = ""): ChatMsg[] {
   const memoryBlock = memories.length
     ? `\n\nYou already remember these things about this person from before. Weave in AT MOST ONE, naturally, and only if it genuinely connects to what they wrote — never list them, never say you have notes:\n${memories
         .map((m) => `- ${m.content}`)
         .join("\n")}`
     : "";
-  const system = (LENSES[lens] ?? LENSES.gentle).system + RUMINATION_GUARD;
+  const system = (LENSES[lens] ?? LENSES.gentle).system + RUMINATION_GUARD + PRONOUN_GUARD;
   return [
     { role: "system", content: system + persona + memoryBlock },
     { role: "user", content: entry },
