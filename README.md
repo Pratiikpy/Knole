@@ -44,7 +44,7 @@ The behaviour Knole productises already exists at scale. This is a validated mar
 
 ## What Knole Does
 
-_One private memory engine behind ~30 features across 25 routes — the full product, not a demo._
+_One private memory engine behind 40+ features across 30 routes — the full product, not a demo._
 
 - **Daily Reflection** — reflects through four lenses (**Gentle Mirror · Pattern Finder · Blunt Friend · Decision Coach**), grounded in your own history and built to challenge, not flatter. Reflections **stream token-by-token**, and each one leaves a tamper-evident on-chain receipt.
 - **The 14-Day Mirror** — every two weeks, a private letter from your past self: recurring patterns, contradictions, and avoided decisions, each tied to a dated entry.
@@ -55,7 +55,13 @@ _One private memory engine behind ~30 features across 25 routes — the full pro
 - **Voice · Image · Capture** — **voice journaling** (Whisper on 0G) · reflective **image generation** (Z-Image) · **Chrome capture** from anywhere · ChatGPT/journal **import**.
 - **On your phone** — a real **installable app**: Add-to-Home-Screen on iOS, one-tap install on Android, an offline shell, app shortcuts, and web push. Voice-first — open, speak, done.
 - **Ownership & money** — **Memory iNFT** (a genuine **ERC-7857** Agentic ID, minted to your own wallet — yours to carry across wallets or grant a 0G agent scoped access) · **client-side wallet encryption** · **portable memory identity** (revocable grants) · **proof-of-journaling** streaks on-chain · **pay-with-0G** credits · a signature-verified **Stripe** subscription · full **export** and **restore-from-chain**.
-- **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Remembered (a past entry resurfaces to answer your past self) · Mood Timeline · Omission Radar · retention loop (digest + push) · Night theme · Crisis Safety (SB243).
+- **The daily gravity** — a **nudge engine** (one reminder a day at a random moment in your window, silenced the day you journal) · **proactive check-ins** (schedule a question your journal answers itself: "every Sunday evening, ask how my week actually went") · an **emotions calendar** with connected day-runs and streak tiles · **milestones** with always-present Today/Yesterday capture slots (yesterday is backfillable) · a **personal mood baseline** (14-day rolling, honest gaps, scale-drift notice) · **the margin**, a second small voice that comments only when it should.
+- **Duet** (`/duet`) — one question a day **for two**: neither partner can read the other's answer until both have written — enforced by the server, not by promise. A 198-question deck, couple streaks, quiz days with guesses revealed beside truths, a weekly **"Us" mirror**, and a wordless **shape card**.
+- **The Monthly Archetype** (`/archetype`) — who you were this month, named from your own words and **never without receipts**: every claim carries a verbatim quote the server verifies against your actual entries before anything renders. Sealed until the 1st, for everyone.
+- **Commit** (`/commit`) — stake OG against journaling N days; the **KnoleCommitment** contract settles against the on-chain proof-of-journaling anchor with **no oracle at all**. You can never receive more than you staked; misses refund your completion share and burn the rest, provably. Instant release the moment the goal is hit.
+- **Wellbeing** (`/wellbeing`) — a toolbox, not a couch: PHQ-9/GAD-7 check-ins with change flags and an immediate crisis route on item 9 · the five-step thought record · a field guide to thirteen thinking patterns · box breathing, 5-4-3-2-1 grounding, the worry shelf.
+- **Memory Passport** — what your self-model contains, the **exact payload** a granted agent would see (scope-by-scope), and a portable bundle stamped with your iNFT's on-chain provenance.
+- **And more** — Future-Self · AI Wrapped · Year Review · On-This-Day · Remembered + a **flashback deck** · Mood Timeline · Omission Radar · retention loop (digest + push) · Night theme · Crisis Safety (SB243).
 
 ## Privacy by Architecture
 
@@ -78,7 +84,7 @@ Trust is minimized at every layer:
 | -------------- | ----------------------------------------- |
 | **0G Compute** | Sealed AI inference inside a TEE          |
 | **0G Storage** | Encrypted journal entries                 |
-| **0G Chain**   | Integrity roots + memory ownership (iNFT) |
+| **0G Chain**   | Integrity roots + memory ownership (iNFT) + proof-of-journaling anchors + commitment staking |
 
 The **sealed 0G TEE is the primary inference path**, verified by hardware attestation on every response. If the enclave is ever unreachable, Knole falls back to the plain 0G model — honestly marked _not sealed_, never dressed up as the enclave — so an outage costs the seal, never your privacy (the text is already anonymized before any model) or capability.
 
@@ -86,9 +92,17 @@ The **sealed 0G TEE is the primary inference path**, verified by hardware attest
 
 Every major claim is verifiable — and here's the on-chain proof, live on the 0G explorer:
 
+Three contracts, all deployed to **0G Aristotle mainnet**, all tested in a **102-test Foundry suite** (unit + fuzz + invariants):
+
+| Contract | Address | What it proves |
+| --- | --- | --- |
+| `KnoleAgenticID` (v1.1) | [`0x0Fdbe7…957ca`](https://chainscan.0g.ai/address/0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca) | a genuine ERC-7857 Agentic ID — raw transfers revert by spec, grants clear on transfer |
+| `JournalDayAnchor` | [`0xdbD0fd…948e6`](https://chainscan.0g.ai/address/0xdbD0fd283f00eb7c9E1f7521f66bAfd8cd0948e6) | proof-of-journaling: one idempotent on-chain mark per journaled day |
+| `KnoleCommitment` | [`0x76C30B…CE95`](https://chainscan.0g.ai/address/0x76C30B86A483E66e8F63264da13A18caf09fCE95) | habit staking that settles against the anchor with **no oracle** — and structurally can never pay out more than was staked |
+
 The memory token is a **genuine ERC-7857 Agentic ID** — not an ERC-721 wearing the name. Don't take our word for it; call the deployed contract yourself. Every value below is read from `KnoleAgenticID` on 0G Aristotle mainnet and is live on the [**/verify**](https://knole.me/verify) page, re-checked on each load:
 
-| On-chain check (contract [`0x6A3200…6B813`](https://chainscan.0g.ai/address/0x6A3200aea59043cAb74e2077F3f446db0646B813)) | Result    |
+| On-chain check (contract [`0x0Fdbe7…957ca`](https://chainscan.0g.ai/address/0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca)) | Result    |
 | ------------------------------------------------------------------------------------------------------------------------ | --------- |
 | `supportsInterface(0x4b396f04)` — **ERC-7857 (iNFT)**                                                                    | **true**  |
 | `supportsInterface(0x35d39512)` — ERC-7857 Authorize                                                                     | **true**  |
@@ -96,7 +110,7 @@ The memory token is a **genuine ERC-7857 Agentic ID** — not an ERC-721 wearing
 | `supportsInterface(0x80ac58cd)` — ERC-721 (compatible)                                                                   | **true**  |
 | `supportsInterface(0xdeadbeef)` — unknown id (control)                                                                   | **false** |
 
-The control id returning **false** is the point: this is a real interface registry, not a stub that answers `true` to everything. **Mints go to the user, not a central wallet** — [token #2](https://chainscan.0g.ai/tx/0xbc9be373659865c80920902d40f7dd397a1ea7e9905a6392b66d1b8d79d94e1b) is owned by `0x45d6431D…`, a user's own embedded wallet, minted gas-free by the server. The encrypted memory snapshot lives on 0G Storage; the token records only its hash.
+The control id returning **false** is the point: this is a real interface registry, not a stub that answers `true` to everything. **Mints go to the user, not a central wallet** — and users can now mint **self-custodially**: [token #2's mint](https://chainscan.0g.ai/tx/0x95cbf2125d86628386d7f43512cb65ac36655ab8d3da821dc68699611ec103ca) was **signed by the user's own wallet** (`from == owner`, on-chain), not by any server key. The encrypted memory snapshot lives on 0G Storage; the token records only its hash.
 
 - **Sealed inference is real, not a fallback** — reflection _and_ live chat run through the 0G Compute serving broker inside a TEE (TeeML), and every response is gated on `processResponse()`, which verifies the enclave attestation before the "sealed" badge is ever shown
 - **21 automated evaluation suites** in CI — retrieval, groundedness, privacy-leak, crypto, isolation
@@ -108,7 +122,7 @@ Built entirely by a **solo developer** — every commit public.
 
 ## Built With
 
-TanStack Start · React 19 · Neon Postgres + pgvector · Drizzle · local `all-MiniLM` embeddings · `transformers.js` NER · **0G Sealed Inference via the 0G Compute serving broker (TeeML, attestation-verified) → plain 0G model fallback (fully on 0G, no external LLM)** · AES-256-GCM + wallet-derived keys · ERC-7857 Agentic ID (`KnoleAgenticID`) · Privy · 0G Aristotle mainnet via `ethers`
+TanStack Start · React 19 · Neon Postgres + pgvector · Drizzle · local `all-MiniLM` embeddings · `transformers.js` NER · **0G Sealed Inference via the 0G Compute serving broker (TeeML, attestation-verified) → plain 0G model fallback (fully on 0G, no external LLM)** · AES-256-GCM + wallet-derived keys · ERC-7857 Agentic ID (`KnoleAgenticID`) + `JournalDayAnchor` + `KnoleCommitment` (Foundry, 102 tests) · Privy · 0G Aristotle mainnet via `ethers`
 
 ---
 
