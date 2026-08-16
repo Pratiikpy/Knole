@@ -31,6 +31,7 @@ function RememberedPage() {
   const getDeck = useServerFn(flashbackDeckFn);
   const [deck, setDeck] = useState<{ id: string; text: string; date: string }[] | null>(null);
   const [deckIdx, setDeckIdx] = useState(-1);
+  const deckEmpty = deck !== null && deck.length === 0;
   const entry = deckIdx >= 0 && deck ? deck[deckIdx] : loaderEntry;
   const drawNext = () => {
     if (!deck) {
@@ -135,12 +136,19 @@ function RememberedPage() {
               <p className="whitespace-pre-line font-display text-[22px] italic leading-snug text-ink-soft">
                 {entry.text}
               </p>
-              <button
-                onClick={drawNext}
-                className="mt-4 text-[12px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
-              >
-                another memory →
-              </button>
+              {deckEmpty ? (
+                <p className="mt-4 text-[12px] text-muted-foreground/70">
+                  The deck fills as your journal ages — memories draw from entries older than a
+                  week.
+                </p>
+              ) : (
+                <button
+                  onClick={drawNext}
+                  className="mt-4 text-[12px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+                >
+                  another memory →
+                </button>
+              )}
             </div>
 
             {/* Thread */}
