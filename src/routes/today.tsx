@@ -132,6 +132,7 @@ const lenses = [
   { id: "pattern", label: "Patterns" },
   { id: "blunt", label: "Blunt" },
   { id: "decision", label: "Decide" },
+  { id: "reframe", label: "Reframe" },
 ] as const;
 
 // The depth dial for the deepening loop — how hard the follow-up leans (research: always skippable).

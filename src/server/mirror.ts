@@ -27,7 +27,7 @@ Return ONLY a JSON object:
     {"text": "<a specific recurring pattern, second person, 1-2 sentences>", "entry": <the [number] of the entry that best shows it>}
   ],
   "contradiction": "<1-2 sentences: two things they want that pull against each other — or empty if none is clear>",
-  "avoided": "<1-2 sentences: the thing they keep circling but not facing — or empty>",
+  "avoided": "<1-2 sentences: the thing they keep circling but not facing — INCLUDING any goal or intention they named once with real energy and then never mentioned again (name the goal and roughly when they last spoke of it) — or empty>",
   "themes": [{"name":"<short lowercase theme>","weight":<1-5>}]
 }
 Exactly 3 patterns, each citing a real entry number — and at least ONE of them must name a genuine strength or bright thread (what's quietly working), not only struggles, so the mirror never reads as all hard. Up to 5 themes, most prominent first. No prose outside the JSON.`;
