@@ -115,6 +115,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
+
+    // Umami: privacy-first page analytics — no cookies, no PII, page views + referrers only.
+    // Journal content never leaves the app; this script sees URLs, not words.
+    scripts: [
+      {
+        defer: true,
+        src: "https://cloud.umami.is/script.js",
+        "data-website-id": "e769fa01-dd61-4457-b904-451c2a7b901c",
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
