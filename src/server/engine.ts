@@ -7,6 +7,7 @@ import { putData } from "./og";
 import { keyProvider } from "./keyProvider";
 import { upsertEntities, matchEntities, entityBoostWeight } from "./entities";
 import { recordJournaledDayBg } from "./dayAnchor";
+import { extractEntityEdges } from "./entityEdges";
 import { indexEntryDates, entryDateGate, type DateRange } from "./dateLens";
 import { background } from "./background";
 
@@ -493,36 +494,42 @@ export async function extractMemories(userId: string, entryId: string, entryText
       const v = await embed(it.content);
       const vlit = toVectorLiteral(v);
 
-      // reconcile: does this update/replace a similar-but-different existing memory?
-      const sim = (await db.execute(sql`
+      // reconcile against the TOP THREE neighbours, not just the nearest (graphiti's
+      // multi-candidate resolve): a contradiction with the second-most-similar memory used to be
+      // missed entirely. The first "duplicate" verdict short-circuits; judge calls stay bounded
+      // because only candidates above the similarity bar are consulted at all.
+      const sims = (await db.execute(sql`
       SELECT id, content, status, user_verified_at, 1 - (embedding <=> ${vlit}::vector) AS score
       FROM memories
       WHERE user_id = ${userId} AND status IN ('active', 'pinned')
         AND content_hash <> ${ch} AND embedding IS NOT NULL
       ORDER BY embedding <=> ${vlit}::vector
-      LIMIT 1
+      LIMIT 3
     `)) as unknown as Record<string, unknown>[];
       let supersededId: string | null = null;
-      if (sim[0] && Number(sim[0].score) >= 0.45) {
-        const verdict = await judgeMemory(String(sim[0].content), it.content);
+      let reinforced = false;
+      for (const cand of sims) {
+        if (Number(cand.score) < 0.45) break; // ordered by similarity - nothing further qualifies
+        const verdict = await judgeMemory(String(cand.content), it.content);
         if (verdict === "duplicate") {
           // NOOP: reinforce the existing memory instead of storing a near-duplicate
           await db.execute(sql`
           UPDATE memories SET recall_count = recall_count + 1, updated_at = now()
-          WHERE id = ${String(sim[0].id)} AND user_id = ${userId}
+          WHERE id = ${String(cand.id)} AND user_id = ${userId}
         `);
-          saved.push({ id: String(sim[0].id), content: String(sim[0].content) });
-          continue;
+          saved.push({ id: String(cand.id), content: String(cand.content) });
+          reinforced = true;
+          break;
         }
         // update: supersede the prior memory — but never one the user controls. A pin
         // (pinned-survival) or a hand-edit (user_verified_at, the user-edit-wins lock) outranks
         // the engine's inference; the new memory is added alongside it, for the user to reconcile.
-        const userControlled =
-          String(sim[0].status) === "pinned" || sim[0].user_verified_at != null;
-        if (verdict === "update" && !userControlled) {
-          supersededId = String(sim[0].id);
+        const userControlled = String(cand.status) === "pinned" || cand.user_verified_at != null;
+        if (verdict === "update" && !userControlled && !supersededId) {
+          supersededId = String(cand.id);
         }
       }
+      if (reinforced) continue;
 
       // content-hash UPSERT dedup (memori): reinforce on conflict instead of duplicating
       // Map the model's int handles back to real memory ids (only in-range handles survive).
@@ -572,6 +579,21 @@ export async function extractMemories(userId: string, entryId: string, entryText
       // Extraction runs in the background, so an escaping throw silently lost the rest of the
       // entry's memories with nothing surfaced to the user.
       console.error("extractMemories: item failed, continuing:", (e as Error).message);
+    }
+  }
+  // Relationship edges (graphiti): one extra focused call, only when the entry actually named
+  // people/places - most entries skip it. Failures never disturb the saved memories.
+  const namedAny = items.some((it) => Array.isArray(it?.entities) && it.entities.length > 0);
+  if (namedAny) {
+    try {
+      await extractEntityEdges(
+        userId,
+        saved[0]?.id ?? null,
+        entryText,
+        entryRow?.createdAt ?? new Date(),
+      );
+    } catch (e) {
+      console.error("entity-edge extraction failed:", (e as Error).message);
     }
   }
   return saved;

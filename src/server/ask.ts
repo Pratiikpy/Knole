@@ -4,12 +4,14 @@ import { retrieveEntries, retrieveMemories } from "./engine";
 import { rewriteSearchQueries } from "./queryRewrite";
 import { parseDateFilters } from "./dateLens";
 import { rerankAndFloor } from "./rerank";
+import { edgesForEntity, entityTimeline, knownEntityNames } from "./entityEdges";
 
-const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the journal excerpts and remembered facts provided below.
+const ASK_SYS = `You are Knole, answering a question the user asked about their OWN life, using ONLY the material provided below (journal excerpts, remembered facts, and relationship notes — all three are equally trustworthy grounding; never remark that one section lacks what another supplies).
 - Ground every claim in what they actually wrote. Never invent events, dates, numbers, or feelings.
 - When a sentence draws on a numbered journal excerpt, cite it inline as [1], [2] etc — the excerpt's own number, right after the claim it supports. Cite only numbers that exist. Remembered facts (unnumbered) need no citation.
 - Answer in 2–4 complete, grammatical sentences — the real throughline across their words, in second person ("You…"). Be concise: finish every sentence, never ramble, pad, or trail off.
 - Be warm and clear, never flattering, never clinical.
+- A relationship note marked NO LONGER TRUE (or superseded) is the past: describe it in past tense, never as current — and never quote the marker itself.
 - If the provided material does not actually answer the question, say so plainly instead of guessing.
 Output plain prose only — no markdown, no lists, no headers.
 
@@ -108,7 +110,52 @@ async function gather(
     ),
   ]);
 
-  if (entries.length === 0 && memories.length === 0) return null;
+  // Relationship structure (graphiti): when the question NAMES someone the journal knows, the
+  // answer should know the story, not just a bag of memories. The named entity contributes its
+  // live + past relationship edges and its dated timeline (active AND superseded memories — the
+  // turns). Detection is an exact word-boundary scan over known names, longest name first —
+  // embedding a whole question against a bare name was measured useless (best sim 0.19).
+  let relationBlock = "";
+  try {
+    const names = await knownEntityNames(userId);
+    const name = names
+      .filter((n) =>
+        new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(question),
+      )
+      .sort((a, b) => b.length - a.length)[0];
+    if (name) {
+      const [edges, timeline] = await Promise.all([
+        edgesForEntity(userId, name, 8),
+        entityTimeline(userId, name),
+      ]);
+      // Ended edges lead with the ending so the model can't repeat the fact in present tense —
+      // measured: "(ended ...)" as a trailing aside was ignored and a quit job read as current.
+      const edgeLines = edges.map((e) => {
+        const rel = `${e.source} ${e.relation.replace(/_/g, " ").toLowerCase()} ${e.target}`;
+        return e.invalidAt
+          ? `- NO LONGER TRUE since ${e.invalidAt.slice(0, 10)}: ${rel}: ${e.fact}`
+          : `- ${rel}: ${e.fact}`;
+      });
+      const storyLines = timeline
+        .slice(-8)
+        .map(
+          (t) =>
+            `- [${(t.validAt ?? "").slice(0, 10) || "undated"}${t.status === "superseded" ? ", later superseded" : ""}] ${t.content}`,
+        );
+      if (edgeLines.length || storyLines.length) {
+        relationBlock = [
+          "",
+          `RELATIONSHIP NOTES ABOUT ${name.toUpperCase()} (how things stand and how they changed — superseded lines are what USED to be true):`,
+          ...edgeLines,
+          ...storyLines,
+        ].join("\n");
+      }
+    }
+  } catch {
+    /* the relationship arm is an enhancement — the ask must never fail because of it */
+  }
+
+  if (entries.length === 0 && memories.length === 0 && !relationBlock) return null;
   onStatus?.(
     `Found ${entries.length} ${entries.length === 1 ? "entry" : "entries"} and ${memories.length} ${memories.length === 1 ? "memory" : "memories"}`,
   );
@@ -119,6 +166,7 @@ async function gather(
     "",
     "REMEMBERED FACTS:",
     ...memories.map((m) => `- ${m.content}`),
+    relationBlock,
   ].join("\n");
 
   const receipts: Receipt[] = entries.map((e) => ({

@@ -156,22 +156,24 @@ export function deAnonymise(text: string, map: Record<string, string>): string {
   const entries = Object.entries(map).sort((a, b) => b[0].length - a[0].length);
   for (const [token, word] of entries) {
     const bare = token.slice(1, -1);
+    // Case-insensitive both ways: the model rewrites token case mid-sentence ("Person_1, who…")
+    // and a case-sensitive restore let that reach the user raw.
     result = result
-      .split(token)
-      .join(word)
-      .replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRe(bare)}(?![\\p{L}\\p{N}_])`, "gu"), word);
+      .replace(new RegExp(escapeRe(token), "giu"), word)
+      .replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRe(bare)}(?![\\p{L}\\p{N}_])`, "giu"), word);
   }
   // Safety net: any token the model invented or mangled past recognition must never surface to the
   // user as a raw "[PERSON_2]" — collapse leftovers to a neutral word. Logged so a spike (a broken
   // token map, a drifting model) is observable, not a silent slide into vague pronouns.
   let collapsed = 0;
-  result = result.replace(/\[?\b(PERSON|PLACE|ORG|MISC)_\d+\b\]?/g, (_m, kind: string) => {
+  result = result.replace(/\[?\b(PERSON|PLACE|ORG|MISC)_\d+\b\]?/gi, (_m, kind: string) => {
     collapsed++;
-    return kind === "PLACE"
+    const k = kind.toUpperCase();
+    return k === "PLACE"
       ? "somewhere"
-      : kind === "ORG"
+      : k === "ORG"
         ? "a group"
-        : kind === "MISC"
+        : k === "MISC"
           ? "something"
           : "someone";
   });
