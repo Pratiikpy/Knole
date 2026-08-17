@@ -8,6 +8,11 @@ Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/knole
 Environment=NODE_ENV=production
+# The 50s default exists to fit Vercel's 60s function cap, and it starved every step after
+# dreaming — valence, signals and the radar sit last and never got any of it. A one-shot on a
+# 30-minute timer has no such ceiling, so give the tick 10 minutes to actually finish its queue.
+Environment=WORKER_TICK_BUDGET_MS=600000
 ExecStart=/usr/bin/node scripts/worker-tick.mjs
+TimeoutStartSec=900
 StandardOutput=append:/var/log/knole/worker.log
 StandardError=append:/var/log/knole/worker.log
