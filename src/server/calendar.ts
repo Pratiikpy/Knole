@@ -47,27 +47,45 @@ export function streaksFromDays(
   days: string[],
   today: string,
   yesterday: string,
+  restDays: string[] = [],
 ): { current: number; longest: number; totalDays: number } {
+  // Rest days (habitica's Inn): a DECLARED rest day bridges a run without counting toward it.
+  // The spine below is written-days ∪ rest-days; contiguity is judged on the spine, the count
+  // only ever increments on written days. A run of write-write-rest-write is a streak of 3 that
+  // never broke — which is exactly what a deliberate day off should mean.
+  const written = new Set(days);
+  const spine = [...new Set([...days, ...restDays])].sort();
   let longest = 0;
   let run = 0;
   let prev: number | null = null;
-  for (const d of days) {
+  for (const d of spine) {
     const t = toUtcMidnight(d);
-    run = prev !== null && t - prev === dayMs ? run + 1 : 1;
+    const w = written.has(d) ? 1 : 0;
+    run = prev !== null && t - prev === dayMs ? run + w : w;
     if (run > longest) longest = run;
     prev = t;
   }
-  // current streak: the trailing run, alive only if it touches today or yesterday
+  // current streak: the trailing spine run, alive only if it touches today or yesterday
   let current = 0;
-  const last = days[days.length - 1];
+  const last = spine[spine.length - 1];
   if (last === today || last === yesterday) {
-    current = 1;
-    for (let i = days.length - 1; i > 0; i--) {
-      if (toUtcMidnight(days[i]) - toUtcMidnight(days[i - 1]) === dayMs) current++;
-      else break;
+    current = written.has(last) ? 1 : 0;
+    for (let i = spine.length - 1; i > 0; i--) {
+      if (toUtcMidnight(spine[i]) - toUtcMidnight(spine[i - 1]) === dayMs) {
+        current += written.has(spine[i - 1]) ? 1 : 0;
+      } else break;
     }
   }
   return { current, longest, totalDays: days.length };
+}
+
+/** The user's declared rest days (ascending YYYY-MM-DD). */
+export async function restDaysOf(userId: string): Promise<string[]> {
+  const rows = (await db.execute(sql`
+    SELECT to_char(date, 'YYYY-MM-DD') AS d FROM rest_days
+    WHERE user_id = ${userId} ORDER BY date ASC
+  `)) as unknown as { d: string }[];
+  return rows.map((r) => r.d);
 }
 
 export async function calendarMonth(
@@ -97,7 +115,8 @@ export async function calendarMonth(
     label: r.label == null ? null : String(r.label),
   }));
   const all = await journaledDays(userId, tz);
-  const streak = streaksFromDays(all, todayKey(tz), todayKey(tz, 1));
+  const rest = await restDaysOf(userId);
+  const streak = streaksFromDays(all, todayKey(tz), todayKey(tz, 1), rest);
   return { year, month, days, streak };
 }
 

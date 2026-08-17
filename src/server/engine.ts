@@ -472,6 +472,18 @@ export async function extractMemories(userId: string, entryId: string, entryText
   const saved: { id: string; content: string }[] = [];
   for (const it of items) {
     if (!it?.content) continue;
+    // Enforce the 15-80-word memory rule in CODE, not just the prompt (letta teardown finding):
+    // a runaway generation must not become a permanent, retrieval-polluting wall of text, and a
+    // fragment is not a memory. Overlong content is clipped at a sentence edge, tiny is dropped.
+    {
+      const words = it.content.trim().split(/\s+/);
+      if (words.length < 4) continue;
+      if (words.length > 110) {
+        const clipped = words.slice(0, 100).join(" ");
+        const lastStop = Math.max(clipped.lastIndexOf(". "), clipped.lastIndexOf("! "));
+        it.content = lastStop > 60 ? clipped.slice(0, lastStop + 1) : clipped;
+      }
+    }
     try {
       const type = it.type && VALID_TYPES.has(it.type) ? it.type : "fact";
       // How sure the model is this memory is true + durable. Clamp to a sane floor so a missing/garbage
@@ -794,12 +806,29 @@ export async function updateSettings(
 export async function personaBlock(userId: string): Promise<string> {
   const [u] = await db.select({ bio: users.personaBio }).from(users).where(eq(users.id, userId));
   const bio = (u?.bio ?? "").trim();
-  return bio
-    ? `
-
-About this person, in their own words (honor it):
-${bio.slice(0, 800)}`
-    : "";
+  // The overnight self-portrait rides along when one exists - the model's own evolving read of
+  // who this person is, maintained nightly (selfModel.ts). Bio (their words) always outranks it.
+  let portrait = "";
+  try {
+    const rows = (await db.execute(sql`
+      SELECT content FROM reflection_artifacts
+      WHERE user_id = ${userId} AND thread_key = 'self_model'
+      ORDER BY created_at DESC LIMIT 1
+    `)) as unknown as { content: { text?: string } }[];
+    portrait = String(rows[0]?.content?.text ?? "").trim();
+  } catch {
+    /* the portrait is an enhancement - persona must never fail because of it */
+  }
+  const parts: string[] = [];
+  if (bio) {
+    parts.push(`About this person, in their own words (honor it):\n${bio.slice(0, 800)}`);
+  }
+  if (portrait) {
+    parts.push(
+      `Your own evolving portrait of them (revise silently as they change):\n${portrait.slice(0, 1400)}`,
+    );
+  }
+  return parts.length ? `\n\n${parts.join("\n\n")}` : "";
 }
 
 // ── provenance X-ray: where a memory came from ───────────

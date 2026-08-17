@@ -81,6 +81,8 @@ import {
 import { storeSignals, latestRadar } from "./omission";
 import { buildYearInOnePage } from "./consolidate";
 import { detectCrisis, CRISIS_REPLY } from "./safety";
+import { localDayKey } from "./localDay";
+import { latestSelfPortrait } from "./selfModel";
 import { proposeEntryEdits } from "./entryEdit";
 import {
   enrollClientEnc,
@@ -206,6 +208,52 @@ export const replyForDraftFn = createServerFn({ method: "POST" })
     `)) as unknown as { text: string; entry_id: string }[];
     return { reply: rows[0]?.text ?? null, entryId: rows[0]?.entry_id ?? null };
   });
+
+// The Overnight Self-Portrait (letta's core memory, made visible): the current portrait plus the
+// version it replaced, so the client can render "what Knole re-understood about you overnight"
+// as a word-diff.
+export const selfPortraitFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  return { portrait: await latestSelfPortrait(userId) };
+});
+
+// Rest days (habitica's Inn): a DECLARED day off holds the streak without counting toward it.
+// Only today or tomorrow can be declared - deliberate rest, never a retroactive excuse - and a
+// declared day suppresses that day's nudge.
+export const declareRestDayFn = createServerFn({ method: "POST" })
+  .validator(z.object({ when: z.enum(["today", "tomorrow"]) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const settings = await getSettings(userId);
+    const tz = settings?.timezone || "UTC";
+    const day = localDayKey(tz, data.when === "today" ? 0 : -1);
+    await db.execute(sql`
+      INSERT INTO rest_days (user_id, date) VALUES (${userId}, ${day}::date)
+      ON CONFLICT DO NOTHING
+    `);
+    return { ok: true, date: day };
+  });
+
+export const clearRestDayFn = createServerFn({ method: "POST" })
+  .validator(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    await db.execute(
+      sql`DELETE FROM rest_days WHERE user_id = ${userId} AND date = ${data.date}::date`,
+    );
+    return { ok: true };
+  });
+
+export const restStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await currentUserId();
+  const settings = await getSettings(userId);
+  const tz = settings?.timezone || "UTC";
+  const today = localDayKey(tz, 0);
+  const rows = (await db.execute(sql`
+    SELECT 1 FROM rest_days WHERE user_id = ${userId} AND date = ${today}::date LIMIT 1
+  `)) as unknown as unknown[];
+  return { restingToday: !!rows[0], today };
+});
 
 // Share-then-fork (khoj's public conversations): publish ONE reflection as a frozen snapshot at
 // a public slug - the rest of the journal stays sealed. Revocable. The share page invites the

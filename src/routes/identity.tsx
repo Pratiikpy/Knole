@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PrivyProvider, useWallets } from "@privy-io/react-auth";
 import { Shell } from "@/components/knole/Shell";
 import { PassportCard } from "@/components/knole/PassportCard";
+import { SelfPortraitCard } from "@/components/knole/SelfPortraitCard";
 import { ogChain } from "@/lib/ogChain";
 import { resolveSigner } from "@/lib/walletSigner";
 import {
@@ -212,6 +213,9 @@ function IdentityPage() {
 
           <OnchainGrantsCard />
 
+          <div className="mb-6">
+            <SelfPortraitCard />
+          </div>
           <PassportCard />
         </div>
       </section>

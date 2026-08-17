@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { pruneRateLimits } from "./rateLimitStore";
 import { db } from "../db";
 import { runDreaming } from "./dreaming";
+import { runSelfPortrait } from "./selfModel";
 import { storeEntryOn0G } from "./engine";
 import { anchorDueBatched } from "./anchor";
 import { runWeeklyDigests } from "./digest";
@@ -65,6 +66,12 @@ export async function tick(): Promise<{
         if (d) dreamed++;
       } catch (e) {
         console.error("dreaming failed for", userId, (e as Error).message);
+      }
+      try {
+        // The self-portrait rewrites AFTER the dream so tonight's observation can inform it.
+        await runSelfPortrait(userId);
+      } catch (e) {
+        console.error("self-portrait failed for", userId, (e as Error).message);
       }
     }
 

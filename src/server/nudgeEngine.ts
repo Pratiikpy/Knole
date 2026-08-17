@@ -1,7 +1,7 @@
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { sendPush, pushConfigured, type PushSub } from "./notify";
-import { pickNudgeCopy } from "./nudgeCopy";
+import { pickNudgeCopy, pickReturningCopy } from "./nudgeCopy";
 import { onThisDay } from "./onThisDay";
 
 const { users, nudgeSettings, pushSubscriptions, entries } = schema;
@@ -179,6 +179,11 @@ export async function pushToUser(
 
 async function hasEntryToday(userId: string, tz: string): Promise<boolean> {
   const { dateKey } = localNow(tz);
+  // A declared rest day counts as showing up - the whole point is a day off WITHOUT the nag.
+  const resting = (await db.execute(sql`
+    SELECT 1 FROM rest_days WHERE user_id = ${userId} AND date = ${dateKey}::date LIMIT 1
+  `)) as unknown as unknown[];
+  if (resting[0]) return true;
   const rows = (await db.execute(sql`
     SELECT 1 FROM entries
     WHERE user_id = ${userId} AND deleted_at IS NULL AND type <> 'saved'
@@ -227,7 +232,17 @@ export async function dispatchDueNudges(): Promise<{
     // Suppress-if-journaled, decided at FIRE time — the whole point of the mechanic.
     if (s.alwaysRemind || !(await hasEntryToday(s.userId, zone))) {
       const { dateKey } = localNow(zone);
-      const copy = pickNudgeCopy(s.userId, dateKey);
+      // A returning user (5+ days quiet) gets the no-guilt welcome-back register instead of the
+      // daily invitation - the gap is never mentioned, only that the page kept itself.
+      const lastRows = (await db.execute(sql`
+        SELECT max(created_at) AS m FROM entries
+        WHERE user_id = ${s.userId} AND deleted_at IS NULL AND type = 'journal'
+      `)) as unknown as { m: string | null }[];
+      const daysQuiet = lastRows[0]?.m
+        ? (Date.now() - new Date(String(lastRows[0].m)).getTime()) / 86_400_000
+        : 0;
+      const copy =
+        daysQuiet >= 5 ? pickReturningCopy(s.userId, dateKey) : pickNudgeCopy(s.userId, dateKey);
       fired += (await pushToUser(s.userId, { ...copy, url: "/today" })) > 0 ? 1 : 0;
     }
     await db

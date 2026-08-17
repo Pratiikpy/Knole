@@ -28,6 +28,9 @@ import {
   proposeEntryEditsFn,
   replyForDraftFn,
   shareReflectionFn,
+  restStatusFn,
+  declareRestDayFn,
+  clearRestDayFn,
 } from "@/server/fns";
 import type { OnThisMatch } from "@/server/onThisDay";
 import { useEffect, useRef, useState } from "react";
@@ -431,6 +434,17 @@ function TodayPage() {
   const mediaRef = useRef<WavRecorder | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const reflectAbort = useRef<AbortController | null>(null);
+  // Rest day: a declared day off holds the streak and silences the nudge. Quiet by design.
+  const [restingToday, setRestingToday] = useState<null | { date: string }>(null);
+  const getRest = useServerFn(restStatusFn);
+  const declareRest = useServerFn(declareRestDayFn);
+  const clearRest = useServerFn(clearRestDayFn);
+  useEffect(() => {
+    getRest()
+      .then((r) => setRestingToday(r.restingToday ? { date: r.today } : null))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Share-then-fork: one reflection published at a public slug, by explicit two-tap choice.
   const [shareState, setShareState] = useState<
     { step: "confirm" } | { step: "shared"; url: string; copied: boolean } | null
@@ -1176,6 +1190,40 @@ function TodayPage() {
 
           {/* The friction floor — one tap keeps you alive long enough to reach the 14-day reveal. The
               mirror runs in the background; this never asks you to write. */}
+          {!checkedIn && !restingToday && (
+            <p className="-mt-4 mb-6 text-right">
+              <button
+                onClick={() => {
+                  setRestingToday({ date: "pending" });
+                  declareRest({ data: { when: "today" } })
+                    .then((r) => setRestingToday({ date: r.date }))
+                    .catch(() => setRestingToday(null));
+                }}
+                className="text-[11px] text-muted-foreground/70 underline-offset-2 hover:text-ink hover:underline"
+              >
+                taking today off? declare a rest day
+              </button>
+            </p>
+          )}
+
+          {restingToday && !checkedIn && (
+            <div className="animate-fade-up mb-8 flex items-center justify-between gap-3 rounded-2xl border border-rule bg-card/40 px-5 py-3.5">
+              <span className="font-display text-[15px] italic text-ink-soft">
+                Resting today — your run holds, and Knole stays quiet.
+              </span>
+              <button
+                onClick={() => {
+                  const d = restingToday.date;
+                  setRestingToday(null);
+                  clearRest({ data: { date: d } }).catch(() => setRestingToday({ date: d }));
+                }}
+                className="shrink-0 text-[11px] text-muted-foreground hover:text-ink"
+              >
+                undo
+              </button>
+            </div>
+          )}
+
           {checkedIn ? (
             <div className="animate-fade-up mb-8 flex items-center gap-2.5 rounded-2xl border border-tan/30 bg-tan/[0.05] px-5 py-3.5">
               <Pulse />

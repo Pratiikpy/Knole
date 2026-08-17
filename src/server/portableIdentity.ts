@@ -27,6 +27,8 @@ export type IdentityCapsule = {
   relationships: string[];
   commitments: string[];
   preferences: string[];
+  /** The overnight self-portrait - the model's own evolving read, when one exists. */
+  portrait: string | null;
 };
 
 /** The read-only "who you are" — built only from durable identity memories, never raw entries. */
@@ -37,12 +39,18 @@ export async function buildIdentityCapsule(userId: string): Promise<IdentityCaps
       .filter((m) => m.type === t)
       .map((m) => m.content)
       .slice(0, 8);
+  const portraitRows = (await db.execute(sql`
+    SELECT content FROM reflection_artifacts
+    WHERE user_id = ${userId} AND thread_key = 'self_model'
+    ORDER BY created_at DESC LIMIT 1
+  `)) as unknown as { content: { text?: string } }[];
   return {
     values: pick("value"),
     patterns: pick("pattern"),
     relationships: pick("relationship"),
     commitments: pick("commitment"),
     preferences: pick("preference"),
+    portrait: portraitRows[0]?.content?.text ? String(portraitRows[0].content.text) : null,
   };
 }
 

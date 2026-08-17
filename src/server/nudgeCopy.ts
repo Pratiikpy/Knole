@@ -34,3 +34,29 @@ export function pickNudgeCopy(userId: string, dateKey: string): { title: string;
   }
   return NUDGE_COPY[Math.abs(h) % NUDGE_COPY.length];
 }
+
+// Returning-user copy (habitica's structural forgiveness, given words): after a real gap, the
+// nudge acknowledges nothing about the gap's length and carries zero guilt. The page waited;
+// that's the whole message. Never "you missed N days", never "get back on track".
+export const RETURNING_COPY: { title: string; body: string }[] = [
+  { title: "The page is exactly as you left it", body: "No catching up to do. Just today." },
+  { title: "Welcome back", body: "Start with today. The rest kept itself." },
+  { title: "Still here", body: "Your journal doesn't count absences. One line, whenever." },
+  { title: "Nothing expired", body: "Everything you wrote is still yours. Add one true thing." },
+  { title: "Begin again, smaller", body: "A sentence about today is a full return." },
+  { title: "No door closed", body: "Journals don't have late. Write when you're ready." },
+];
+
+/** Deterministic returning-copy pick, same stability rule as the daily pick. */
+export function pickReturningCopy(
+  userId: string,
+  dateKey: string,
+): { title: string; body: string } {
+  let h = 2166136261;
+  const s = `${userId}:returning:${dateKey}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return RETURNING_COPY[Math.abs(h) % RETURNING_COPY.length];
+}
