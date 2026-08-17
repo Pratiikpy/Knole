@@ -8,6 +8,7 @@ import { anchorDueBatched } from "./anchor";
 import { runWeeklyDigests } from "./digest";
 import { runProactiveNudges } from "./proactivity";
 import { scoreEntryValence } from "./valence";
+import { detectCrisis } from "./safety";
 import { backfillSignals, computeOmissionRadar, usersDueForRadar } from "./omission";
 import { consolidateDue } from "./consolidate";
 import { purgeExpiredTrash } from "./trash";
@@ -254,15 +255,23 @@ export async function backfillValence(
   opts: { start?: number; budgetMs?: number; limit?: number } = {},
 ): Promise<number> {
   const { start = Date.now(), budgetMs = Infinity, limit = 100 } = opts;
+  // The ORDER BY referenced an alias the FROM clause never declared, so every run threw
+  // "missing FROM-clause entry for table e" and was swallowed by the caller's catch — this
+  // backfill had never scored a single entry.
   const rows = (await db.execute(sql`
-    SELECT id, user_id, text FROM entries
-    WHERE valence IS NULL
+    SELECT e.id, e.user_id, e.text FROM entries e
+    WHERE e.valence IS NULL AND e.deleted_at IS NULL
     ORDER BY e.created_at ASC
     LIMIT ${limit}
   `)) as unknown as Record<string, unknown>[];
   let scored = 0;
   for (const r of rows) {
     if (Date.now() - start > budgetMs) break;
+    // The live path saves a crisis disclosure but derives NOTHING from it — no memory, no signals,
+    // and no mood point (streamReply's skipExtract). Nothing on the row records that decision, so
+    // the backfill has to re-apply the same gate; without it, this would quietly put exactly those
+    // entries onto the mood graph.
+    if (detectCrisis(String(r.text)).crisis) continue;
     try {
       await scoreEntryValence(String(r.user_id), String(r.id), String(r.text));
       scored++;
