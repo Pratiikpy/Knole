@@ -12,14 +12,23 @@
     "streaming": false,
     "pushNotifications": false
   },
-  "defaultInputModes": ["application/json"],
-  "defaultOutputModes": ["application/json"],
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
   "skills": [
     {
       "id": "resolve-identity-grant",
       "name": "Resolve a user-issued identity grant",
       "description": "A Knole user can mint a signed, scoped, expiring grant token from their journal's identity capsule (values, patterns, and - full scope only - relationships, commitments, preferences, and the overnight self-portrait). Any agent holding a grant token may redeem it here for the capsule the user chose to share. Grants are revocable by the user at any time; a revoked or expired token resolves to nothing. The raw journal is never served - only durable identity memories the user has reviewed.",
-      "tags": ["identity", "memory", "consent", "privacy"],
+      "tags": [
+        "identity",
+        "memory",
+        "consent",
+        "privacy"
+      ],
       "examples": [
         "POST https://www.knole.me/agent/resolve with {\"token\": \"<grant token>\"} returns {ok, scope, capsule} or {ok: false, reason}"
       ]
@@ -27,12 +36,14 @@
   ],
   "registrations": [
     {
-      "agentId": null,
+      "agentId": 3363832,
       "agentRegistry": "eip155:16661:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-      "note": "agentId is filled after on-chain registration"
+      "transactionHash": "0x7ca23daf36a1fb151058e1350b6cc7b5acf2e9b9fd5df19f6893c957ca91315c"
     }
   ],
-  "trustModels": ["feedback"],
+  "trustModels": [
+    "feedback"
+  ],
   "onchain": {
     "chain": "0G Aristotle mainnet (eip155:16661)",
     "agenticId": {
