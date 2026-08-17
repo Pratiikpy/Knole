@@ -17,6 +17,7 @@ import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as TodayRouteImport } from './routes/today'
 import { Route as TherapyRouteImport } from './routes/therapy'
 import { Route as TheIndexRouteImport } from './routes/the-index'
+import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RememberedRouteImport } from './routes/remembered'
@@ -80,6 +81,11 @@ const TherapyRoute = TherapyRouteImport.update({
 const TheIndexRoute = TheIndexRouteImport.update({
   id: '/the-index',
   path: '/the-index',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/remembered': typeof RememberedRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/stats': typeof StatsRoute
   '/the-index': typeof TheIndexRoute
   '/therapy': typeof TherapyRoute
   '/today': typeof TodayRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/remembered': typeof RememberedRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/stats': typeof StatsRoute
   '/the-index': typeof TheIndexRoute
   '/therapy': typeof TherapyRoute
   '/today': typeof TodayRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/remembered': typeof RememberedRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/stats': typeof StatsRoute
   '/the-index': typeof TheIndexRoute
   '/therapy': typeof TherapyRoute
   '/today': typeof TodayRoute
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/remembered'
     | '/research'
     | '/settings'
+    | '/stats'
     | '/the-index'
     | '/therapy'
     | '/today'
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/remembered'
     | '/research'
     | '/settings'
+    | '/stats'
     | '/the-index'
     | '/therapy'
     | '/today'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/remembered'
     | '/research'
     | '/settings'
+    | '/stats'
     | '/the-index'
     | '/therapy'
     | '/today'
@@ -435,6 +447,7 @@ export interface RootRouteChildren {
   RememberedRoute: typeof RememberedRoute
   ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
+  StatsRoute: typeof StatsRoute
   TheIndexRoute: typeof TheIndexRoute
   TherapyRoute: typeof TherapyRoute
   TodayRoute: typeof TodayRoute
@@ -502,6 +515,13 @@ declare module '@tanstack/react-router' {
       path: '/the-index'
       fullPath: '/the-index'
       preLoaderRoute: typeof TheIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -699,6 +719,7 @@ const rootRouteChildren: RootRouteChildren = {
   RememberedRoute: RememberedRoute,
   ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
+  StatsRoute: StatsRoute,
   TheIndexRoute: TheIndexRoute,
   TherapyRoute: TherapyRoute,
   TodayRoute: TodayRoute,

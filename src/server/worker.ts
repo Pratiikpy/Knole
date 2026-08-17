@@ -92,16 +92,6 @@ export async function tick(): Promise<{
       console.error("trash purge failed:", (e as Error).message);
     }
 
-    // Re-drive entries stranded off-chain by a transient 0G failure, within whatever time the
-    // dream loop left (0G uploads are slow), so the "you own it on 0G" guarantee self-heals over
-    // ticks instead of silently losing entries. A backlog catches up over nights or via backfill:0g.
-    let backfilled = 0;
-    try {
-      backfilled = await backfill0G({ start, budgetMs });
-    } catch (e) {
-      console.error("0G backfill failed:", (e as Error).message);
-    }
-
     // Daily on-chain anchor of every due user's memory root — a timestamped, tamper-evident
     // commitment to their whole state. Gas-batched: all due users go on-chain in ONE tx (each still
     // individually verifiable via its Merkle proof), so a many-user demo doesn't drain the wallet.
@@ -127,6 +117,17 @@ export async function tick(): Promise<{
       await anchorHistoryDue({ start, budgetMs });
     } catch (e) {
       console.error("history anchor step failed:", (e as Error).message);
+    }
+
+    // 0G backfill runs LAST with whatever budget remains: uploads are the slowest step, and when
+    // it ran before the anchors it ate the whole budget every night - 261 receipts existed and
+    // ZERO had ever been anchored (found by the public stats page showing 0). Cheap, single-tx
+    // chain anchors must never starve behind slow storage uploads.
+    let backfilled = 0;
+    try {
+      backfilled = await backfill0G({ start, budgetMs });
+    } catch (e) {
+      console.error("0G backfill failed:", (e as Error).message);
     }
 
     // Hierarchical consolidation — roll up the most-recent completed week/month/year per due user.
