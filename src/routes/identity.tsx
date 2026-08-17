@@ -67,6 +67,7 @@ function IdentityPage() {
   const revoke = useServerFn(revokeIdentityGrantFn);
 
   const [capsule, setCapsule] = useState<Capsule | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [grants, setGrants] = useState<Grant[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -78,7 +79,8 @@ function IdentityPage() {
   useEffect(() => {
     getCapsule()
       .then((r) => setCapsule(r.capsule))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoaded(true));
     refreshGrants();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -147,10 +149,14 @@ function IdentityPage() {
                 ))}
             </div>
           ) : (
-            <p className="mb-8 text-[14px] text-muted-foreground">
-              Write for a while first — your identity fills in from your own words, then you can
-              carry it.
-            </p>
+            // Only once the fetch has settled: otherwise someone whose capsule is full is told for
+            // a beat that they have nothing. On failure it still settles, so the page never blanks.
+            loaded && (
+              <p className="mb-8 text-[14px] text-muted-foreground">
+                Write for a while first — your identity fills in from your own words, then you can
+                carry it.
+              </p>
+            )
           )}
 
           {/* Grant */}
