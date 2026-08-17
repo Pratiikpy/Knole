@@ -1,4 +1,5 @@
 import { createStart, createMiddleware, createCsrfMiddleware } from "@tanstack/react-start";
+import { handleIdentityResolve } from "./server/identityResolve";
 import { handleMirrorStream } from "./server/mirrorStream";
 import { setResponseHeaders, getRequest } from "@tanstack/react-start/server";
 
@@ -122,9 +123,18 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
                       ? handleOnboardStream
                       : path === "/mirror/stream"
                         ? handleMirrorStream
-                        : null;
+                        : path === "/api/identity/resolve"
+                          ? handleIdentityResolve
+                          : null;
   if (!handler) return next();
-  if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
+  // The public identity-resolve endpoint needs its CORS preflight to reach the handler; every
+  // other raw endpoint stays strictly POST.
+  if (
+    request.method !== "POST" &&
+    !(request.method === "OPTIONS" && path === "/api/identity/resolve")
+  ) {
+    return new Response("method not allowed", { status: 405 });
+  }
   return handler(request);
 });
 
