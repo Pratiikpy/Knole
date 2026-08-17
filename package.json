@@ -15,6 +15,7 @@
     "check:numbers": "node scripts/check-numbers.mjs",
     "audit": "npm audit --omit=dev",
     "evals": "tsx src/server/evals.run.ts",
+    "eval:edges": "tsx src/server/edges-eval.run.ts",
     "test:auth": "tsx src/server/auth-e2e.run.ts",
     "test:empty": "tsx src/server/empty-user.run.ts",
     "test:restore": "tsx src/server/restore.run.ts",

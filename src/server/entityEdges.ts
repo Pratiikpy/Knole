@@ -16,17 +16,99 @@ import { parseModelJson } from "./llmJson";
 // are SQL (same user, same pair, same relation), not more model calls; the temporal arithmetic
 // is graphiti's: the older edge's invalid_at becomes the newer edge's valid_at.
 
-const EDGE_SYS = `Extract relationships between NAMED entities from a journal entry. "You" (the writer) counts as an entity.
+// Every clause here is load-bearing and was measured (see edges-eval.run.ts). The first version
+// recalled 1 of 2 edges on a two-edge entry, for three reasons this one fixes: it read a pronoun
+// subject ("she moved to Porto") as having no named source; it listed "moved away" as an ENDING
+// signal, so relocations were suppressed instead of recorded; and its single one-element,
+// person-to-person example anchored the output to one edge of that same shape.
+export const EDGE_SYS = `Extract EVERY durable relationship between named entities in a journal entry. "You" (the writer) counts as an entity. Most entries carry more than one — never stop at the first.
 
 Rules:
-- Both ends must be proper names or "You" - never generic words ("work", "the team").
-- relation is a SHORT_UPPER_SNAKE verb phrase: WORKS_AT, DATING, FRIEND_OF, MANAGES, LIVES_IN, MARRIED_TO, STUDYING_AT, BUILDING, ESTRANGED_FROM...
+- Resolve pronouns first. If "she moved to Porto" refers to Teodora, the edge is Teodora → Porto. A pronoun subject is NEVER a reason to skip an edge.
+- Both ends must resolve to a proper name (person, place, organisation) or "You" — never a generic word ("work", "the team", "the flat").
+- relation is a SHORT_UPPER_SNAKE verb phrase: WORKS_AT, LIVES_IN, DATING, MARRIED_TO, FRIEND_OF, SIBLING_OF, PARENT_OF, MANAGES, STUDYING_AT, CO_FOUNDER_OF, THERAPIST_OF, BUILDING, ESTRANGED_FROM...
+- A single entry can carry a person→person AND a person→place AND a person→organisation edge. Emit all of them.
 - fact preserves the specifics in one sentence, second person where the writer is involved. Never generalize.
-- Only durable relationships worth remembering - not one-off interactions ("had coffee with" is not an edge; "is your closest friend" is).
-- ended=true when the entry says this relationship has ENDED (quit, broke up, moved away).
+- Durable only — a state that holds beyond a single day. "Had coffee with Nina" is not an edge; "Nina is your closest friend" is.
+- A relationship that has ALREADY ended still counts — record it with ended=true instead of dropping it. "We both worked at Zalando before" is two WORKS_AT edges, both ended. The history is the point.
+- Never infer a relationship the entry does not state. "Marcus has been in Bristol since the divorce" says nothing about who was married to whom — do not invent one.
+- ended=true ONLY when the entry says THAT relationship has stopped (quit the job, broke up, cut contact). Moving INTO a new city, job or course is NOT an ending — it is a new edge, and the old one is superseded for you automatically.
 
-Return ONLY a JSON array: [{"source": "You", "target": "Mara", "relation": "FRIEND_OF", "fact": "Mara is your closest friend from the Meridian Labs days.", "ended": false}]
-Return [] when there are none.`;
+Return ONLY a JSON array, one object per relationship:
+[{"source": "You", "target": "Mara", "relation": "FRIEND_OF", "fact": "Mara is your closest friend from the Meridian Labs days.", "ended": false},
+ {"source": "Mara", "target": "Lisbon", "relation": "LIVES_IN", "fact": "Mara moved to Lisbon in March 2026.", "ended": false}]
+Return [] when the entry has none.`;
+
+// Relations a person can only hold ONE of at a time: a new target supersedes the old edge rather
+// than sitting beside it. Without this, "moved to Porto" leaves "lives in Lisbon" live forever and
+// the timeline reads as though both were true. FRIEND_OF/MANAGES/BUILDING are deliberately absent —
+// those legitimately hold many targets at once.
+const EXCLUSIVE_RELATIONS = new Set([
+  "LIVES_IN",
+  "WORKS_AT",
+  "MARRIED_TO",
+  "STUDYING_AT",
+  "DATING",
+]);
+
+export type ParsedEdge = {
+  source: string;
+  target: string;
+  relation: string;
+  fact: string;
+  ended: boolean;
+};
+
+/**
+ * The model half of extraction, kept free of the database so recall can be measured directly
+ * (`npm run eval:edges`). `sys` is injectable only so an eval can A/B a candidate prompt.
+ */
+export async function extractEdgesFromText(
+  entryText: string,
+  sys = EDGE_SYS,
+): Promise<ParsedEdge[]> {
+  // A response with no JSON array in it at all is a malformed answer, NOT an entry without
+  // relationships — the two used to be indistinguishable, so a garbled reply silently wrote zero
+  // edges and left a hole in the story no error would ever reveal. An explicit "[]" is trusted.
+  let raw: unknown[] = [];
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const r = await chatPrivate(
+      [
+        { role: "system", content: sys },
+        { role: "user", content: entryText.slice(0, 6000) },
+      ],
+      { temperature: 0, maxTokens: 900 },
+    );
+    const arr = r.content.match(/\[[\s\S]*\]/)?.[0];
+    if (!arr) {
+      if (attempt === 2)
+        console.error("edge extraction: no JSON array in the model reply after a retry");
+      continue;
+    }
+    const parsed = parseModelJson<unknown>(`{"edges": ${arr}}`, { edges: [] }) as {
+      edges?: unknown;
+    };
+    raw = Array.isArray(parsed.edges) ? parsed.edges : [];
+    break;
+  }
+  const out: ParsedEdge[] = [];
+  for (const e of raw.slice(0, 10)) {
+    const t = e as Record<string, unknown>;
+    if (
+      typeof t.source !== "string" ||
+      typeof t.target !== "string" ||
+      typeof t.relation !== "string" ||
+      typeof t.fact !== "string"
+    )
+      continue;
+    const source = canon(t.source);
+    const target = canon(t.target);
+    const relation = t.relation.trim().toUpperCase().replace(/\s+/g, "_").slice(0, 40);
+    if (!source || !target || !relation || source.toLowerCase() === target.toLowerCase()) continue;
+    out.push({ source, target, relation, fact: t.fact.slice(0, 400), ended: t.ended === true });
+  }
+  return out;
+}
 
 export type EntityEdge = {
   source: string;
@@ -46,57 +128,54 @@ export async function extractEntityEdges(
   entryText: string,
   writtenAt: Date,
 ): Promise<number> {
-  const r = await chatPrivate(
-    [
-      { role: "system", content: EDGE_SYS },
-      { role: "user", content: entryText.slice(0, 6000) },
-    ],
-    { temperature: 0, maxTokens: 900 },
-  );
-  const parsed = parseModelJson<unknown>(
-    `{"edges": ${r.content.match(/\[[\s\S]*\]/)?.[0] ?? "[]"}}`,
-    {
-      edges: [],
-    },
-  ) as { edges?: unknown };
-  const raw = Array.isArray(parsed.edges) ? parsed.edges : [];
+  const edges = await extractEdgesFromText(entryText);
   let written = 0;
-  for (const e of raw.slice(0, 8)) {
-    const t = e as {
-      source?: unknown;
-      target?: unknown;
-      relation?: unknown;
-      fact?: unknown;
-      ended?: unknown;
-    };
-    if (
-      typeof t.source !== "string" ||
-      typeof t.target !== "string" ||
-      typeof t.relation !== "string" ||
-      typeof t.fact !== "string"
-    )
-      continue;
-    const source = canon(t.source);
-    const target = canon(t.target);
-    const relation = t.relation.trim().toUpperCase().replace(/\s+/g, "_").slice(0, 40);
-    if (!source || !target || !relation || source.toLowerCase() === target.toLowerCase()) continue;
+  for (const { source, target, relation, fact, ended } of edges) {
+    const at = writtenAt.toISOString();
+    const src = source.toLowerCase();
+    const tgt = target.toLowerCase();
 
-    // graphiti's invalidation arithmetic, in SQL: a live edge for the same (pair, relation) is
-    // superseded by this newer fact - its invalid_at becomes the new edge's valid_at. An edge the
-    // entry says has ENDED writes no new live edge; it closes the old one.
-    await db.execute(sql`
-      UPDATE memory_entity_edges SET invalid_at = ${writtenAt.toISOString()}
-      WHERE user_id = ${userId} AND invalid_at IS NULL
-        AND lower(source_name) = ${source.toLowerCase()} AND lower(target_name) = ${target.toLowerCase()}
-        AND relation = ${relation} AND valid_at < ${writtenAt.toISOString()}
-    `);
-    if (t.ended === true) {
+    if (ended) {
+      // The entry says THIS tie stopped: close the live edge for the pair. Nothing new is written —
+      // the closed row IS the history.
+      await db.execute(sql`
+        UPDATE memory_entity_edges SET invalid_at = ${at}
+        WHERE user_id = ${userId} AND invalid_at IS NULL
+          AND lower(source_name) = ${src} AND lower(target_name) = ${tgt}
+          AND relation = ${relation} AND valid_at < ${at}
+      `);
       written++;
       continue;
     }
+
+    // (source, target, relation) IS the identity of an edge, so restating one is NOT a change.
+    // Closing and re-opening it on every mention would date-stamp an ending that never happened —
+    // "she's still at Halden Systems" would render as "NO LONGER TRUE since August". Refresh the
+    // wording in place and leave valid_at alone, so the edge keeps the date it actually began.
+    const same = (await db.execute(sql`
+      UPDATE memory_entity_edges SET fact = ${fact}
+      WHERE user_id = ${userId} AND invalid_at IS NULL
+        AND lower(source_name) = ${src} AND lower(target_name) = ${tgt} AND relation = ${relation}
+      RETURNING id
+    `)) as unknown as unknown[];
+    if (same.length) {
+      written++;
+      continue;
+    }
+
+    // A relation you can only hold one of at a time: a DIFFERENT target supersedes the old edge —
+    // moving to Ghent ends living in Utrecht. Runs only when this really is a new edge.
+    if (EXCLUSIVE_RELATIONS.has(relation)) {
+      await db.execute(sql`
+        UPDATE memory_entity_edges SET invalid_at = ${at}
+        WHERE user_id = ${userId} AND invalid_at IS NULL
+          AND lower(source_name) = ${src} AND relation = ${relation}
+          AND lower(target_name) <> ${tgt} AND valid_at < ${at}
+      `);
+    }
     await db.execute(sql`
       INSERT INTO memory_entity_edges (user_id, source_name, target_name, relation, fact, source_memory_id, valid_at)
-      VALUES (${userId}, ${source}, ${target}, ${relation}, ${t.fact.slice(0, 400)}, ${memoryId}, ${writtenAt.toISOString()})
+      VALUES (${userId}, ${source}, ${target}, ${relation}, ${fact}, ${memoryId}, ${at})
     `);
     written++;
   }
