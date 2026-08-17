@@ -123,16 +123,13 @@ const streamMiddleware = createMiddleware().server(async ({ next }) => {
                       ? handleOnboardStream
                       : path === "/mirror/stream"
                         ? handleMirrorStream
-                        : path === "/api/identity/resolve"
+                        : path === "/agent/resolve"
                           ? handleIdentityResolve
                           : null;
   if (!handler) return next();
   // The public identity-resolve endpoint needs its CORS preflight to reach the handler; every
   // other raw endpoint stays strictly POST.
-  if (
-    request.method !== "POST" &&
-    !(request.method === "OPTIONS" && path === "/api/identity/resolve")
-  ) {
+  if (request.method !== "POST" && !(request.method === "OPTIONS" && path === "/agent/resolve")) {
     return new Response("method not allowed", { status: 405 });
   }
   return handler(request);

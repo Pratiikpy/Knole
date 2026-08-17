@@ -15,7 +15,7 @@ const json = (status: number, body: unknown) =>
   });
 
 /**
- * POST /api/identity/resolve — the public face of the identity-grant system, exactly as the
+ * POST /agent/resolve — the public face of the identity-grant system, exactly as the
  * ERC-8004 agent card advertises it. Any agent holding a user-issued grant token redeems it here
  * for the capsule that user chose to share. Everything real happens in resolveGrant (HMAC verify,
  * scope enforcement, revocation, expiry); this is just honest REST plumbing around it.

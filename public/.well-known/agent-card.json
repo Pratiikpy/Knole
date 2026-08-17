@@ -21,7 +21,7 @@
       "description": "A Knole user can mint a signed, scoped, expiring grant token from their journal's identity capsule (values, patterns, and - full scope only - relationships, commitments, preferences, and the overnight self-portrait). Any agent holding a grant token may redeem it here for the capsule the user chose to share. Grants are revocable by the user at any time; a revoked or expired token resolves to nothing. The raw journal is never served - only durable identity memories the user has reviewed.",
       "tags": ["identity", "memory", "consent", "privacy"],
       "examples": [
-        "POST https://www.knole.me/api/identity/resolve with {\"token\": \"<grant token>\"} returns {ok, scope, capsule} or {ok: false, reason}"
+        "POST https://www.knole.me/agent/resolve with {\"token\": \"<grant token>\"} returns {ok, scope, capsule} or {ok: false, reason}"
       ]
     }
   ],
