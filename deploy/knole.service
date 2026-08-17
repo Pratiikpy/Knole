@@ -1,0 +1,25 @@
+[Unit]
+Description=Knole app server (TanStack Start, standalone Node host)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/knole
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Secrets come from /home/ubuntu/knole/.env, which src/db/index.ts loads via dotenv. The file is
+# chmod 600 and never committed.
+ExecStart=/usr/bin/node server/standalone.mjs
+Restart=always
+RestartSec=3
+# The three transformer models (embeddings, NER, reranker) are loaded lazily on first use and then
+# held for the life of the process — a restart costs a cold start, so avoid restart loops.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+StandardOutput=append:/var/log/knole/app.log
+StandardError=append:/var/log/knole/app.log
+
+[Install]
+WantedBy=multi-user.target

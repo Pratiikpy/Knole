@@ -1,0 +1,13 @@
+[Unit]
+Description=Knole worker tick (dreaming, self-portrait, 0G backfill, chain anchors)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/knole
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node scripts/worker-tick.mjs
+StandardOutput=append:/var/log/knole/worker.log
+StandardError=append:/var/log/knole/worker.log

@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Knole worker tick every 30 minutes
+
+[Timer]
+# Soon after boot, then every half hour. The tick is idempotent per UTC day for the nightly work
+# (dreaming, self-portrait), so a frequent timer only means anchors and 0G backfill drain promptly.
+OnBootSec=3min
+OnUnitActiveSec=30min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
