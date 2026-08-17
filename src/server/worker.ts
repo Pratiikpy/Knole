@@ -120,13 +120,15 @@ export async function tick(): Promise<{
       console.error("history anchor step failed:", (e as Error).message);
     }
 
-    // 0G backfill runs LAST with whatever budget remains: uploads are the slowest step, and when
-    // it ran before the anchors it ate the whole budget every night - 261 receipts existed and
-    // ZERO had ever been anchored (found by the public stats page showing 0). Cheap, single-tx
-    // chain anchors must never starve behind slow storage uploads.
+    // Storage uploads are by far the slowest step, so 0G backfill gets a capped SHARE of the tick
+    // rather than everything that is left. It sits after the anchors because giving it priority
+    // once meant 261 receipts existed with ZERO ever anchored (found by the public stats page
+    // reading 0) — but "after" was not enough on its own: with the whole remaining budget it still
+    // consumed the rest, and every step below it (consolidation, digests, nudges, valence, signals,
+    // radar) returned zero on every run. The cap is what actually keeps the tail alive.
     let backfilled = 0;
     try {
-      backfilled = await backfill0G({ start, budgetMs });
+      backfilled = await backfill0G({ start, budgetMs: Math.floor(budgetMs * 0.6) });
     } catch (e) {
       console.error("0G backfill failed:", (e as Error).message);
     }
