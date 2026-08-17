@@ -109,9 +109,16 @@ function IdentityPage() {
     <Shell>
       <section className="px-6 pb-24 pt-12">
         <div className="mx-auto max-w-[58ch]">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h1 className="font-display text-[44px] italic leading-none">Portable identity</h1>
-            <Link to="/the-index" className="text-[12px] text-muted-foreground hover:text-ink">
+          {/* The heading is two words where the other section titles are one, so it needs the
+              smaller mobile step — at 44px it wrapped into the "your memory" link on a phone. */}
+          <div className="mb-2 flex items-baseline justify-between gap-4">
+            <h1 className="font-display text-[34px] italic leading-none sm:text-[44px]">
+              Portable identity
+            </h1>
+            <Link
+              to="/the-index"
+              className="shrink-0 text-[12px] text-muted-foreground hover:text-ink"
+            >
               your memory →
             </Link>
           </div>
