@@ -392,7 +392,7 @@ function InsightsPage() {
             {m.phase !== "empty" && (
               <Link
                 to="/wrapped"
-                className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-tan hover:text-ink"
+                className="mt-4 flex w-fit items-center gap-1.5 text-[12px] text-tan hover:text-ink"
               >
                 Make a shareable card — the shape, never the words →
               </Link>
@@ -400,7 +400,7 @@ function InsightsPage() {
             {m.phase !== "empty" && (
               <Link
                 to="/year"
-                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-tan hover:text-ink"
+                className="mt-2 flex w-fit items-center gap-1.5 text-[12px] text-tan hover:text-ink"
               >
                 See your year in one page →
               </Link>
