@@ -209,7 +209,7 @@ export async function runDueAutomations(): Promise<{ ran: number; notified: numb
     UPDATE automations SET next_run_at = next_run_at + interval '1 hour'
     WHERE id IN (
       SELECT id FROM automations
-      WHERE active = true AND next_run_at IS NOT NULL AND next_run_at <= ${now}
+      WHERE active = true AND next_run_at IS NOT NULL AND next_run_at <= ${now.toISOString()}
       ORDER BY next_run_at ASC
       LIMIT 25
       FOR UPDATE SKIP LOCKED
