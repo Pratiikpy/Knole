@@ -453,16 +453,19 @@ function OnboardingInner() {
                       d="M12 8v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
+                  {/* One element, not a bare fragment: in a flex row every text node becomes its
+                      own item, so gap-2 was spacing the sentence apart mid-phrase instead of only
+                      separating it from the icon. */}
                   {persisted ? (
-                    <>
+                    <span>
                       Knole will remember: <span className="italic">{thing.toLowerCase()}</span> is
                       quietly with you this week.
-                    </>
+                    </span>
                   ) : (
-                    <>
+                    <span>
                       This reflection is yours. <span className="italic">Sign in to keep it</span> —
                       Knole starts remembering from here.
-                    </>
+                    </span>
                   )}
                 </div>
               )}
