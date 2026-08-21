@@ -48,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Memory",
     items: [
       { to: "/the-index", label: "The Index", hint: "Everything Knole remembers" },
+      { to: "/people", label: "People", hint: "Who keeps appearing, and how it changed" },
       { to: "/identity", label: "Identity", hint: "Your portable memory capsule" },
       { to: "/history", label: "History", hint: "Every entry, by date" },
       { to: "/extension", label: "Save from Chrome", hint: "Clip anything to Knole" },

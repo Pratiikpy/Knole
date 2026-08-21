@@ -22,6 +22,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RememberedRouteImport } from './routes/remembered'
 import { Route as ProgramsRouteImport } from './routes/programs'
+import { Route as PeopleRouteImport } from './routes/people'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OnThisDayRouteImport } from './routes/on-this-day'
 import { Route as IntentionsRouteImport } from './routes/intentions'
@@ -42,6 +43,7 @@ import { Route as AskRouteImport } from './routes/ask'
 import { Route as ArchetypeRouteImport } from './routes/archetype'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
+import { Route as PersonNameRouteImport } from './routes/person.$name'
 
 const YearRoute = YearRouteImport.update({
   id: '/year',
@@ -106,6 +108,11 @@ const RememberedRoute = RememberedRouteImport.update({
 const ProgramsRoute = ProgramsRouteImport.update({
   id: '/programs',
   path: '/programs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -208,6 +215,11 @@ const RSlugRoute = RSlugRouteImport.update({
   path: '/r/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PersonNameRoute = PersonNameRouteImport.update({
+  id: '/person/$name',
+  path: '/person/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -229,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/intentions': typeof IntentionsRoute
   '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
+  '/people': typeof PeopleRoute
   '/programs': typeof ProgramsRoute
   '/remembered': typeof RememberedRoute
   '/research': typeof ResearchRoute
@@ -242,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
+  '/person/$name': typeof PersonNameRoute
   '/r/$slug': typeof RSlugRoute
 }
 export interface FileRoutesByTo {
@@ -264,6 +278,7 @@ export interface FileRoutesByTo {
   '/intentions': typeof IntentionsRoute
   '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
+  '/people': typeof PeopleRoute
   '/programs': typeof ProgramsRoute
   '/remembered': typeof RememberedRoute
   '/research': typeof ResearchRoute
@@ -277,6 +292,7 @@ export interface FileRoutesByTo {
   '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
+  '/person/$name': typeof PersonNameRoute
   '/r/$slug': typeof RSlugRoute
 }
 export interface FileRoutesById {
@@ -300,6 +316,7 @@ export interface FileRoutesById {
   '/intentions': typeof IntentionsRoute
   '/on-this-day': typeof OnThisDayRoute
   '/onboarding': typeof OnboardingRoute
+  '/people': typeof PeopleRoute
   '/programs': typeof ProgramsRoute
   '/remembered': typeof RememberedRoute
   '/research': typeof ResearchRoute
@@ -313,6 +330,7 @@ export interface FileRoutesById {
   '/wellbeing': typeof WellbeingRoute
   '/wrapped': typeof WrappedRoute
   '/year': typeof YearRoute
+  '/person/$name': typeof PersonNameRoute
   '/r/$slug': typeof RSlugRoute
 }
 export interface FileRouteTypes {
@@ -337,6 +355,7 @@ export interface FileRouteTypes {
     | '/intentions'
     | '/on-this-day'
     | '/onboarding'
+    | '/people'
     | '/programs'
     | '/remembered'
     | '/research'
@@ -350,6 +369,7 @@ export interface FileRouteTypes {
     | '/wellbeing'
     | '/wrapped'
     | '/year'
+    | '/person/$name'
     | '/r/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -372,6 +392,7 @@ export interface FileRouteTypes {
     | '/intentions'
     | '/on-this-day'
     | '/onboarding'
+    | '/people'
     | '/programs'
     | '/remembered'
     | '/research'
@@ -385,6 +406,7 @@ export interface FileRouteTypes {
     | '/wellbeing'
     | '/wrapped'
     | '/year'
+    | '/person/$name'
     | '/r/$slug'
   id:
     | '__root__'
@@ -407,6 +429,7 @@ export interface FileRouteTypes {
     | '/intentions'
     | '/on-this-day'
     | '/onboarding'
+    | '/people'
     | '/programs'
     | '/remembered'
     | '/research'
@@ -420,6 +443,7 @@ export interface FileRouteTypes {
     | '/wellbeing'
     | '/wrapped'
     | '/year'
+    | '/person/$name'
     | '/r/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -443,6 +467,7 @@ export interface RootRouteChildren {
   IntentionsRoute: typeof IntentionsRoute
   OnThisDayRoute: typeof OnThisDayRoute
   OnboardingRoute: typeof OnboardingRoute
+  PeopleRoute: typeof PeopleRoute
   ProgramsRoute: typeof ProgramsRoute
   RememberedRoute: typeof RememberedRoute
   ResearchRoute: typeof ResearchRoute
@@ -456,6 +481,7 @@ export interface RootRouteChildren {
   WellbeingRoute: typeof WellbeingRoute
   WrappedRoute: typeof WrappedRoute
   YearRoute: typeof YearRoute
+  PersonNameRoute: typeof PersonNameRoute
   RSlugRoute: typeof RSlugRoute
 }
 
@@ -550,6 +576,13 @@ declare module '@tanstack/react-router' {
       path: '/programs'
       fullPath: '/programs'
       preLoaderRoute: typeof ProgramsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -692,6 +725,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/person/$name': {
+      id: '/person/$name'
+      path: '/person/$name'
+      fullPath: '/person/$name'
+      preLoaderRoute: typeof PersonNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -715,6 +755,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntentionsRoute: IntentionsRoute,
   OnThisDayRoute: OnThisDayRoute,
   OnboardingRoute: OnboardingRoute,
+  PeopleRoute: PeopleRoute,
   ProgramsRoute: ProgramsRoute,
   RememberedRoute: RememberedRoute,
   ResearchRoute: ResearchRoute,
@@ -728,6 +769,7 @@ const rootRouteChildren: RootRouteChildren = {
   WellbeingRoute: WellbeingRoute,
   WrappedRoute: WrappedRoute,
   YearRoute: YearRoute,
+  PersonNameRoute: PersonNameRoute,
   RSlugRoute: RSlugRoute,
 }
 export const routeTree = rootRouteImport

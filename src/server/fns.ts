@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { listPeople, personStory } from "./people";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -1676,4 +1677,19 @@ export const verifyOnChainFn = createServerFn({ method: "POST" })
     const userId = await currentUserId();
     const payload = await restoreEntryFromChain(userId, data.root);
     return { recovered: payload.text.slice(0, 180) };
+  });
+
+// ── People: the relationship layer, finally visible ──────────────────────────
+// Read-only. requireUserId (not currentUserId) because a guest has no relationships worth a page,
+// and it keeps one person's story from ever being served to another browser.
+export const peopleListFn = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserId();
+  return { people: await listPeople(userId) };
+});
+
+export const personStoryFn = createServerFn({ method: "GET" })
+  .validator(z.object({ name: z.string().min(1).max(80) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    return await personStory(userId, data.name);
   });
