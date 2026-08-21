@@ -78,7 +78,20 @@ export async function sendPush(
   } catch (e) {
     const code = (e as { statusCode?: number }).statusCode;
     if (code === 404 || code === 410) return "gone"; // expired/unsubscribed → caller prunes it
-    console.error("sendPush failed:", (e as Error).message);
+    // A structurally invalid subscription (truncated p256dh, missing auth) can never succeed, so
+    // "fail" would retry it on every dispatch forever. It is as dead as an expired one — prune it.
+    const msg = (e as Error).message ?? "";
+    // Only the subscription's OWN shape — never our VAPID config, which would delete good
+    // subscriptions over a server-side mistake.
+    if (
+      /p256dh|auth.*bytes|should be 65 bytes|should be 16 bytes|subscription.*(invalid|missing)/i.test(
+        msg,
+      )
+    ) {
+      console.error("sendPush: dropping an unusable subscription —", msg);
+      return "gone";
+    }
+    console.error("sendPush failed:", msg);
     return "fail";
   }
 }
