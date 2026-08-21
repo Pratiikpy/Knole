@@ -112,7 +112,11 @@ function CreatePage() {
         setErr(
           r.reason === "not_configured"
             ? "Image generation isn't turned on in this environment."
-            : "Couldn't make that one — try a different prompt.",
+            : r.reason === "unavailable"
+              ? "Image generation is down right now — that's on our side, not your prompt. Try again a bit later."
+              : r.reason === "busy"
+                ? "Too many images being made right now — give it a minute and try again."
+                : "Couldn't make that one — try a different prompt.",
         );
       }
     } catch {

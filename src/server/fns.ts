@@ -841,9 +841,22 @@ export const generateImageFn = createServerFn({ method: "POST" })
       return { ok: true as const, image, credits: remaining };
     } catch (e) {
       console.error("generateImage failed:", (e as Error).message);
-      return { ok: false as const, reason: "failed" as const, credits };
+      return { ok: false as const, reason: upstreamReason(e), credits };
     }
   });
+
+/**
+ * Why an upstream 0G call failed, told honestly. A 402 (the shared inference key ran dry), a 5xx or
+ * a timeout is OUR outage, not the user's wording — reporting those as "try a different prompt"
+ * sends people into retry loops rewording a request that was never the problem.
+ */
+function upstreamReason(e: unknown): "unavailable" | "busy" | "failed" {
+  const m = (e as Error)?.message ?? "";
+  if (/\(40[123]\)|insufficient|no balance|not configured/i.test(m)) return "unavailable";
+  if (/\(429\)|rate limit|too many/i.test(m)) return "busy";
+  if (/\(5\d\d\)|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(m)) return "unavailable";
+  return "failed";
+}
 
 const RESEARCH_COST = 3; // credits per research query for non-subscribers
 
@@ -867,7 +880,7 @@ export const researchFn = createServerFn({ method: "POST" })
       return { ok: true as const, ...r, credits: remaining };
     } catch (e) {
       console.error("research failed:", (e as Error).message);
-      return { ok: false as const, reason: "failed" as const, credits };
+      return { ok: false as const, reason: upstreamReason(e), credits };
     }
   });
 

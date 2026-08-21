@@ -56,7 +56,11 @@ function ResearchPage() {
         setErr(
           r.reason === "not_configured"
             ? "Research isn't turned on in this environment."
-            : "Couldn't research that one — try rephrasing.",
+            : r.reason === "unavailable"
+              ? "Private research is down right now — that's on our side, not your question. Try again a bit later."
+              : r.reason === "busy"
+                ? "Research is busy right now — give it a minute and try again."
+                : "Couldn't research that one — try rephrasing.",
         );
       }
     } catch {
