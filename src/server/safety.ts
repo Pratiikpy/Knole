@@ -55,5 +55,16 @@ export async function* oneShot(s: string): AsyncGenerator<string, void, void> {
  * is not a string is rejected, never coerced.
  */
 export function textField(v: unknown): string | null {
-  return typeof v === "string" ? v.trim() : null;
+  if (typeof v !== "string") return null;
+  // Postgres text cannot hold a NUL byte, so pasting anything carrying one (a PDF, a binary blob,
+  // some editors) made the insert throw and the writer lost the entry to a 500. The other C0
+  // controls are storable but meaningless in prose. Tab, newline and carriage return are kept,
+  // because they are the shape of what someone actually wrote. Built by code point rather than a
+  // regex: the escapes in a control-character class do not survive a shell heredoc.
+  let out = "";
+  for (const ch of v) {
+    const c = ch.codePointAt(0) ?? 0;
+    if (c === 9 || c === 10 || c === 13 || c > 31) out += ch;
+  }
+  return out.trim();
 }
