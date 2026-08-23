@@ -762,16 +762,22 @@ export async function setMemoryStatus(
   id: string,
   status: "active" | "pinned" | "forgotten",
 ) {
-  await db
+  // The WHERE already scopes to the owner, so someone else's id simply matches nothing. Check that
+  // it matched before doing anything further: logging history for a row you do not own would either
+  // write a cross-user audit line or throw, and throwing turned a plain "not yours" into a 500 HTML
+  // error page. NOT_FOUND keeps the denial honest and indistinguishable from an id that never existed.
+  const touched = await db
     .update(memories)
     .set({ status, updatedAt: new Date() })
-    .where(and(eq(memories.id, id), eq(memories.userId, userId)));
+    .where(and(eq(memories.id, id), eq(memories.userId, userId)))
+    .returning({ id: memories.id });
+  if (!touched.length) throw new Error("NOT_FOUND");
   await logHistory(id, userId, status === "forgotten" ? "forgotten" : "status", null, { status });
 }
 
 export async function updateMemoryContent(userId: string, id: string, content: string) {
   const v = await embed(content);
-  await db
+  const updated = await db
     .update(memories)
     .set({
       content,
@@ -781,7 +787,9 @@ export async function updateMemoryContent(userId: string, id: string, content: s
       userVerifiedAt: new Date(), // user-edit-wins lock
       updatedAt: new Date(),
     })
-    .where(and(eq(memories.id, id), eq(memories.userId, userId)));
+    .where(and(eq(memories.id, id), eq(memories.userId, userId)))
+    .returning({ id: memories.id });
+  if (!updated.length) throw new Error("NOT_FOUND");
   await logHistory(id, userId, "updated", null, { content });
 }
 

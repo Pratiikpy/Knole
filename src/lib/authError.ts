@@ -11,3 +11,12 @@ export function isAuthRequired(e: unknown): boolean {
 
 /** Consistent inline prompt; the sticky header banner carries the actual "Sign in" link. */
 export const SIGN_IN_HINT = "Sign in to keep this — your journal stays private to you.";
+
+/**
+ * True when a server function refused because the addressed row is not the caller's (or does not
+ * exist). Deliberately one state: telling a stranger "it exists but is not yours" is itself a leak.
+ */
+export function isNotFound(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.includes("NOT_FOUND");
+}
