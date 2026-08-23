@@ -2,7 +2,7 @@ import { chatReplyStream, gatherChatContext, type Turn } from "./chat";
 import { embed } from "./embed";
 import { retrieveMemories, personaBlock } from "./engine";
 import { handleStreamingReply } from "./streamReply";
-import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
+import { detectCrisis, CRISIS_REPLY, oneShot, textField } from "./safety";
 
 /**
  * Streaming chat endpoint (POST /chat/stream). Mirrors chatFn but streams Knole's reply
@@ -11,8 +11,8 @@ import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
 export function handleChatStream(request: Request): Promise<Response> {
   return handleStreamingReply(request, "chat", async (userId, body) => {
     const b = body as { message?: unknown; history?: unknown };
-    const message = String(b.message ?? "").trim();
-    if (message.length < 1 || message.length > 4000) {
+    const message = textField(b.message);
+    if (message === null || message.length < 1 || message.length > 4000) {
       return { error: 400, msg: "message must be 1–4000 chars" };
     }
     if (detectCrisis(message).crisis) {

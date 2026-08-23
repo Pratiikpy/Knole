@@ -2,7 +2,7 @@ import { reflectStream, LENSES, type Lens } from "./reflect";
 import { embed } from "./embed";
 import { retrieveMemories, personaBlock } from "./engine";
 import { handleStreamingReply } from "./streamReply";
-import { detectCrisis, CRISIS_REPLY, oneShot } from "./safety";
+import { detectCrisis, CRISIS_REPLY, oneShot, textField } from "./safety";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db";
 
@@ -40,8 +40,8 @@ async function yesterdayEveningFor(userId: string): Promise<Date> {
  */
 export function handleJournalStream(request: Request): Promise<Response> {
   return handleStreamingReply(request, "journal", async (userId, body) => {
-    const entry = String((body as { entry?: string }).entry ?? "").trim();
-    if (entry.length < 1 || entry.length > 20000) {
+    const entry = textField((body as { entry?: unknown }).entry);
+    if (entry === null || entry.length < 1 || entry.length > 20000) {
       return { error: 400, msg: "entry must be 1–20000 chars" };
     }
     // SB243 crisis intercept — before any reflection. Save the entry (it's theirs) but hand off to

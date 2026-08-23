@@ -47,3 +47,13 @@ export const CRISIS_REPLY =
 export async function* oneShot(s: string): AsyncGenerator<string, void, void> {
   yield s;
 }
+
+/**
+ * A request-body field that must be text. JSON carries numbers, objects, arrays and booleans, and a
+ * `body as { x?: string }` assertion is erased at runtime — so `String(body.x ?? "")` quietly turned
+ * 12345 into "12345" and {} into "[object Object]", and saved both as journal entries. Anything that
+ * is not a string is rejected, never coerced.
+ */
+export function textField(v: unknown): string | null {
+  return typeof v === "string" ? v.trim() : null;
+}

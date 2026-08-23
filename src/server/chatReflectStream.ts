@@ -4,7 +4,7 @@ import { embed } from "./embed";
 import { retrieveMemories } from "./engine";
 import { requireUserId } from "./session";
 import { enforceRate } from "./rateLimit";
-import { detectCrisis, CRISIS_REPLY } from "./safety";
+import { detectCrisis, CRISIS_REPLY, textField } from "./safety";
 
 /**
  * Non-persisting streaming chat endpoint (POST /chat/reflect-stream). Conversational capture makes
@@ -38,8 +38,9 @@ export async function handleChatReflectStream(request: Request): Promise<Respons
     /* invalid JSON → caught by the validation below */
   }
   const b = body as { message?: unknown; history?: unknown };
-  const message = String(b.message ?? "").trim();
-  if (message.length < 1 || message.length > 4000) return txt(400, "message must be 1-4000 chars");
+  const message = textField(b.message);
+  if (message === null || message.length < 1 || message.length > 4000)
+    return txt(400, "message must be 1-4000 chars");
 
   // SB243 crisis intercept — pause the reflection and stream the referral. Chat is ephemeral, so
   // nothing is saved here either way; the client renders the CrisisCard on x-knole-crisis.
