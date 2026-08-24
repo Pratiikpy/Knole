@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { listPeople, personStory } from "./people";
+import { isNotFound } from "../lib/authError";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -548,16 +549,29 @@ export const setMemoryStatusFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), status: z.enum(["active", "pinned", "forgotten"]) }))
   .handler(async ({ data }) => {
     const userId = await requireUserId();
-    await setMemoryStatus(userId, data.id, data.status);
-    return { ok: true };
+    // A row that is not this user's throws NOT_FOUND. Returning the refusal instead of letting it
+    // propagate keeps it off the 500-with-an-HTML-error-page path: a thrown server-fn error renders
+    // as a crash page, which reads as "we broke" rather than "that is not yours".
+    try {
+      await setMemoryStatus(userId, data.id, data.status);
+      return { ok: true as const };
+    } catch (e) {
+      if (isNotFound(e)) return { ok: false as const, reason: "not_found" as const };
+      throw e;
+    }
   });
 
 export const editMemoryFn = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), content: z.string().min(1).max(2000) }))
   .handler(async ({ data }) => {
     const userId = await requireUserId();
-    await updateMemoryContent(userId, data.id, data.content);
-    return { ok: true };
+    try {
+      await updateMemoryContent(userId, data.id, data.content);
+      return { ok: true as const };
+    } catch (e) {
+      if (isNotFound(e)) return { ok: false as const, reason: "not_found" as const };
+      throw e;
+    }
   });
 
 export const provenanceFn = createServerFn({ method: "POST" })
