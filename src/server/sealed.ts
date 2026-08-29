@@ -50,10 +50,18 @@ async function rawInference(
   opts: { temperature?: number; maxTokens?: number },
 ): Promise<PrivateResult> {
   if (sealedOn()) {
-    try {
-      return await chatSealed(messages, opts);
-    } catch (e) {
-      console.error("0G TEE inference unavailable, falling back:", (e as Error).message);
+    // Two attempts, not one. The broker occasionally drops a request (a provider re-ack, a nonce
+    // race), and the router underneath is a SEPARATE prepaid balance that can be dry while the
+    // ledger is funded — so a single hiccup used to take the whole call down with a confusing
+    // "0G upstream 401". Memory extraction went dark that way. A short retry on the funded path
+    // costs a second and removes the class.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await chatSealed(messages, opts);
+      } catch (e) {
+        console.error(`0G TEE inference attempt ${attempt + 1} failed:`, (e as Error).message);
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
+      }
     }
   }
   const content = await chat(messages, opts);
@@ -66,19 +74,25 @@ async function* rawInferenceStream(
   opts: { temperature?: number; maxTokens?: number },
 ): AsyncGenerator<string, { sealed: boolean; chatID: string | null }, void> {
   if (sealedOn()) {
-    let started = false;
-    try {
-      const gen = chatSealedStream(messages, opts);
-      let next = await gen.next();
-      started = true; // fetch + res.ok passed — committed to the TEE stream
-      while (!next.done) {
-        yield next.value;
-        next = await gen.next();
+    // Same two-attempt rule as rawInference. Retrying is only safe BEFORE the first token is
+    // yielded — `started` guards that, so a mid-stream failure still propagates rather than
+    // double-emitting text the reader has already seen.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let started = false;
+      try {
+        const gen = chatSealedStream(messages, opts);
+        let next = await gen.next();
+        started = true; // fetch + res.ok passed — committed to the TEE stream
+        while (!next.done) {
+          yield next.value;
+          next = await gen.next();
+        }
+        return next.value;
+      } catch (e) {
+        if (started) throw e; // mid-stream failure — propagate rather than double-emit
+        console.error(`0G TEE stream attempt ${attempt + 1} failed:`, (e as Error).message);
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
       }
-      return next.value;
-    } catch (e) {
-      if (started) throw e; // mid-stream failure — propagate rather than double-emit
-      console.error("0G TEE stream unavailable, falling back:", (e as Error).message);
     }
   }
   for await (const delta of chatStream(messages, opts)) yield delta;

@@ -101,32 +101,45 @@ export async function teeChat(
   const provider = TEE_PROVIDER;
   await ensureAcked(broker, provider);
   const { endpoint, model } = await broker.inference.getServiceMetadata(provider);
-  const headers = await broker.inference.getRequestHeaders(provider, promptText(messages));
-  const res = await fetch(`${endpoint}/chat/completions`, {
-    method: "POST",
-    signal: AbortSignal.timeout(Number(process.env.LLM_TIMEOUT_MS ?? 45000)),
-    headers: { "Content-Type": "application/json", ...headers },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: opts.temperature ?? 0.7,
-      max_tokens: Math.max(opts.maxTokens ?? 1024, 2048),
-      stream: false,
-    }),
-  });
-  if (!res.ok) throw new Error(`0G TEE compute failed (${res.status})`);
-  const data = (await res.json()) as {
-    id?: string;
-    usage?: unknown;
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-  if (!content) throw new Error("0G TEE compute returned empty content");
-  const chatID = res.headers.get("ZG-Res-Key") || res.headers.get("zg-res-key") || data.id || "";
-  // processResponse's content param expects the USAGE JSON (token counts for fee settlement), not
-  // the answer text — passing prose made the SDK's fee parse fail silently.
-  const verified = await verify(broker, provider, chatID, JSON.stringify(data.usage ?? {}));
-  return { content, model, verified, provider };
+  // The empty-content double-token retry that llm.ts has always had, which this path was missing.
+  // The TEE serves a thinking model: it can spend a tight budget reasoning and return an empty
+  // completion, which threw and dropped the caller onto the router fallback — a SEPARATE prepaid
+  // balance that is dry, so the user saw "0G upstream 401" and memory extraction lost an entry.
+  // Giving the model twice the room is the fix; the fallback was never meant to carry this.
+  const base = Math.max(opts.maxTokens ?? 1024, 2048);
+  let lastErr = "0G TEE compute returned empty content";
+  for (const maxTokens of [base, base * 2]) {
+    const headers = await broker.inference.getRequestHeaders(provider, promptText(messages));
+    const res = await fetch(`${endpoint}/chat/completions`, {
+      method: "POST",
+      signal: AbortSignal.timeout(Number(process.env.LLM_TIMEOUT_MS ?? 45000)),
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: opts.temperature ?? 0.7,
+        max_tokens: maxTokens,
+        stream: false,
+      }),
+    });
+    if (!res.ok) throw new Error(`0G TEE compute failed (${res.status})`); // more room won't fix a non-2xx
+    const data = (await res.json()) as {
+      id?: string;
+      usage?: unknown;
+      choices?: { message?: { content?: string } }[];
+    };
+    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+    if (!content) {
+      lastErr = "0G TEE compute returned empty content";
+      continue; // settle nothing: an empty completion is not a delivered answer
+    }
+    const chatID = res.headers.get("ZG-Res-Key") || res.headers.get("zg-res-key") || data.id || "";
+    // processResponse's content param expects the USAGE JSON (token counts for fee settlement), not
+    // the answer text — passing prose made the SDK's fee parse fail silently.
+    const verified = await verify(broker, provider, chatID, JSON.stringify(data.usage ?? {}));
+    return { content, model, verified, provider };
+  }
+  throw new Error(lastErr);
 }
 
 /** Streaming TEE completion for TTFT. Yields deltas; returns {verified, chatID} after processResponse. */
