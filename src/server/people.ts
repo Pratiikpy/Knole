@@ -22,13 +22,23 @@ export type PersonSummary = {
  */
 export async function listPeople(userId: string): Promise<PersonSummary[]> {
   const rows = (await db.execute(sql`
+    -- "last seen" is the last time this person appeared in the JOURNAL, not the last time a row
+    -- about them was written. Reading updated_at/created_at made every person on the page share
+    -- one date -- whenever extraction last ran -- which for a page about how people drift in and
+    -- out of a life is the one column that must not be wrong. memories.valid_at and edges.valid_at
+    -- both carry the source entry's date.
     WITH names AS (
-      SELECT name, mention_count, jsonb_array_length(memory_ids) AS mem_count, updated_at
-        FROM memory_entities WHERE user_id = ${userId}
+      SELECT me.name, me.mention_count, jsonb_array_length(me.memory_ids) AS mem_count,
+             COALESCE((
+               SELECT max(m.valid_at) FROM memories m
+               WHERE m.user_id = ${userId}
+                 AND me.memory_ids ? m.id::text
+             ), me.updated_at) AS updated_at
+        FROM memory_entities me WHERE me.user_id = ${userId}
       UNION ALL
-      SELECT source_name AS name, 0, 0, created_at FROM memory_entity_edges WHERE user_id = ${userId}
+      SELECT source_name AS name, 0, 0, valid_at FROM memory_entity_edges WHERE user_id = ${userId}
       UNION ALL
-      SELECT target_name AS name, 0, 0, created_at FROM memory_entity_edges WHERE user_id = ${userId}
+      SELECT target_name AS name, 0, 0, valid_at FROM memory_entity_edges WHERE user_id = ${userId}
     ),
     grouped AS (
       SELECT lower(name) AS key, max(name) AS name,

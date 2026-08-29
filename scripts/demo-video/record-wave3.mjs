@@ -117,7 +117,7 @@ try {
   await fadeOutCover(page);
   await sleep(600);
   await cap("A journal that remembers your life — and can prove it never read it in the clear.");
-  await sleep(3800);
+  await sleep(2700);
   await cap("");
   await parkCursor(page);
   await sleep(400);
@@ -134,36 +134,57 @@ try {
     "Mara starts at Corvid on Monday and the flat is still full of boxes. I keep telling people I'm fine with the move.",
     { perCharMs: 26 },
   );
-  await sleep(700);
+  await sleep(900);
+
+  // Echoes: as the draft is typed, its embedding pulls up dated past entries. It appears BETWEEN
+  // the textarea and the controls, so it shifts the Reflect button down after it has been measured
+  // — the first take clicked where the button used to be and hit the header nav instead. Wait for
+  // the panel to settle, show it (it is one of the better things the product does), and re-locate
+  // the control immediately before clicking it.
+  const echoes = page.getByText(/Echoes from your past/i).first();
+  await echoes.waitFor({ timeout: 30_000 }).catch(() => {});
+  await sleep(1200);
+  await cap("While you write, it surfaces what you already said — dated.");
+  await sleep(3000);
+  await cap("");
+  await sleep(400);
+
   // The lens row picks the voice; a separate Reflect button submits.
   const lens = page.locator('button:visible:has-text("Gentle")').first();
+  await lens.scrollIntoViewIfNeeded().catch(() => {});
+  await sleep(500);
   await naturalClick(page, lens).catch(() => {});
-  await sleep(600);
-  // .last(): the header nav also has a "Reflect" item, and the composer's submit is the later one.
-  await naturalClick(
-    page,
-    page
-      .locator("button:visible")
-      .filter({ hasText: /^Reflect$/ })
-      .last(),
-  ).catch(() => {});
+  await sleep(700);
+  // .last(): the header nav also carries a "Reflect" item; the composer's submit is the later one.
+  const submit = page
+    .locator("button:visible")
+    .filter({ hasText: /^Reflect$/ })
+    .last();
+  await submit.scrollIntoViewIfNeeded().catch(() => {});
+  await sleep(800); // let the scroll settle so the click lands on the button, not where it was
+  await naturalClick(page, submit).catch(() => {});
   const m1 = markStart("reflection");
-  // The receipt link only appears once the reflection has finished and been committed.
+  // The receipt link only appears once the reflection has finished and been committed. If it never
+  // arrives the take is unusable, so say so loudly rather than filming a silent dead wait.
   const receiptLink = page.getByRole("button", { name: /reflection receipt/i }).first();
-  await receiptLink.waitFor({ timeout: 150_000 }).catch(() => {});
-  await sleep(2200);
+  let reflected = true;
+  await receiptLink.waitFor({ timeout: 180_000 }).catch(() => {
+    reflected = false;
+  });
+  if (!reflected) log("  !! the reflection never completed — this take is not usable");
+  await sleep(1800);
   markEnd(m1);
   await cap("It writes back — in your voice, from your own past.");
-  await sleep(3800);
+  await sleep(2700);
   await cap("");
   // Open the receipt: the leaf hash, the enclave, and the on-chain anchor for THIS reflection.
   await scrollElTo(page, receiptLink, 0.55, 1800).catch(() => {});
   await naturalClick(page, receiptLink).catch(() => {});
-  await sleep(2600);
+  await sleep(2000);
   await cap("Composed inside a 0G TEE, attestation-verified — with a receipt for this reflection.");
-  await sleep(4600);
+  await sleep(3200);
   await cap("Not a privacy policy. A hash you can check against the chain yourself.");
-  await sleep(3800);
+  await sleep(2700);
   await cap("");
   await sleep(400);
 
@@ -171,42 +192,55 @@ try {
   log("beat 2 — people → person");
   await gotoBeat(page, `${BASE}/people`);
   await cap("Every journal can store what you wrote.");
-  await sleep(3000);
+  await sleep(2200);
   await cap("This one knows how the people in it changed.");
-  await sleep(3200);
+  await sleep(2400);
   const mara = page.locator('a:has-text("Mara")').first();
   await naturalClick(page, mara).catch(() => page.goto(`${BASE}/person/Mara`));
   await sleep(1800);
   await cap("");
   await sleep(600);
   const changed = page.getByText(/What changed/i).first();
-  await scrollElTo(page, changed, 0.22, 2600).catch(() => {});
+  await scrollElTo(page, changed, 0.34, 2400).catch(() => {});
   await sleep(900);
   await cap("The job she held for six years — and the day the journal saw it end.");
-  await sleep(4600);
+  await sleep(3200);
   await cap("Nobody typed a field. The prose was the input.");
-  await sleep(3800);
+  await sleep(2700);
   await cap("");
   await smoothScroll(page, 520, 2600);
-  await sleep(2200);
+  await sleep(1800);
 
   // ── BEAT 3 · ask, with receipts ───────────────────────────────────────────
   log("beat 3 — ask");
   await gotoBeat(page, `${BASE}/ask`);
-  const q = page.getByPlaceholder(/ask anything/i).first();
-  await naturalType(page, q, "What changed for Mara this year?", { perCharMs: 34 });
-  await sleep(500);
-  await page.keyboard.press("Enter");
+  await cap("Ask it anything about your own life.");
+  await sleep(2400);
+  await cap("");
+  // A PRESET, not a typed question. The free tier allows three custom asks a day and unlimited
+  // presets, so this is both the honest default experience and the one that cannot fail mid-take
+  // because an earlier test used the allowance up.
+  const preset = page.getByRole("button", { name: /shifted in me/i }).first();
+  await scrollElTo(page, preset, 0.35, 2000).catch(() => {});
+  await naturalClick(page, preset).catch(() => {});
   const m2 = markStart("ask");
+  let answered = true;
   await page
-    .getByText(/Meridian|Corvid|from your/i)
+    .getByText(/THE THROUGHLINE/i)
     .first()
-    .waitFor({ timeout: 120_000 })
-    .catch(() => {});
-  await sleep(3000);
+    .waitFor({ timeout: 150_000 })
+    .catch(() => {
+      answered = false;
+    });
+  if (!answered) log("  !! the ask never answered — this take is not usable");
+  await sleep(2500);
   markEnd(m2);
-  await cap("Answered from dated entries — with the entries it used.");
-  await sleep(4200);
+  await cap("Answered from dated entries — every claim numbered to the words it came from.");
+  await sleep(3300);
+  await smoothScroll(page, 420, 2400);
+  await sleep(1800);
+  await cap("Composed inside the enclave too. Nobody else can read the question or the answer.");
+  await sleep(3100);
   await cap("");
   await sleep(500);
 
@@ -220,11 +254,11 @@ try {
   await cap(
     "A real ERC-7857 iNFT. The control interface id returns false — a registry, not a stub.",
   );
-  await sleep(4600);
+  await sleep(3200);
   await smoothScroll(page, 700, 2800);
   await sleep(1800);
   await cap("And the sensing model: dataset, hashes, on-chain commitment. Auditable end to end.");
-  await sleep(4600);
+  await sleep(3200);
   await cap("");
   await sleep(600);
 
@@ -232,9 +266,9 @@ try {
   log("beat 5 — forge test");
   await gotoBeat(page, TERMINAL);
   await cap("Last wave the judge asked for dedicated Solidity tests.");
-  await sleep(3600);
+  await sleep(2600);
   await cap("112 — unit, fuzz and invariant. The official 0G reference has no fuzz tests at all.");
-  await sleep(4800);
+  await sleep(3300);
   await cap("");
   await sleep(600);
 
@@ -242,7 +276,7 @@ try {
   log("beat 6 — stats → close");
   await gotoBeat(page, `${BASE}/stats`);
   await cap("Real usage, counted honestly — the on-chain numbers carry their own receipts.");
-  await sleep(4400);
+  await sleep(3100);
   await cap("");
   await sleep(500);
   await gotoBeat(page, `${BASE}/`);

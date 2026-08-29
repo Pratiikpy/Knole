@@ -28,7 +28,10 @@ const src = webms[0];
 console.log("source:", src, `(${(statSync(src).size / 1e6).toFixed(1)} MB)`);
 
 // ── build the speed-ramp filter from the dead spans ──
-const RAMP = 4,
+// A dead span is the model thinking. Four times was chosen when those waits were ~15s; an ask that
+// takes 100s still reads as a stall at 25s. Six keeps the wait visible and honest without testing
+// the patience of someone watching twenty of these.
+const RAMP = Number(process.env.DEMO_RAMP ?? 6),
   M_START = 1.6,
   M_END = 0.9; // keep the click + the payoff at 1x; only ramp the loader middle
 let spans = [];
