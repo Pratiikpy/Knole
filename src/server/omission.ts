@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chatPrivate } from "./sealed";
 import { parseModelJson } from "./llmJson";
+import { detectCrisis } from "./safety";
 
 const { entrySignals, reflectionArtifacts } = schema;
 
@@ -274,6 +275,11 @@ export async function backfillSignals(opts?: {
   let done = 0;
   for (const r of rows) {
     if (Date.now() - start > budgetMs) break;
+    // A crisis disclosure derives NOTHING. The live path already honours that, but this backfill
+    // sweeps every entry that has no signals yet — so it walked straight back over the entry the
+    // live path had deliberately skipped and tagged it `topics: ["suicide","death"], valence: -1`,
+    // seven minutes later. The same guard the valence backfill already carries.
+    if (detectCrisis(String(r.text)).crisis) continue;
     try {
       await storeSignals(
         String(r.user_id),
