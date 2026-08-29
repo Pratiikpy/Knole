@@ -130,7 +130,11 @@ export async function extractEntityEdges(
 ): Promise<number> {
   const edges = await extractEdgesFromText(entryText);
   let written = 0;
-  for (const { source, target, relation, fact, ended } of edges) {
+  // Closures before openings. One entry routinely states both halves of a change ("she's leaving
+  // Meridian, she's taken a role at Corvid"), and applying them in the model's arbitrary order let
+  // the opening land first — so the closure then matched the NEW edge instead of the old one.
+  const ordered = [...edges].sort((a, b) => Number(b.ended) - Number(a.ended));
+  for (const { source, target, relation, fact, ended } of ordered) {
     const at = writtenAt.toISOString();
     const src = source.toLowerCase();
     const tgt = target.toLowerCase();
@@ -138,13 +142,16 @@ export async function extractEntityEdges(
     if (ended) {
       // The entry says THIS tie stopped: close the live edge for the pair. Nothing new is written —
       // the closed row IS the history.
-      await db.execute(sql`
+      const closed = (await db.execute(sql`
         UPDATE memory_entity_edges SET invalid_at = ${at}
         WHERE user_id = ${userId} AND invalid_at IS NULL
           AND lower(source_name) = ${src} AND lower(target_name) = ${tgt}
           AND relation = ${relation} AND valid_at < ${at}
-      `);
-      written++;
+        RETURNING id
+      `)) as unknown as unknown[];
+      // Only count a tie we actually closed. Counting the attempt made "3 edges written" mean
+      // nothing when the entry ended a relationship the journal had never recorded.
+      if (closed.length) written++;
       continue;
     }
 
@@ -165,12 +172,18 @@ export async function extractEntityEdges(
 
     // A relation you can only hold one of at a time: a DIFFERENT target supersedes the old edge —
     // moving to Ghent ends living in Utrecht. Runs only when this really is a new edge.
+    //
+    // `valid_at <= at`, not `<`. A single entry that names both the old tie and the new one writes
+    // them at the SAME instant, and the strict `<` meant the old one could never be closed — the
+    // journal showed Mara working at Meridian Labs AND at Corvid at once, off an entry that plainly
+    // said she was leaving. `target_name <> tgt` already protects the edge being opened, so the
+    // wider bound cannot close the new row.
     if (EXCLUSIVE_RELATIONS.has(relation)) {
       await db.execute(sql`
         UPDATE memory_entity_edges SET invalid_at = ${at}
         WHERE user_id = ${userId} AND invalid_at IS NULL
           AND lower(source_name) = ${src} AND relation = ${relation}
-          AND lower(target_name) <> ${tgt} AND valid_at < ${at}
+          AND lower(target_name) <> ${tgt} AND valid_at <= ${at}
       `);
     }
     await db.execute(sql`

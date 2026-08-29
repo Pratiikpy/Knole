@@ -67,3 +67,8 @@ WAVE3_LOG.md
 cache/
 KHOJ_ANALYSIS.md
 NEXT_LEVEL.md
+
+# local QA scratch harness - never public
+_qa/
+qa-evidence/
+*_stt.wav

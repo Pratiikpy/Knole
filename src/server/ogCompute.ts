@@ -101,19 +101,22 @@ export async function teeChat(
   const provider = TEE_PROVIDER;
   await ensureAcked(broker, provider);
   const { endpoint, model } = await broker.inference.getServiceMetadata(provider);
-  // The empty-content double-token retry that llm.ts has always had, which this path was missing.
-  // The TEE serves a thinking model: it can spend a tight budget reasoning and return an empty
-  // completion, which threw and dropped the caller onto the router fallback — a SEPARATE prepaid
-  // balance that is dry, so the user saw "0G upstream 401" and memory extraction lost an entry.
-  // Giving the model twice the room is the fix; the fallback was never meant to carry this.
-  const base = Math.max(opts.maxTokens ?? 1024, 2048);
-  let lastErr = "0G TEE compute returned empty content";
-  for (const maxTokens of [base, base * 2]) {
-    const headers = await broker.inference.getRequestHeaders(provider, promptText(messages));
-    const res = await fetch(`${endpoint}/chat/completions`, {
+
+  type Completion = {
+    id?: string;
+    usage?: unknown;
+    choices?: { message?: { content?: string } }[];
+  };
+  // Headers are single-use (they carry the signed nonce the provider settles against), so every
+  // attempt mints its own rather than replaying one.
+  const ask = async (maxTokens: number): Promise<Response> =>
+    fetch(`${endpoint}/chat/completions`, {
       method: "POST",
       signal: AbortSignal.timeout(Number(process.env.LLM_TIMEOUT_MS ?? 45000)),
-      headers: { "Content-Type": "application/json", ...headers },
+      headers: {
+        "Content-Type": "application/json",
+        ...(await broker.inference.getRequestHeaders(provider, promptText(messages))),
+      },
       body: JSON.stringify({
         model,
         messages,
@@ -122,12 +125,27 @@ export async function teeChat(
         stream: false,
       }),
     });
+
+  // The empty-content double-token retry that llm.ts has always had, which this path was missing.
+  // The TEE serves a thinking model: on a tight budget it can spend the whole allowance reasoning
+  // and return an empty completion. teeChat threw on that, and the caller fell through to the
+  // router key — a SEPARATE prepaid balance that is dry — so the user saw "0G upstream 401" and a
+  // journal entry lost its memories. Give the model twice the room instead; the fallback was never
+  // meant to carry this.
+  const base = Math.max(opts.maxTokens ?? 1024, 2048);
+  let lastErr = "0G TEE compute returned empty content";
+  let retried429 = false;
+  for (const maxTokens of [base, base * 2]) {
+    let res = await ask(maxTokens);
+    // The provider's rate window is seconds wide. Walking straight off a healthy-but-busy enclave
+    // onto the dry router is the worse answer — llm.ts has always waited once here.
+    if (res.status === 429 && !retried429) {
+      retried429 = true;
+      await new Promise((r) => setTimeout(r, 2500));
+      res = await ask(maxTokens);
+    }
     if (!res.ok) throw new Error(`0G TEE compute failed (${res.status})`); // more room won't fix a non-2xx
-    const data = (await res.json()) as {
-      id?: string;
-      usage?: unknown;
-      choices?: { message?: { content?: string } }[];
-    };
+    const data = (await res.json()) as Completion;
     const content = data.choices?.[0]?.message?.content?.trim() ?? "";
     if (!content) {
       lastErr = "0G TEE compute returned empty content";
