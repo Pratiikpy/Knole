@@ -9,13 +9,23 @@ const cfg = () => ({
   model: process.env.ZG_IMAGE_MODEL ?? "z-image-turbo",
 });
 
+// The compute broker pays from the same ledger as text inference, so image generation works whenever
+// text does. The router key is a SEPARATE prepaid balance, and when it ran dry every image failed
+// with a 402 while 30+ OG sat unused in the ledger — a whole feature dark for a reason no user could
+// have guessed. The broker is tried first for that reason; the router remains a fallback.
 export function imageGenConfigured(): boolean {
   const { url, key } = cfg();
-  return !!url && !!key;
+  return !!url || !!key || !!process.env.EVM_PRIVATE_KEY;
 }
 
 /** Generate one image on 0G. Returns a `data:image/png;base64,…` URL. Throws if unconfigured/failed. */
 export async function generateImage(prompt: string): Promise<string> {
+  try {
+    const { brokerImage } = await import("./ogCompute");
+    return await brokerImage(prompt);
+  } catch (e) {
+    console.error("0G broker image failed, trying the router key:", (e as Error).message);
+  }
   const { url, key, model } = cfg();
   if (!url || !key) throw new Error("0G image generation not configured");
   const res = await fetch(`${url}/images/generations`, {

@@ -228,3 +228,63 @@ async function verify(
 function getBrokerSync(): Promise<Broker> {
   return getBroker();
 }
+
+// ── Broker-served media models (voice + image) ───────────────────────────────
+// These used to go through the pc.0g.ai router key, which is a separate prepaid balance from the
+// compute ledger — when it ran dry every voice note and every image failed with a 402 while 30+ OG
+// sat unused in the ledger. The same models are published on the compute network, so they are
+// reachable with the wallet that already pays for text inference, and they arrive TEE-attested.
+const WHISPER_PROVIDER =
+  process.env.OG_WHISPER_PROVIDER || "0x36aCffCEa3CCe07cAdd1740Ad992dB16Ab324517";
+const IMAGE_PROVIDER =
+  process.env.OG_IMAGE_PROVIDER || "0xE29a72c7629815Eb480aE5b1F2dfA06f06cdF974";
+
+/** Resolve a broker-served provider: its endpoint, its model id, and signed one-shot auth headers. */
+async function brokerCall(provider: string, hashInput: string) {
+  const broker = await getBroker();
+  await ensureAcked(broker, provider);
+  const { endpoint, model } = await broker.inference.getServiceMetadata(provider);
+  const headers = await broker.inference.getRequestHeaders(provider, hashInput);
+  return { endpoint, model, headers };
+}
+
+/** Transcribe audio through the compute network. Returns the text, or throws for the caller to handle. */
+export async function brokerTranscribe(audio: Blob, filename = "note.webm"): Promise<string> {
+  const { endpoint, model, headers } = await brokerCall(WHISPER_PROVIDER, "transcription");
+  const form = new FormData();
+  form.append("file", audio, filename);
+  form.append("model", model);
+  // No Content-Type here on purpose: fetch must set the multipart boundary itself.
+  const res = await fetch(`${endpoint}/audio/transcriptions`, {
+    method: "POST",
+    headers: { ...headers },
+    body: form,
+    signal: AbortSignal.timeout(Number(process.env.STT_TIMEOUT_MS ?? 120000)),
+  });
+  if (!res.ok)
+    throw new Error(
+      `0G broker transcription failed (${res.status}): ${(await res.text()).slice(0, 160)}`,
+    );
+  const data = (await res.json()) as { text?: string };
+  const text = (data.text ?? "").trim();
+  if (!text) throw new Error("0G broker transcription returned no text");
+  return text;
+}
+
+/** Generate an image through the compute network. Returns a data URL or a remote URL. */
+export async function brokerImage(prompt: string): Promise<string> {
+  const { endpoint, model, headers } = await brokerCall(IMAGE_PROVIDER, prompt);
+  const res = await fetch(`${endpoint}/images/generations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ model, prompt, n: 1, size: "1024x1024" }),
+    signal: AbortSignal.timeout(Number(process.env.IMAGE_TIMEOUT_MS ?? 180000)),
+  });
+  if (!res.ok)
+    throw new Error(`0G broker image failed (${res.status}): ${(await res.text()).slice(0, 160)}`);
+  const data = (await res.json()) as { data?: { url?: string; b64_json?: string }[] };
+  const first = data.data?.[0];
+  const out = first?.url || (first?.b64_json ? `data:image/png;base64,${first.b64_json}` : "");
+  if (!out) throw new Error("0G broker image returned nothing");
+  return out;
+}

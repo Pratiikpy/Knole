@@ -10,9 +10,12 @@ const cfg = () => ({
   whisper: process.env.ZG_WHISPER_MODEL ?? "whisper-large-v3",
 });
 
+// The compute broker pays from the same ledger as text inference, so voice works whenever text does.
+// The router key is a separate prepaid balance; when it emptied, every voice note failed with a 402
+// while the ledger still held 30+ OG. Broker first, router as fallback.
 export function transcribeConfigured(): boolean {
   const { url, key } = cfg();
-  return !!url && !!key;
+  return !!url || !!key || !!process.env.EVM_PRIVATE_KEY;
 }
 
 /** Transcribe an audio clip on 0G. Returns the text (may be empty for silence). Throws if unconfigured. */
@@ -21,9 +24,15 @@ export async function transcribeAudio(
   mime = "audio/webm",
   filename = "audio.webm",
 ): Promise<string> {
+  const bytes = audio instanceof Uint8Array ? audio : new Uint8Array(audio);
+  try {
+    const { brokerTranscribe } = await import("./ogCompute");
+    return await brokerTranscribe(new Blob([bytes as BlobPart], { type: mime }), filename);
+  } catch (e) {
+    console.error("0G broker transcription failed, trying the router key:", (e as Error).message);
+  }
   const { url, key, whisper } = cfg();
   if (!url || !key) throw new Error("0G transcription not configured");
-  const bytes = audio instanceof Uint8Array ? audio : new Uint8Array(audio);
   const form = new FormData();
   // `bytes` is always a valid BlobPart at runtime; the cast sidesteps the TS lib.dom union that now
   // includes SharedArrayBuffer (which we never pass) in Uint8Array's backing type.
