@@ -49,23 +49,35 @@ async function rawInference(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number },
 ): Promise<PrivateResult> {
+  let teeErr: string | null = null;
   if (sealedOn()) {
-    // Two attempts, not one. The broker occasionally drops a request (a provider re-ack, a nonce
-    // race), and the router underneath is a SEPARATE prepaid balance that can be dry while the
-    // ledger is funded — so a single hiccup used to take the whole call down with a confusing
-    // "0G upstream 401". Memory extraction went dark that way. A short retry on the funded path
-    // costs a second and removes the class.
-    for (let attempt = 0; attempt < 2; attempt++) {
+    // Three attempts with a widening wait, not one. The broker drops a request now and then (a
+    // provider re-ack, a nonce race, a rate window), and the router underneath is a SEPARATE
+    // prepaid balance that can be dry while the ledger is funded — so a single hiccup used to take
+    // the whole call down. Memory extraction went dark that way. Backing off on the funded path
+    // costs seconds and removes the class.
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
         return await chatSealed(messages, opts);
       } catch (e) {
-        console.error(`0G TEE inference attempt ${attempt + 1} failed:`, (e as Error).message);
-        if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
+        teeErr = (e as Error).message;
+        console.error(`0G TEE inference attempt ${attempt + 1} failed:`, teeErr);
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
       }
     }
   }
-  const content = await chat(messages, opts);
-  return { content, sealed: false, model: process.env.ZG_MODEL ?? "glm-5.1" };
+  try {
+    const content = await chat(messages, opts);
+    return { content, sealed: false, model: process.env.ZG_MODEL ?? "glm-5.1" };
+  } catch (e) {
+    // Report the TEE as the cause when it is one. The router is a second, independently funded
+    // balance, so when the enclave is what actually failed, surfacing only the router's "401" sent
+    // every investigation at the wrong key — it cost hours once already.
+    if (!teeErr) throw e;
+    throw new Error(
+      `0G TEE unavailable (${teeErr}); router fallback also failed: ${(e as Error).message}`,
+    );
+  }
 }
 
 /** Streaming sibling: the TEE stream when enabled, else the plain 0G stream (sealed:false). */

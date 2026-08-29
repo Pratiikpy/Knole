@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { chatPrivate } from "./sealed";
-import { parseModelJson } from "./llmJson";
+import { parseModelJsonArray } from "./llmJson";
 
 // Typed relationship edges (graphiti's EntityEdge + resolve_edge_contradictions, ported to
 // Postgres and to Knole's flat-cost extraction budget).
@@ -71,25 +71,21 @@ export async function extractEdgesFromText(
   // relationships — the two used to be indistinguishable, so a garbled reply silently wrote zero
   // edges and left a hole in the story no error would ever reveal. An explicit "[]" is trusted.
   let raw: unknown[] = [];
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  // The retry escalates the token budget rather than just rolling the dice again: the failure this
+  // guards against is a reply cut off mid-value, and asking the same model for the same length a
+  // second time reproduces it. parseModelJsonArray salvages what a truncated reply did contain.
+  for (const maxTokens of [900, 1800]) {
     const r = await chatPrivate(
       [
         { role: "system", content: sys },
         { role: "user", content: entryText.slice(0, 6000) },
       ],
-      { temperature: 0, maxTokens: 900 },
+      { temperature: 0, maxTokens },
     );
-    const arr = r.content.match(/\[[\s\S]*\]/)?.[0];
-    if (!arr) {
-      if (attempt === 2)
-        console.error("edge extraction: no JSON array in the model reply after a retry");
-      continue;
-    }
-    const parsed = parseModelJson<unknown>(`{"edges": ${arr}}`, { edges: [] }) as {
-      edges?: unknown;
-    };
-    raw = Array.isArray(parsed.edges) ? parsed.edges : [];
-    break;
+    raw = parseModelJsonArray<unknown>(r.content);
+    if (raw.length) break;
+    if (/\[\s*\]/.test(r.content)) break; // an explicit empty list means "no relationships here"
+    console.error(`edge extraction: no usable JSON array at maxTokens=${maxTokens}`);
   }
   const out: ParsedEdge[] = [];
   for (const e of raw.slice(0, 10)) {

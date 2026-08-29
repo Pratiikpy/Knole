@@ -8,6 +8,7 @@ import { keyProvider } from "./keyProvider";
 import { upsertEntities, matchEntities, entityBoostWeight } from "./entities";
 import { recordJournaledDayBg } from "./dayAnchor";
 import { extractEntityEdges } from "./entityEdges";
+import { parseModelJsonArray } from "./llmJson";
 import { indexEntryDates, entryDateGate, type DateRange } from "./dateLens";
 import { background } from "./background";
 
@@ -435,39 +436,42 @@ export async function extractMemories(userId: string, entryId: string, entryText
   // chatPrivate scrubs names before the model sees the entry and restores them in the reply, so
   // extracted memories keep real names while the model only ever saw placeholders - and the call
   // rides the funded TEE broker first instead of dying with the router balance.
-  const raw = (
-    await chatPrivate(
-      [
-        { role: "system", content: EXTRACT_SYS },
-        {
-          role: "user",
-          content: `ENTRY DATE: ${entryDate}\n\nENTRY:\n${entryText}${contextBlock}`,
-        },
-      ],
-      { temperature: 0.2, maxTokens: 1000 },
-    )
-  ).content;
-
-  let items: {
+  type Item = {
     content?: string;
     type?: string;
     quote?: string;
     confidence?: number;
     linked?: number[];
     entities?: string[];
-  }[] = [];
-  try {
-    const m = raw.match(/\[[\s\S]*\]/);
-    // No array at all (model wrapped/refused) is a real extraction miss — surface it, don't vanish.
-    if (!m) console.error("extractMemories: no JSON array in LLM output:", raw.slice(0, 200));
-    items = m ? JSON.parse(m[0]) : [];
-  } catch (e) {
+  };
+  // Two passes, the second with double the room. A memory list is long output, and when the budget
+  // ran out mid-value the reply came back as truncated JSON — which the old greedy-regex parse threw
+  // on, swallowed, and turned into ZERO memories for that entry with nothing shown to the person who
+  // wrote it. parseModelJsonArray salvages a cut-off reply; the retry is for when there is nothing
+  // to salvage. An entry that genuinely holds no memories returns "[]" on the first pass and costs
+  // no second call.
+  let items: Item[] = [];
+  let raw = "";
+  for (const maxTokens of [1000, 2000]) {
+    raw = (
+      await chatPrivate(
+        [
+          { role: "system", content: EXTRACT_SYS },
+          {
+            role: "user",
+            content: `ENTRY DATE: ${entryDate}\n\nENTRY:\n${entryText}${contextBlock}`,
+          },
+        ],
+        { temperature: 0.2, maxTokens },
+      )
+    ).content;
+    items = parseModelJsonArray<Item>(raw);
+    if (items.length) break;
+    if (/\[\s*\]/.test(raw)) break; // an explicit empty list is an answer, not a failure
     console.error(
-      "extractMemories: unparseable JSON from LLM:",
-      (e as Error).message,
+      `extractMemories: no usable JSON array at maxTokens=${maxTokens}:`,
       raw.slice(0, 200),
     );
-    items = [];
   }
 
   const saved: { id: string; content: string }[] = [];
