@@ -103,14 +103,19 @@ export async function handleStreamingReply(
       // for-await discards it, so iterate manually — the anchored receipt must record what actually
       // served this reply, not the config-level default.
       let genSealed: boolean | undefined;
+      // ...and the model that actually wrote it. The receipt used to record ZG_MODEL from the
+      // environment, so every reflection was attributed to glm-5.1 while the enclave was serving
+      // deepseek-v4-flash. Wrong attribution on the one page that promises "only math".
+      let genModel: string | undefined;
       let clientGone = false;
       try {
         const it = gen[Symbol.asyncIterator]();
         for (;;) {
           const step = await it.next();
           if (step.done) {
-            const r = step.value as { sealed?: boolean } | undefined;
+            const r = step.value as { sealed?: boolean; model?: string } | undefined;
             if (r && typeof r.sealed === "boolean") genSealed = r.sealed;
+            if (r && typeof r.model === "string" && r.model) genModel = r.model;
             break;
           }
           full += step.value;
@@ -149,6 +154,7 @@ export async function handleStreamingReply(
                 input: entryText,
                 output: full,
                 sealed: genSealed,
+                model: genModel,
               }),
               "recordReceipt",
             );

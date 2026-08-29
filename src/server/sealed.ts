@@ -34,14 +34,14 @@ export async function chatSealed(
 async function* chatSealedStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number },
-): AsyncGenerator<string, { sealed: boolean; chatID: string | null }, void> {
+): AsyncGenerator<string, { sealed: boolean; chatID: string | null; model: string }, void> {
   const gen = teeChatStream(messages, opts);
   let step = await gen.next();
   while (!step.done) {
     yield step.value;
     step = await gen.next();
   }
-  return { sealed: step.value.verified, chatID: step.value.chatID };
+  return { sealed: step.value.verified, chatID: step.value.chatID, model: step.value.model };
 }
 
 /** Prefer the verified 0G TEE; fall back to the plain 0G model (honestly `sealed:false`) on outage. */
@@ -84,7 +84,7 @@ async function rawInference(
 async function* rawInferenceStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number },
-): AsyncGenerator<string, { sealed: boolean; chatID: string | null }, void> {
+): AsyncGenerator<string, { sealed: boolean; chatID: string | null; model: string }, void> {
   if (sealedOn()) {
     // Same two-attempt rule as rawInference. Retrying is only safe BEFORE the first token is
     // yielded — `started` guards that, so a mid-stream failure still propagates rather than
@@ -108,7 +108,7 @@ async function* rawInferenceStream(
     }
   }
   for await (const delta of chatStream(messages, opts)) yield delta;
-  return { sealed: false, chatID: null };
+  return { sealed: false, chatID: null, model: process.env.ZG_MODEL ?? "glm-5.1" };
 }
 
 /**
@@ -137,7 +137,7 @@ export async function* chatPrivateStream(
   opts: { temperature?: number; maxTokens?: number } = {},
 ): AsyncGenerator<
   string,
-  { sealed: boolean; anonymised: boolean; chatID: string | null; partial?: boolean },
+  { sealed: boolean; anonymised: boolean; chatID: string | null; model: string; partial?: boolean },
   void
 > {
   const { messages: anon, map, ok } = await anonymiseMessages(messages);
@@ -146,6 +146,7 @@ export async function* chatPrivateStream(
   let truncated = false;
   let sealed = false;
   let chatID: string | null = null;
+  let model = process.env.ZG_MODEL ?? "glm-5.1";
   try {
     const src = rawInferenceStream(anon, opts);
     let step = await src.next();
@@ -161,7 +162,7 @@ export async function* chatPrivateStream(
       }
       step = await src.next();
     }
-    ({ sealed, chatID } = step.value);
+    ({ sealed, chatID, model } = step.value);
   } catch (e) {
     console.error("stream path failed, falling back to non-stream:", (e as Error).message);
     truncated = true;
@@ -175,7 +176,7 @@ export async function* chatPrivateStream(
       yield finalText.slice(emitted.length);
     }
     yield "\n\n(That reply was cut short — the connection dropped mid-thought.)";
-    return { sealed, anonymised: ok, chatID, partial: true };
+    return { sealed, anonymised: ok, chatID, model, partial: true };
   }
 
   if (acc) {
@@ -193,5 +194,5 @@ export async function* chatPrivateStream(
     const text = deAnonymise(r.content, map);
     if (text) yield text;
   }
-  return { sealed, anonymised: ok, chatID };
+  return { sealed, anonymised: ok, chatID, model };
 }

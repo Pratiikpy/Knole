@@ -83,6 +83,12 @@ export async function recordReceipt(
     /** The PER-RESPONSE attestation result. A fallback (non-TEE) reply must anchor sealed:false —
      * the config-level sealedActive() is only the default for paths that can't thread the flag. */
     sealed?: boolean;
+    /** The model that ACTUALLY produced this response. Same reasoning as `sealed`: the env-level
+     * ZG_MODEL is only a default for paths that cannot thread it. The receipt is the one place the
+     * product says "no trust required, only math", so naming a model that did not write the answer
+     * is the worst possible field to get wrong — and it was wrong for every reflection, since the
+     * TEE serves deepseek-v4-flash while ZG_MODEL reads glm-5.1. */
+    model?: string;
   },
 ): Promise<string | null> {
   if (!args.input || !args.output) return null;
@@ -90,7 +96,8 @@ export async function recordReceipt(
   const inputHash = sha256(args.input);
   const outputHash = sha256(args.output);
   const sealed = args.sealed ?? sealedActive();
-  const leafHash = leafFor({ inputHash, outputHash, model: MODEL, sealed, ts: ts.toISOString() });
+  const model = args.model || MODEL;
+  const leafHash = leafFor({ inputHash, outputHash, model, sealed, ts: ts.toISOString() });
   const [row] = await db
     .insert(receipts)
     .values({
@@ -99,7 +106,7 @@ export async function recordReceipt(
       replyId: args.replyId ?? null,
       inputHash,
       outputHash,
-      model: MODEL,
+      model,
       sealed,
       leafHash,
       createdAt: ts,

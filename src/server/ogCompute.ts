@@ -164,7 +164,7 @@ export async function teeChat(
 export async function* teeChatStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number } = {},
-): AsyncGenerator<string, { verified: boolean; chatID: string | null }, void> {
+): AsyncGenerator<string, { verified: boolean; chatID: string | null; model: string }, void> {
   const broker = await getBroker();
   const provider = TEE_PROVIDER;
   await ensureAcked(broker, provider);
@@ -236,7 +236,7 @@ export async function* teeChatStream(
   } catch {
     /* verification failed → verified stays false, caller won't claim sealed */
   }
-  return { verified, chatID: chatID ?? null };
+  return { verified, chatID: chatID ?? null, model };
 }
 
 // processResponse settles the micropayment AND, for TeeML providers, validates the attestation.

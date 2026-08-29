@@ -71,7 +71,12 @@ export async function runDreaming(userId: string): Promise<{ observation: string
     // r.sealed is the per-response attestation result. Omitting it defaulted the receipt to
     // sealedActive() - a CONFIG check - so a TEE outage anchored "sealed: true" on-chain for a
     // reply the enclave never served. A false attestation is worse than no attestation.
-    await recordReceipt(userId, { input: context, output: observation, sealed: r.sealed });
+    await recordReceipt(userId, {
+      input: context,
+      output: observation,
+      sealed: r.sealed,
+      model: r.model,
+    });
   } catch (e) {
     console.error("dream receipt failed:", (e as Error).message);
   }
