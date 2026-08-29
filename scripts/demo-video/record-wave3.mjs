@@ -85,7 +85,40 @@ async function scrollElTo(page, locator, frac = 0.3, durMs = 2600) {
   if (Math.abs(delta) > 8) await smoothScroll(page, delta, durMs);
 }
 
+// Beat 1 writes a real entry, so every take leaves one behind. Three takes in, the Echoes panel was
+// surfacing three IDENTICAL past entries on camera — the recorder polluting the journal it was
+// filming. Clear the previous takes before rolling, through the app's own delete control rather
+// than the database, so this stays a pure browser script and only does what a user could do.
+const TAKE_TEXT =
+  "Mara starts at Corvid on Monday and the flat is still full of boxes. I keep telling people I'm fine with the move.";
+
+async function clearPriorTakes(browser) {
+  const c = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: STATE,
+  });
+  const pg = await c.newPage();
+  await pg.goto(`${BASE}/history`, { waitUntil: "domcontentloaded" }).catch(() => {});
+  await pg.waitForTimeout(2500);
+  let removed = 0;
+  for (let i = 0; i < 8; i++) {
+    const card = pg
+      .locator("li, article, div")
+      .filter({ hasText: TAKE_TEXT.slice(0, 60) })
+      .last();
+    if (!(await card.count())) break;
+    const del = card.getByRole("button", { name: /^delete$/i }).last();
+    if (!(await del.count())) break;
+    await del.click().catch(() => {});
+    await pg.waitForTimeout(1600);
+    removed++;
+  }
+  if (removed) log(`cleared ${removed} entr${removed === 1 ? "y" : "ies"} from a previous take`);
+  await c.close();
+}
+
 const browser = await chromium.launch();
+await clearPriorTakes(browser);
 const ctx = await browser.newContext({
   viewport: { width: W, height: H },
   deviceScaleFactor: 1,
@@ -128,12 +161,7 @@ try {
   await cap("You write one honest line.");
   const ta = page.locator("textarea").first();
   await ta.scrollIntoViewIfNeeded().catch(() => {});
-  await naturalType(
-    page,
-    ta,
-    "Mara starts at Corvid on Monday and the flat is still full of boxes. I keep telling people I'm fine with the move.",
-    { perCharMs: 26 },
-  );
+  await naturalType(page, ta, TAKE_TEXT, { perCharMs: 26 });
   await sleep(900);
 
   // Echoes: as the draft is typed, its embedding pulls up dated past entries. It appears BETWEEN
