@@ -133,6 +133,18 @@ export async function extractEntityEdges(
   // Meridian, she's taken a role at Corvid"), and applying them in the model's arbitrary order let
   // the opening land first — so the closure then matched the NEW edge instead of the old one.
   const ordered = [...edges].sort((a, b) => Number(b.ended) - Number(a.ended));
+  // Every target this entry states as STILL TRUE, per (source, relation). An entry describes the
+  // whole current state of an exclusive relation, so anything it names as live must survive — even
+  // when a sibling edge in the same entry opens a different target. Without this, "she accepted
+  // Corvid, she leaves Meridian at the end of August" had Corvid supersede a Meridian job the entry
+  // had just said she still held, and the six years there were dated to the wrong month.
+  const liveHere = new Map<string, Set<string>>();
+  for (const e of ordered) {
+    if (e.ended) continue;
+    const key = `${e.source.toLowerCase()}|${e.relation}`;
+    if (!liveHere.has(key)) liveHere.set(key, new Set());
+    liveHere.get(key)!.add(e.target.toLowerCase());
+  }
   for (const { source, target, relation, fact, ended } of ordered) {
     const at = writtenAt.toISOString();
     const src = source.toLowerCase();
@@ -169,25 +181,38 @@ export async function extractEntityEdges(
       continue;
     }
 
-    // A relation you can only hold one of at a time: a DIFFERENT target supersedes the old edge —
-    // moving to Ghent ends living in Utrecht. Runs only when this really is a new edge.
+    // A relation you can only hold one of at a time: a DIFFERENT target supersedes the OLDER edge —
+    // moving to Ghent ends living in Utrecht.
     //
-    // `valid_at <= at`, not `<`. A single entry that names both the old tie and the new one writes
-    // them at the SAME instant, and the strict `<` meant the old one could never be closed — the
-    // journal showed Mara working at Meridian Labs AND at Corvid at once, off an entry that plainly
-    // said she was leaving. `target_name <> tgt` already protects the edge being opened, so the
-    // wider bound cannot close the new row.
+    // Strictly `valid_at < at`: only a tie that genuinely predates this entry can be superseded.
+    // Two edges stated in the same breath must never close each other. A transition entry says both
+    // halves at once ("she accepted Corvid, she leaves Meridian at the end of August") and they are
+    // BOTH true that day — a handover, not a contradiction. A wider bound made each one supersede
+    // the other in turn: Corvid opened and closed in the same instant and Meridian was re-inserted
+    // as a duplicate. What ends an overlapping tie is the entry that says it ended, handled above.
     if (EXCLUSIVE_RELATIONS.has(relation)) {
+      const spared = [...(liveHere.get(`${src}|${relation}`) ?? new Set([tgt]))];
       await db.execute(sql`
         UPDATE memory_entity_edges SET invalid_at = ${at}
         WHERE user_id = ${userId} AND invalid_at IS NULL
           AND lower(source_name) = ${src} AND relation = ${relation}
-          AND lower(target_name) <> ${tgt} AND valid_at <= ${at}
+          AND valid_at < ${at}
+          AND lower(target_name) NOT IN (${sql.join(
+            spared.map((s) => sql`${s}`),
+            sql`, `,
+          )})
       `);
     }
+    // Never write the same tie twice at the same instant. The restatement refresh above only sees
+    // LIVE edges, so an edge closed earlier in this very batch would otherwise be inserted again.
     await db.execute(sql`
       INSERT INTO memory_entity_edges (user_id, source_name, target_name, relation, fact, source_memory_id, valid_at)
-      VALUES (${userId}, ${source}, ${target}, ${relation}, ${fact}, ${memoryId}, ${at})
+      SELECT ${userId}, ${source}, ${target}, ${relation}, ${fact}, ${memoryId}, ${at}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM memory_entity_edges
+        WHERE user_id = ${userId} AND lower(source_name) = ${src}
+          AND lower(target_name) = ${tgt} AND relation = ${relation} AND valid_at = ${at}
+      )
     `);
     written++;
   }

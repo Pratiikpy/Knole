@@ -9,6 +9,10 @@ import path from "node:path";
 
 const OUT = "scripts/demo-video/out";
 const VID = `${OUT}/vid`;
+// Which take to encode, and what to call it. Defaults keep the original flow working untouched;
+// the Wave 3 recorder writes its own spans file and wants its own name.
+const SPANS = process.env.DEMO_SPANS ?? "spans.json";
+const NAME = process.env.DEMO_NAME ?? "knole-demo";
 // Optional global speed-up applied to the whole (already dead-span-ramped) cut, so the final lands
 // at a target runtime without rushing only the payoffs. SPEED=1 = native; SPEED=1.77 ≈ a 3-min cut.
 const SPEED = Number(process.env.SPEED ?? 1);
@@ -28,9 +32,9 @@ const RAMP = 4,
   M_START = 1.6,
   M_END = 0.9; // keep the click + the payoff at 1x; only ramp the loader middle
 let spans = [];
-if (existsSync(`${OUT}/spans.json`)) {
+if (existsSync(`${OUT}/${SPANS}`)) {
   try {
-    spans = JSON.parse(readFileSync(`${OUT}/spans.json`, "utf8"));
+    spans = JSON.parse(readFileSync(`${OUT}/${SPANS}`, "utf8"));
   } catch {}
 }
 const ramps = spans
@@ -65,7 +69,7 @@ console.log(
 );
 
 // ── 4K master (ramp → format → x264) ──
-const out4k = path.join(OUT, "knole-demo-4k.mp4");
+const out4k = path.join(OUT, `${NAME}-4k.mp4`);
 console.log("encoding 4K master…");
 let r = spawnSync(
   "ffmpeg",
@@ -105,7 +109,7 @@ if (r.status !== 0) {
 console.log("✓", out4k, `(${(statSync(out4k).size / 1e6).toFixed(1)} MB)`);
 
 // ── 1080p downscale of the master (no re-ramp) ──
-const out1080 = path.join(OUT, "knole-demo-1080.mp4");
+const out1080 = path.join(OUT, `${NAME}-1080.mp4`);
 console.log("encoding 1080p downscale…");
 r = spawnSync(
   "ffmpeg",
