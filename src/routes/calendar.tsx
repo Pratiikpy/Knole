@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Shell } from "@/components/knole/Shell";
 import { calendarMonthFn, journalAnalyticsFn } from "@/server/fns";
 import type { CalendarDay, JournalStats } from "@/server/calendar";
+import { num } from "@/lib/localFormat";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({
@@ -238,7 +239,7 @@ function CalendarPage() {
             <div className="animate-fade-up mt-4 rounded-2xl border border-tan/30 bg-tan/[0.05] p-6">
               <div className="mb-1 flex items-baseline justify-between">
                 <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {new Date(`${sel.date}T12:00:00`).toLocaleDateString(undefined, {
+                  {new Date(`${sel.date}T12:00:00`).toLocaleDateString("en-US", {
                     weekday: "long",
                     month: "long",
                     day: "numeric",
@@ -273,8 +274,8 @@ function CalendarPage() {
               <div className="rounded-2xl border border-rule bg-card/50 p-5">
                 <div className="grid grid-cols-3 gap-3 text-center">
                   {[
-                    { n: stats.entries.toLocaleString(), l: "entries" },
-                    { n: stats.words.toLocaleString(), l: "words kept" },
+                    { n: num(stats.entries), l: "entries" },
+                    { n: num(stats.words), l: "words kept" },
                     { n: String(stats.avgWords), l: "avg length" },
                   ].map((s) => (
                     <div key={s.l}>

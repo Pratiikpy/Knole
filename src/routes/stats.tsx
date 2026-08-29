@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { publicStats, type PublicStats } from "@/server/publicStats";
+import { num, LocalTime } from "@/lib/localFormat";
 
 // The public stats page — live, honest aggregates with the receipts to check them. No personal
 // data can appear here by construction (counts only; see publicStats.ts). This is the traction
@@ -62,7 +63,7 @@ function StatsPage() {
           {tiles.map((t) => (
             <div key={t.label} className="rounded-2xl border border-rule bg-card/50 p-5">
               <div className="font-display text-[32px] italic leading-none text-ink tabular-nums">
-                {t.n.toLocaleString()}
+                {num(t.n)}
               </div>
               <div className="mt-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 {t.label}
@@ -97,7 +98,7 @@ function StatsPage() {
         </div>
 
         <p className="mt-12 text-center text-[11px] text-muted-foreground">
-          updated {new Date(s.asOf).toLocaleTimeString()} · cached five minutes ·{" "}
+          updated <LocalTime iso={s.asOf} style="time" /> · cached five minutes ·{" "}
           <Link to="/" className="text-tan underline-offset-2 hover:underline">
             what Knole is →
           </Link>

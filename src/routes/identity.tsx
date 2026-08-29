@@ -17,6 +17,7 @@ import {
   sponsorGrantGasFn,
 } from "@/server/fns";
 import { useEffect, useState } from "react";
+import { LocalTime } from "@/lib/localFormat";
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 
@@ -207,7 +208,7 @@ function IdentityPage() {
                     className="flex items-center justify-between rounded-xl border border-rule/60 px-4 py-3 text-[12px]"
                   >
                     <span className="text-muted-foreground">
-                      {g.scope} · expires {new Date(g.exp * 1000).toLocaleDateString()}
+                      {g.scope} · expires <LocalTime iso={g.exp * 1000} style="date" />
                       {g.revoked ? " · revoked" : ""}
                     </span>
                     {!g.revoked && (

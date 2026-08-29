@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Shell } from "@/components/knole/Shell";
 import { verifyReceiptFn, sensingProvenanceFn, architectureFn } from "@/server/fns";
 import { useEffect, useState } from "react";
+import { num, LocalTime } from "@/lib/localFormat";
 
 export const Route = createFileRoute("/verify")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -143,7 +144,7 @@ function VerifyPage() {
               </div>
 
               <dl className="space-y-3 text-[13px]">
-                <Row label="Reflected" value={new Date(r.receipt.createdAt).toLocaleString()} />
+                <Row label="Reflected" value={<LocalTime iso={r.receipt.createdAt} />} />
                 <Row label="Model" value={r.receipt.model} />
                 <Row label="Sealed in 0G TEE" value={r.receipt.sealed ? "yes" : "no"} />
                 <Row mono label="Input hash" value={r.receipt.inputHash} />
@@ -326,7 +327,7 @@ function ProvenanceCard({ p, explorer }: { p: Provenance; explorer: string }) {
         {p.finalModelHash && <Row mono label="Fine-tuned model hash" value={p.finalModelHash} />}
         <Row mono label="Training data (0G Storage root)" value={p.datasetStorageRoot} />
         <Row mono label="Training data SHA-256" value={p.datasetSha256} />
-        <Row label="Data size" value={`${kb.toLocaleString()} KB · public, downloadable`} />
+        <Row label="Data size" value={`${num(kb)} KB · public, downloadable`} />
         <Row mono label="On-chain commitment" value={p.provenanceAnchorTx} />
       </dl>
 
@@ -366,7 +367,7 @@ function ProvenanceCard({ p, explorer }: { p: Provenance; explorer: string }) {
   );
 }
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Row({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5 border-t border-rule pt-3 sm:flex-row sm:justify-between sm:gap-4">
       <dt className="shrink-0 text-muted-foreground">{label}</dt>
