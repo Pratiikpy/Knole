@@ -547,11 +547,16 @@ export async function extractMemories(userId: string, entryId: string, entryText
           )
         : [];
       const linkedJson = linkedIds.length ? JSON.stringify(linkedIds) : null;
+      // valid_at is WHEN THIS WAS TRUE, not when the extractor happened to run. The column defaulted
+      // to now(), so every memory carried today's date however long ago the entry was written — and
+      // the person timeline, which orders and labels by valid_at, printed the same date on every
+      // row. A timeline where each turn shares one date is not a timeline. Backfilled and imported
+      // entries were the worst hit: an imported decade of journals all landed on the import date.
       const res = await db.execute(sql`
       INSERT INTO memories
-        (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance, linked_ids)
+        (user_id, content, content_hash, type, status, source_entry_id, source_quote, embedding, confidence, importance, linked_ids, valid_at)
       VALUES
-        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, ${conf}, 0.6, ${linkedJson}::jsonb)
+        (${userId}, ${it.content}, ${ch}, ${type}, 'active', ${entryId}, ${it.quote ?? null}, ${vlit}::vector, ${conf}, 0.6, ${linkedJson}::jsonb, ${(entryRow?.createdAt ?? new Date()).toISOString()})
       ON CONFLICT (user_id, content_hash)
         DO UPDATE SET recall_count = memories.recall_count + 1, updated_at = now()
       RETURNING id, content
@@ -562,7 +567,7 @@ export async function extractMemories(userId: string, entryId: string, entryText
       // supersede-not-delete: keep the old memory, mark it invalid (bi-temporal)
       if (supersededId && newId && supersededId !== newId) {
         await db.execute(sql`
-        UPDATE memories SET status = 'superseded', invalid_at = now(), invalidated_by = ${newId}, updated_at = now()
+        UPDATE memories SET status = 'superseded', invalid_at = ${(entryRow?.createdAt ?? new Date()).toISOString()}, invalidated_by = ${newId}, updated_at = now()
         WHERE id = ${supersededId} AND user_id = ${userId}
       `);
         await logHistory(supersededId, userId, "superseded", null, { by: newId });

@@ -135,8 +135,14 @@ try {
     { perCharMs: 26 },
   );
   await sleep(700);
+  // The lens row picks the voice; a separate Reflect button submits.
   const lens = page.locator('button:visible:has-text("Gentle")').first();
   await naturalClick(page, lens).catch(() => {});
+  await sleep(600);
+  // .last(): the header nav also has a "Reflect" item, and the composer's submit is the later one.
+  await naturalClick(page, page.locator("button:visible").filter({ hasText: /^Reflect$/ }).last()).catch(
+    () => {},
+  );
   const m1 = markStart("reflection");
   // The receipt link only appears once the reflection has finished and been committed.
   const receiptLink = page.getByRole("button", { name: /reflection receipt/i }).first();
@@ -150,9 +156,9 @@ try {
   await scrollElTo(page, receiptLink, 0.55, 1800).catch(() => {});
   await naturalClick(page, receiptLink).catch(() => {});
   await sleep(2600);
-  await cap("Composed inside a 0G TEE, attestation-verified — and anchored on 0G Chain.");
+  await cap("Composed inside a 0G TEE, attestation-verified — with a receipt for this reflection.");
   await sleep(4600);
-  await cap("Not a privacy policy. A receipt you can check yourself.");
+  await cap("Not a privacy policy. A hash you can check against the chain yourself.");
   await sleep(3800);
   await cap("");
   await sleep(400);
@@ -172,7 +178,7 @@ try {
   const changed = page.getByText(/What changed/i).first();
   await scrollElTo(page, changed, 0.22, 2600).catch(() => {});
   await sleep(900);
-  await cap("Six years at Meridian Labs — and the date it ended, read from her own words.");
+  await cap("The job she held for six years — and the day the journal saw it end.");
   await sleep(4600);
   await cap("Nobody typed a field. The prose was the input.");
   await sleep(3800);
@@ -183,7 +189,7 @@ try {
   // ── BEAT 3 · ask, with receipts ───────────────────────────────────────────
   log("beat 3 — ask");
   await gotoBeat(page, `${BASE}/ask`);
-  const q = page.locator('input[type="text"], textarea').first();
+  const q = page.getByPlaceholder(/ask anything/i).first();
   await naturalType(page, q, "What changed for Mara this year?", { perCharMs: 34 });
   await sleep(500);
   await page.keyboard.press("Enter");
