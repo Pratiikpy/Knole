@@ -138,15 +138,22 @@ try {
   const lens = page.locator('button:visible:has-text("Gentle")').first();
   await naturalClick(page, lens).catch(() => {});
   const m1 = markStart("reflection");
-  await page
-    .getByText(/sealed|0G|TEE/i)
-    .first()
-    .waitFor({ timeout: 120_000 })
-    .catch(() => {});
-  await sleep(2500);
+  // The receipt link only appears once the reflection has finished and been committed.
+  const receiptLink = page.getByRole("button", { name: /reflection receipt/i }).first();
+  await receiptLink.waitFor({ timeout: 150_000 }).catch(() => {});
+  await sleep(2200);
   markEnd(m1);
-  await cap("It writes back — inside a 0G TEE, attestation-verified. Not a claim: a receipt.");
-  await sleep(4200);
+  await cap("It writes back — in your voice, from your own past.");
+  await sleep(3800);
+  await cap("");
+  // Open the receipt: the leaf hash, the enclave, and the on-chain anchor for THIS reflection.
+  await scrollElTo(page, receiptLink, 0.55, 1800).catch(() => {});
+  await naturalClick(page, receiptLink).catch(() => {});
+  await sleep(2600);
+  await cap("Composed inside a 0G TEE, attestation-verified — and anchored on 0G Chain.");
+  await sleep(4600);
+  await cap("Not a privacy policy. A receipt you can check yourself.");
+  await sleep(3800);
   await cap("");
   await sleep(400);
 
