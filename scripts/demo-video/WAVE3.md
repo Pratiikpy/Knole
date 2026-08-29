@@ -17,22 +17,35 @@ Knole is at all.
 
 ## The beats
 
-| #   | Beat                    | Screen                        | Seconds | What it proves                                                       |
-| --- | ----------------------- | ----------------------------- | ------- | -------------------------------------------------------------------- |
-| 0   | Cold open               | Landing hero                  | ~12     | what the product is, in one line, in its own voice                    |
-| 1   | It writes back — sealed | `/today` → live reflection    | ~30     | a real entry, a real streamed reflection, **attested inside a 0G TEE** |
-| 2   | **It remembers change** | `/people` → `/person/Mara`    | ~45     | the flagship: a tie that ENDED, dated — new this wave                 |
-| 3   | Ask, with receipts      | `/ask`                        | ~25     | answers built from the person's own dated entries                     |
-| 4   | On-chain, for real      | `/identity` → explorer        | ~35     | ERC-7857 v1.1 iNFT, self-custody mint, DayAnchor, on-chain grants     |
-| 5   | Technical quality       | terminal, `forge test`        | ~20     | 102 passing tests incl. fuzz + invariants — the judge's explicit ask  |
-| 6   | Traction + close        | `/stats` → landing            | ~20     | real counted usage, then the tagline                                  |
+| #   | Beat                    | Screen                        | What it proves                                                        |
+| --- | ----------------------- | ----------------------------- | --------------------------------------------------------------------- |
+| 0   | Cold open               | Landing                       | what the product is, in one line, in its own voice                     |
+| 1   | It writes back — sealed | `/today` → reflection         | a real entry, Echoes surfacing dated past writing, and the receipt     |
+| 2   | **It remembers change** | `/people` → `/person/Mara`    | the flagship: a tie that ENDED, dated — new this wave                  |
+| 3   | Ask, with receipts      | `/ask`                        | answers built from the person's own dated entries                      |
+| 3b  | **Duet — the seal**     | `/duet`, two real browsers    | the partner's answer is not in this browser until both write           |
+| 3c  | The rest of it          | insights · calendar · canvas · wellbeing · commit | the product is not a demo of one screen        |
+| 4   | On-chain, for real      | `/verify`                     | ERC-7857 v1.1 read live, TEE provider, sensing-model provenance        |
+| 5   | Technical quality       | terminal, `forge test`        | 112 passing incl. fuzz + invariants — the judge's explicit ask         |
+| 6   | Traction + close        | `/stats` → landing            | real counted usage, then the tagline                                   |
+
+Runtime ~5:24. An earlier 3:14 cut dropped beats 3b and 3c; it was tighter, but it showed roughly
+half the product and left out the one privacy claim that can be *watched* being enforced. Coverage
+won.
+
+### Beat 3b is not a mock-up
+
+Duet needs two people, so the recorder opens a **second real browser**, joins the invite, and answers
+off-camera. What the recorded screen shows is the server actually holding the seal — the partner's
+words are absent from the page while the button still reads "Answer & unlock" — and then actually
+releasing it once both have written. Nothing is staged.
 
 ### Beat 2 is the centrepiece
 
 Everything else on this list exists in some form in other journals. **A dated record of how a
 relationship changed does not.** `/person/Mara` shows, from prose alone:
 
-- **How things stand** — Mara works at Corvid, since Aug 21
+- **How things stand** — Mara works at Corvid, since Jul 18
 - **What changed** — ~~works at~~ Meridian Labs, _true from Jul 9 until Aug 21_
 - **The story, in order** — the turns, including the memories retrieval normally hides
 

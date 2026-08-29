@@ -78,6 +78,31 @@ function terminalPage() {
 }
 const TERMINAL = terminalPage();
 
+/**
+ * Duet needs two people. Rather than fake it, a second real browser joins the invite and answers
+ * off-camera, so what the recorded screen shows is a genuine seal being held and then released by
+ * the server — not a mock-up.
+ */
+async function duetPartner(browser, inviteUrl, text) {
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const pg = await c.newPage();
+  await pg.goto(`${BASE}/today`, { waitUntil: "domcontentloaded" }).catch(() => {});
+  await pg.waitForTimeout(2000);
+  await pg.goto(inviteUrl, { waitUntil: "domcontentloaded" }).catch(() => {});
+  await pg.waitForTimeout(9000);
+  const ta = pg.locator("textarea").first();
+  if (await ta.count()) {
+    await ta.fill(text);
+    await pg.waitForTimeout(600);
+    const seal = pg.getByRole("button", { name: /seal my answer|answer & unlock/i }).first();
+    if (await seal.count()) {
+      await seal.click();
+      await pg.waitForTimeout(9000);
+    }
+  }
+  return c;
+}
+
 async function scrollElTo(page, locator, frac = 0.3, durMs = 2600) {
   const box = await locator.boundingBox().catch(() => null);
   if (!box) return;
@@ -271,6 +296,88 @@ try {
   await sleep(3100);
   await cap("");
   await sleep(500);
+
+  // ── BEAT 3B · Duet — the privacy claim you can watch being enforced ───────
+  log("beat 3b — duet");
+  await gotoBeat(page, `${BASE}/duet`);
+  await cap("One question a day, for two.");
+  await sleep(3000);
+  await cap("Neither of you can read the other's answer until you've both written yours.");
+  await sleep(4200);
+  await cap("");
+  await naturalClick(
+    page,
+    page.getByRole("button", { name: /create your invite link/i }).first(),
+  ).catch(() => {});
+  await sleep(6500);
+  const invite = (await page.locator("body").innerText()).match(
+    /knole\.me\/duet\?join=[A-Za-z0-9_-]+/,
+  );
+  if (invite) {
+    const partnerCtx = await duetPartner(
+      browser,
+      "https://" + invite[0],
+      "The evening we got lost walking back from the harbour.",
+    );
+    await cap("Your partner opens the link and answers.");
+    await sleep(3600);
+    await cap("");
+    await gotoBeat(page, `${BASE}/duet`);
+    await sleep(2500);
+    await cap("Theirs is sealed — the words are not in this browser at all.");
+    await sleep(4400);
+    await cap("");
+    const box = page.locator("textarea:visible").first();
+    if (await box.count()) {
+      await naturalType(
+        page,
+        box,
+        "The morning we unpacked the kitchen and found the chipped bowl.",
+        { perCharMs: 24 },
+      );
+      await sleep(700);
+      await naturalClick(
+        page,
+        page.getByRole("button", { name: /seal my answer|answer & unlock/i }).first(),
+      ).catch(() => {});
+      const m3 = markStart("duet");
+      await sleep(9000);
+      markEnd(m3);
+      await gotoBeat(page, `${BASE}/duet`);
+      await sleep(2500);
+      await cap(
+        "You write yours — and both open at once. Enforced by the server, not by a promise.",
+      );
+      await sleep(5000);
+      await cap("");
+    }
+    await partnerCtx.close().catch(() => {});
+  } else {
+    log("  !! no duet invite link — beat 3b will be short");
+  }
+  await sleep(600);
+
+  // ── BEAT 3C · the rest of the practice, quickly ───────────────────────────
+  log("beat 3c — montage");
+  await cap("And the rest of it.");
+  await sleep(2600);
+  await cap("");
+  for (const [path, line] of [
+    [`${BASE}/insights`, "Patterns, drawn from your own days."],
+    [`${BASE}/calendar`, "Every day you wrote, coloured by how it felt."],
+    [`${BASE}/canvas`, "Your whole life on one canvas."],
+    [
+      `${BASE}/wellbeing`,
+      "Validated check-ins — and a crisis line that fires on the item, not the score.",
+    ],
+    [`${BASE}/commit`, "Stake on showing up. Settled against the days the chain recorded."],
+  ]) {
+    await gotoBeat(page, path);
+    await cap(line);
+    await sleep(3400);
+    await cap("");
+    await sleep(300);
+  }
 
   // ── BEAT 4 · on-chain, for real ───────────────────────────────────────────
   log("beat 4 — auditable AI");
