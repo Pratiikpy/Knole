@@ -204,6 +204,24 @@ export async function extractEntityEdges(
           )})
       `);
     }
+    // An entry processed OUT OF ORDER describes a tie that already exists, earlier than we knew.
+    // The restatement refresh above only matches LIVE edges, so re-reading an old entry after a
+    // newer one had closed the tie inserted a SECOND row and the journal showed Mara both still at
+    // Meridian Labs and having left it. The same thing would happen importing a decade of old
+    // journals against a graph built from recent ones.
+    //
+    // It is the same relationship, discovered earlier — so move the existing edge's start date back
+    // rather than opening a rival. Idempotent: re-running the same entry changes nothing.
+    const earlier = (await db.execute(sql`
+      UPDATE memory_entity_edges SET valid_at = ${at}
+      WHERE user_id = ${userId} AND lower(source_name) = ${src}
+        AND lower(target_name) = ${tgt} AND relation = ${relation} AND valid_at > ${at}
+      RETURNING id
+    `)) as unknown as unknown[];
+    if (earlier.length) {
+      written++;
+      continue;
+    }
     // Never write the same tie twice at the same instant. The restatement refresh above only sees
     // LIVE edges, so an edge closed earlier in this very batch would otherwise be inserted again.
     await db.execute(sql`
