@@ -223,7 +223,7 @@ function OnboardingInner() {
                 />
                 <span>I'm 18 or older.</span>
               </label>
-              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/70">
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
                 Knole is an AI reflection — not a person, and not a substitute for professional
                 care.
               </p>

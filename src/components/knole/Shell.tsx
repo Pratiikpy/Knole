@@ -256,7 +256,7 @@ export function Shell({ children, hideNav = false }: { children: ReactNode; hide
             Proof deck
           </a>
         </nav>
-        <p className="mx-auto mt-5 max-w-[46ch] px-6 text-[11px] leading-relaxed text-muted-foreground/70">
+        <p className="mx-auto mt-5 max-w-[46ch] px-6 text-[11px] leading-relaxed text-muted-foreground">
           Knole is an AI reflection — not a person, and not a substitute for professional care.
         </p>
       </footer>
@@ -320,7 +320,7 @@ function NavGroupMenu({
               >
                 <span className="block text-[13px] leading-tight">{i.label}</span>
                 {i.hint && (
-                  <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground/70">
+                  <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">
                     {i.hint}
                   </span>
                 )}

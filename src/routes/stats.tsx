@@ -96,7 +96,7 @@ function StatsPage() {
           </ul>
         </div>
 
-        <p className="mt-12 text-center text-[11px] text-muted-foreground/70">
+        <p className="mt-12 text-center text-[11px] text-muted-foreground">
           updated {new Date(s.asOf).toLocaleTimeString()} · cached five minutes ·{" "}
           <Link to="/" className="text-tan underline-offset-2 hover:underline">
             what Knole is →

@@ -1200,7 +1200,7 @@ function TodayPage() {
                     .then((r) => setRestingToday({ date: r.date }))
                     .catch(() => setRestingToday(null));
                 }}
-                className="text-[11px] text-muted-foreground/70 underline-offset-2 hover:text-ink hover:underline"
+                className="text-[11px] text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
               >
                 taking today off? declare a rest day
               </button>
@@ -1275,7 +1275,7 @@ function TodayPage() {
                 ))}
               </div>
               <div className="mb-4 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                <span className="mr-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   vs your usual
                 </span>
                 {CHECKIN_REL.map((r) => (
@@ -1668,7 +1668,7 @@ function TodayPage() {
                         keep it as written
                       </button>
                       {editPanel.dropped > 0 && (
-                        <span className="text-[11px] text-muted-foreground/70">
+                        <span className="text-[11px] text-muted-foreground">
                           {editPanel.dropped} suggestion{editPanel.dropped === 1 ? "" : "s"}{" "}
                           didn&apos;t match
                         </span>
@@ -1942,7 +1942,7 @@ function TodayPage() {
             {(filing || (filed && filed.length > 0)) && reflected && !loading && !crisis && (
               <div className="animate-fade-up mt-4">
                 {filing ? (
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     <Pulse />
                     <span>The Index is filing this…</span>
                   </div>

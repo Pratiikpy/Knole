@@ -180,7 +180,7 @@ function CalendarPage() {
               {WEEKDAYS.map((w, i) => (
                 <div
                   key={i}
-                  className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70"
+                  className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground"
                 >
                   {w}
                 </div>
@@ -290,7 +290,7 @@ function CalendarPage() {
 
                 {stats.byMonth.length > 1 && (
                   <div className="mt-6">
-                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                       by month
                     </div>
                     <div className="flex h-16 items-end gap-1">
@@ -318,7 +318,7 @@ function CalendarPage() {
                 )}
 
                 <div className="mt-6">
-                  <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                  <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                     which days you write
                   </div>
                   <div className="flex gap-1.5">
@@ -343,7 +343,7 @@ function CalendarPage() {
 
                 {stats.topTags.length > 0 && (
                   <div className="mt-6">
-                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                    <div className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                       what it's been about
                     </div>
                     <div className="flex flex-wrap gap-1.5">

@@ -224,7 +224,7 @@ function TherapyPage() {
                       </p>
                     ))}
                   </div>
-                  <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
                     PHQ-9 and GAD-7, self-reported in Knole — screening numbers, not a diagnosis.
                   </p>
                 </div>

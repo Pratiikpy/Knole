@@ -253,7 +253,7 @@ function AskPage() {
             <div className="mt-8 space-y-4">
               {CATEGORY_ORDER.filter((c) => presets.some((p) => p.category === c)).map((cat) => (
                 <div key={cat}>
-                  <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
+                  <div className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                     {cat}
                   </div>
                   <div className="flex flex-wrap gap-2">

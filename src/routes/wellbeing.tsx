@@ -167,7 +167,7 @@ function WellbeingPage() {
                     </div>
                   )}
 
-                  <p className="text-[11px] leading-relaxed text-muted-foreground/70">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
                     Scores are private, stored like everything else you write. If you're preparing
                     for a session with a professional,{" "}
                     <Link to="/therapy" className="text-tan hover:text-ink">

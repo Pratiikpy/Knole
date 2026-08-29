@@ -411,7 +411,7 @@ function DuetPage() {
                             <span className="font-display italic">"{status.partnerGuess}"</span>
                           </p>
                         )}
-                        <p className="mt-2 text-[11px] text-muted-foreground/70">
+                        <p className="mt-2 text-[11px] text-muted-foreground">
                           How close were you? That's tonight's conversation.
                         </p>
                       </div>

@@ -85,7 +85,7 @@ export function SelfPortraitCard() {
                 : "what changed last time"}
           </button>
         )}
-        <span className="text-[11px] text-muted-foreground/70">
+        <span className="text-[11px] text-muted-foreground">
           Knole's own read — your entries are the only source, and your bio always outranks it.
         </span>
       </div>

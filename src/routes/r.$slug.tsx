@@ -90,7 +90,7 @@ function SharedReflectionPage() {
           </Link>
         </div>
 
-        <p className="mt-10 text-center text-[11px] text-muted-foreground/70">
+        <p className="mt-10 text-center text-[11px] text-muted-foreground">
           Shared by its writer, on purpose. Everything else in their journal stays sealed.
         </p>
       </div>

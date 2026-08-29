@@ -76,7 +76,7 @@ function PeoplePage() {
                           </span>
                         )}
                       </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground/70">
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
                         {fmt(p.lastSeen) ?? ""}
                         <span className="ml-2 text-tan opacity-0 transition-opacity group-hover:opacity-100">
                           →

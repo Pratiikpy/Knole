@@ -69,9 +69,7 @@ function PersonPage() {
                       {e.source} <span className="text-tan/70">{say(e.relation)}</span> {e.target}
                     </p>
                     <p className="mt-1 text-[14px] leading-relaxed text-ink-soft">{e.fact}</p>
-                    <p className="mt-2 text-[11px] text-muted-foreground/70">
-                      since {fmt(e.validAt)}
-                    </p>
+                    <p className="mt-2 text-[11px] text-muted-foreground">since {fmt(e.validAt)}</p>
                   </li>
                 ))}
               </ul>
@@ -93,7 +91,7 @@ function PersonPage() {
                     <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
                       {e.fact}
                     </p>
-                    <p className="mt-2 text-[11px] text-muted-foreground/70">
+                    <p className="mt-2 text-[11px] text-muted-foreground">
                       true from {fmt(e.validAt)} until {fmt(e.invalidAt)}
                     </p>
                   </li>
