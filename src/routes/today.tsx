@@ -799,7 +799,14 @@ function TodayPage() {
     try {
       // WAV via WebAudio - the 0G Whisper endpoint rejects MediaRecorder's webm/mp4 containers,
       // so we capture PCM and build a classic 16 kHz mono WAV it always accepts.
-      mediaRef.current = await startWavRecording();
+      // Stop on its own once the person has finished speaking. Nobody remembers the stop button,
+      // and a recording left running produces a long clip of room tone that transcribes to nothing.
+      // Armed only after real speech is heard, so opening the mic in a quiet room just waits.
+      mediaRef.current = await startWavRecording({
+        onSilence: () => {
+          if (mediaRef.current) void stopVoice();
+        },
+      });
       setRecording(true);
       voiceBase.current = entry.trim() ? entry.trim() + " " : "";
       // Live pass every 4s on the CUMULATIVE clip - each pass replaces the dictated region, so a

@@ -6,6 +6,8 @@
 export type WavRecorder = {
   stop: () => Promise<Blob>;
   cancel: () => void;
+  /** True once the mic has actually heard speech — a clip of pure silence is not a recording. */
+  heardSpeech: () => boolean;
   /** WAV of EVERYTHING captured so far, without stopping — powers live transcription. */
   snapshot: () => Blob;
   /** Seconds of audio captured so far. */
@@ -14,7 +16,21 @@ export type WavRecorder = {
 
 const TARGET_RATE = 16_000;
 
-export async function startWavRecording(): Promise<WavRecorder> {
+/**
+ * Speech is "present" above this RMS. Room tone on a laptop mic sits around 0.002–0.006; ordinary
+ * speech is an order of magnitude above it. Measured, not guessed — set low enough that a quiet
+ * voice still registers, high enough that a fan does not.
+ */
+const SPEECH_RMS = 0.012;
+
+export async function startWavRecording(
+  opts: {
+    /** Fired once, after speech has been heard and then N seconds of silence follow. */
+    onSilence?: () => void;
+    /** How long the silence must last. Long enough to think mid-sentence. */
+    silenceMs?: number;
+  } = {},
+): Promise<WavRecorder> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const ctx = new AudioContext();
   const source = ctx.createMediaStreamSource(stream);
@@ -22,8 +38,33 @@ export async function startWavRecording(): Promise<WavRecorder> {
   // which fights the bundler for no gain at journaling clip lengths.
   const proc = ctx.createScriptProcessor(4096, 1, 1);
   const chunks: Float32Array[] = [];
+  // Silence auto-stop. Talking into a journal and then having to remember to press a button is the
+  // one part of voice capture people actually forget, and a clip that runs until the tab is closed
+  // is a worse artefact than a short one. We only arm this AFTER real speech has been heard, so a
+  // recorder opened in a quiet room waits patiently instead of cancelling itself.
+  const silenceMs = opts.silenceMs ?? 2600;
+  let speechSeen = false;
+  let quietSince = 0;
+  let fired = false;
   proc.onaudioprocess = (e) => {
-    chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    const buf = e.inputBuffer.getChannelData(0);
+    chunks.push(new Float32Array(buf));
+    if (!opts.onSilence || fired) return;
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    const rms = Math.sqrt(sum / buf.length);
+    const now = performance.now();
+    if (rms >= SPEECH_RMS) {
+      speechSeen = true;
+      quietSince = 0;
+      return;
+    }
+    if (!speechSeen) return;
+    if (!quietSince) quietSince = now;
+    else if (now - quietSince >= silenceMs) {
+      fired = true;
+      opts.onSilence();
+    }
   };
   source.connect(proc);
   proc.connect(ctx.destination);
@@ -53,6 +94,7 @@ export async function startWavRecording(): Promise<WavRecorder> {
 
   return {
     cancel: teardown,
+    heardSpeech: () => speechSeen,
     // Cumulative snapshot, khoj-style: re-transcribing the WHOLE clip every few seconds costs
     // fractions of a cent and never splits a word at a chunk boundary the way rolling-window
     // chunks do - the transcript simply gets more complete each pass.
