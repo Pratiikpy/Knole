@@ -140,9 +140,13 @@ try {
   await naturalClick(page, lens).catch(() => {});
   await sleep(600);
   // .last(): the header nav also has a "Reflect" item, and the composer's submit is the later one.
-  await naturalClick(page, page.locator("button:visible").filter({ hasText: /^Reflect$/ }).last()).catch(
-    () => {},
-  );
+  await naturalClick(
+    page,
+    page
+      .locator("button:visible")
+      .filter({ hasText: /^Reflect$/ })
+      .last(),
+  ).catch(() => {});
   const m1 = markStart("reflection");
   // The receipt link only appears once the reflection has finished and been committed.
   const receiptLink = page.getByRole("button", { name: /reflection receipt/i }).first();
