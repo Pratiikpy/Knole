@@ -32,7 +32,9 @@ Rules:
 - Durable only — a state that holds beyond a single day. "Had coffee with Nina" is not an edge; "Nina is your closest friend" is.
 - A relationship that has ALREADY ended still counts — record it with ended=true instead of dropping it. "We both worked at Zalando before" is two WORKS_AT edges, both ended. The history is the point.
 - Never infer a relationship the entry does not state. "Marcus has been in Bristol since the divorce" says nothing about who was married to whom — do not invent one.
-- ended=true ONLY when the entry says THAT relationship has stopped (quit the job, broke up, cut contact). Moving INTO a new city, job or course is NOT an ending — it is a new edge, and the old one is superseded for you automatically.
+- ended=true ONLY when the entry says THAT relationship has ALREADY stopped (quit the job, broke up, cut contact). Moving INTO a new city, job or course is NOT an ending — it is a new edge, and the old one is superseded for you automatically.
+- A departure that has been ANNOUNCED but not yet happened is NOT ended. "She leaves Meridian Labs at the end of August", "I hand in my notice next month", "we move in September" all describe a future event: the old relationship is still true today, so ended=false. Only the entry that says it HAS happened ("her last day was today", "we moved in on Friday") ends it.
+- A place where an ORGANISATION sits is BASED_IN, never LIVES_IN. "Corvid is in Ghent" is Corvid BASED_IN Ghent. LIVES_IN is for people only.
 
 Return ONLY a JSON array, one object per relationship:
 [{"source": "You", "target": "Mara", "relation": "FRIEND_OF", "fact": "Mara is your closest friend from the Meridian Labs days.", "ended": false},
