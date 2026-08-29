@@ -77,9 +77,13 @@ const nav: NavItem[] = [
 
 // Secondary links that live in the footer on every page — the standard home for pricing and the
 // public trust surfaces, reachable even from the landing (which hides the top nav).
+// /stats is public, honest, and was reachable only by typing the URL — no page in the app linked to
+// it. A page nobody can find is a page that doesn't exist, and this is the one that shows the real
+// counts behind the claims, so it belongs beside the other public links rather than nowhere.
 const FOOTER_LINKS: NavItem[] = [
   { to: "/upgrade", label: "Plans" },
   { to: "/extension", label: "Save to Chrome" },
+  { to: "/stats", label: "Live stats" },
 ];
 
 export function Shell({ children, hideNav = false }: { children: ReactNode; hideNav?: boolean }) {
