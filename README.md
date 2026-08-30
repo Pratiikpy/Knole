@@ -30,7 +30,7 @@ tests — unit, fuzz and invariant**; the official 0G reference has no fuzz test
 **Real transactions, not just deploys.**
 Self-custody mint (token #2 on v1.1, `from == owner == the user's own wallet` — the server never
 signed) · user-signed on-chain grants and revoke · `JournalDayAnchor` wired into every reflected save
-· a real-money staking round-trip refunded to the wei.
+· a real-money staking round-trip refunded to the wei — [the 0.05 OG stake](https://chainscan.0g.ai/tx/0x9d1d551423d871643338d48970cfc4e9fa0c9daae868ebeba140ab0785a2c12e) and [its cooling-off refund](https://chainscan.0g.ai/tx/0xdef84079dee1c70fbaf0b0b0f59d27fb7b89ae7ad4c8d942d864dfb81d5ec3e7), run against the predecessor deployment before the redeploy.
 
 **Sealed inference, and it fails over.**
 Every reflection is composed inside a 0G TEE and gated on `processResponse` attestation — `sealed:true`
