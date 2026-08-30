@@ -153,6 +153,11 @@ export async function gateAsk(
   if (unlimited) return { allowed: true, question, custom: true, remaining: null };
 
   // The allowance resets at the USER's midnight, not UTC's — at UTC+10 the old reset landed
+  // now() is already a timestamptz, so it needs ONE conversion to the user's wall clock. The
+  // columns beside it are `timestamp` WITHOUT a zone, which is why they correctly take two
+  // (interpret-as-UTC, then convert). Applying the two-step to now() inverts the offset: at 07:11
+  // in Asia/Calcutta the query believed the local date was still yesterday, so "today's three
+  // questions" reset eleven hours late for every user east of UTC.
   // mid-afternoon. And the count-then-insert let concurrent requests all pass the check, so the
   // "3 a day" cap was bypassable by firing them in parallel: claim the slot atomically instead.
   const [u] = await db.select({ tz: users.timezone }).from(users).where(eq(users.id, userId));
@@ -165,7 +170,7 @@ export async function gateAsk(
       SELECT count(*) FROM reflection_artifacts
       WHERE user_id = ${userId} AND thread_key = 'ask-custom'
         AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
-            = (now() AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+            = (now() AT TIME ZONE ${tz})::date
     ) < ${FREE_CUSTOM_PER_DAY}
     RETURNING id
   `)) as unknown as { id: string }[];
@@ -174,7 +179,7 @@ export async function gateAsk(
     SELECT count(*)::int AS n FROM reflection_artifacts
     WHERE user_id = ${userId} AND thread_key = 'ask-custom'
       AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
-          = (now() AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date
+          = (now() AT TIME ZONE ${tz})::date
   `)) as unknown as { n: number }[];
   return {
     allowed: true,
