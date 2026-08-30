@@ -57,6 +57,9 @@ public corpora and synthetic examples only — never on anyone's journal. Every 
 database on each load — entries written, journaled days, memories held, on-chain receipts, journals
 started. It counts journals with real entries, not the guest row every page load mints.
 
+**Echoes.** While you type, the draft's embedding quietly pulls up two or three of your own dated
+past entries on the same theme — under the composer, before you've finished the thought.
+
 **Duet, provably sealed.**
 One question a day for two; neither answer reaches the other browser until both have written. Proven
 with two real browsers: the partner's text is **absent from the payload**, not hidden by CSS.
