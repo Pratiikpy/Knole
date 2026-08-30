@@ -42,6 +42,21 @@ Bi-temporal entity edges extracted from prose alone. `/people` and `/person/:nam
 what is true but **what stopped being true, and when** — _"~~works at~~ Meridian Labs · true from
 Jul 9, 2026 until Aug 21, 2026"_ — read off the entries that said it, dated to them.
 
+**Auditable AI — a model we fine-tuned on 0G, published in full.**
+The signals Knole reads out of an entry — memories, mood, topics, the crisis tripwire — are extracted
+by a large model inside the enclave. To make that job *auditable* rather than a black box, we also
+fine-tuned a small one for it on 0G and published every input: **Qwen2.5-0.5B-Instruct · LoRA ·
+neftune 5 · 3 epochs · batch 4 · lr 2e-4 · 1233 steps · 1,644 train / 100 held out**. The base-model
+hash, the fine-tuned hash, the **training data's 0G Storage root** and its SHA-256 are all published;
+the dataset (1,721 KB) is public and downloadable; and an **on-chain provenance commitment** binds
+dataset, base model and config together, with the model delivery acknowledged on-chain. Trained on
+public corpora and synthetic examples only — never on anyone's journal. Every value reads live on
+[**/verify**](https://knole.me/verify).
+
+**Traction, counted honestly.** [`/stats`](https://knole.me/stats) is public and computed from the
+database on each load — entries written, journaled days, memories held, on-chain receipts, journals
+started. It counts journals with real entries, not the guest row every page load mints.
+
 **Duet, provably sealed.**
 One question a day for two; neither answer reaches the other browser until both have written. Proven
 with two real browsers: the partner's text is **absent from the payload**, not hidden by CSS.
