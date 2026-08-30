@@ -30,9 +30,31 @@ const RPC =
     ? "https://evmrpc-testnet.0g.ai"
     : "https://evmrpc.0g.ai");
 const PK = process.env.EVM_PRIVATE_KEY || "";
-// deepseek-v4-flash-0731 — verifiability=TeeML on 0G Aristotle mainnet, and fast (~2.7s streaming
-// TTFT): genuine TEE attestation without thinking-model latency. Override with OG_TEE_PROVIDER.
-const TEE_PROVIDER = process.env.OG_TEE_PROVIDER || "0x61C0007197E7D4d6A842d6768E8035728877B9F6";
+// The enclave we serve from, and the ones we fall back to. All TeeML on 0G Aristotle mainnet, so a
+// fallback is still attestation-verified — this is failover between enclaves, never a downgrade out
+// of the TEE.
+//
+// A list, not a single address, because a provider's sub-account can drop below its own minimum
+// reserve and start returning 400 while every OTHER enclave is funded and idle. That took the
+// product down twice: the first time the balance was consumed, the second time a pending refund
+// made the balance unspendable. Retrying the same dead provider three times and then falling to a
+// dry router key is the worst of both — it is slow AND it fails.
+//
+// Order is deliberate: 0GM-1.0 measured 4.8s, glm-5.1 9.3s, deepseek-v4-flash ~15s, GLM-5-FP8 19s.
+const TEE_PROVIDERS = (
+  process.env.OG_TEE_PROVIDERS ||
+  [
+    process.env.OG_TEE_PROVIDER || "0x4870CbC4D07d6Ac2EE5aA865588e5985FE77a4E9",
+    "0xDB7B465300B0acf454867683c5481055f698b2e8", // glm-5.1
+    "0x61C0007197E7D4d6A842d6768E8035728877B9F6", // deepseek-v4-flash-0731
+    "0xd9966e13a6026Fcca4b13E7ff95c94DE268C471C", // zai-org/GLM-5-FP8
+  ].join(",")
+)
+  .split(",")
+  .map((p) => p.trim())
+  .filter(Boolean)
+  .filter((p, i, a) => a.indexOf(p) === i);
+const TEE_PROVIDER = TEE_PROVIDERS[0];
 
 export function teeConfigured(): boolean {
   return !!PK && (process.env.OG_SEALED_INFERENCE ?? "off").toLowerCase() === "on";
@@ -97,8 +119,32 @@ export async function teeChat(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number } = {},
 ): Promise<TeeResult> {
+  // Walk the enclaves. A 400 here is nearly always "this sub-account is below its minimum reserve",
+  // which says nothing about the next enclave — every one of these is TeeML, so failing over keeps
+  // the attestation guarantee intact.
+  let lastError: Error | null = null;
+  for (const p of TEE_PROVIDERS) {
+    try {
+      return await teeChatOn(p, messages, opts);
+    } catch (e) {
+      lastError = e as Error;
+      if (TEE_PROVIDERS.length > 1) {
+        console.error(
+          `0G enclave ${p.slice(0, 10)}… unusable, trying the next:`,
+          lastError.message,
+        );
+      }
+    }
+  }
+  throw lastError ?? new Error("no 0G enclave available");
+}
+
+async function teeChatOn(
+  provider: string,
+  messages: ChatMsg[],
+  opts: { temperature?: number; maxTokens?: number } = {},
+): Promise<TeeResult> {
   const broker = await getBroker();
-  const provider = TEE_PROVIDER;
   await ensureAcked(broker, provider);
   const { endpoint, model } = await broker.inference.getServiceMetadata(provider);
 
@@ -165,8 +211,38 @@ export async function* teeChatStream(
   messages: ChatMsg[],
   opts: { temperature?: number; maxTokens?: number } = {},
 ): AsyncGenerator<string, { verified: boolean; chatID: string | null; model: string }, void> {
+  // Same enclave failover as teeChat, but a stream can only be retried BEFORE its first token —
+  // after that the reader has already seen text and starting again would double-emit.
+  let lastError: Error | null = null;
+  for (const p of TEE_PROVIDERS) {
+    let started = false;
+    try {
+      const gen = teeChatStreamOn(p, messages, opts);
+      let step = await gen.next();
+      started = true;
+      while (!step.done) {
+        yield step.value;
+        step = await gen.next();
+      }
+      return step.value;
+    } catch (e) {
+      if (started) throw e;
+      lastError = e as Error;
+      console.error(
+        `0G enclave ${p.slice(0, 10)}… stream unusable, trying the next:`,
+        lastError.message,
+      );
+    }
+  }
+  throw lastError ?? new Error("no 0G enclave available");
+}
+
+async function* teeChatStreamOn(
+  provider: string,
+  messages: ChatMsg[],
+  opts: { temperature?: number; maxTokens?: number } = {},
+): AsyncGenerator<string, { verified: boolean; chatID: string | null; model: string }, void> {
   const broker = await getBroker();
-  const provider = TEE_PROVIDER;
   await ensureAcked(broker, provider);
   const { endpoint, model } = await broker.inference.getServiceMetadata(provider);
   const headers = await broker.inference.getRequestHeaders(provider, promptText(messages));
