@@ -6,7 +6,7 @@
 
 <p><em>Anonymized before the model · encrypted under your key · recoverable from 0G · minted to your wallet</em></p>
 
-[![Live demo](https://img.shields.io/badge/Live-knole.me-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole.me) [![Demo](https://img.shields.io/badge/Demo-3_min-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/eJhJgPoH5aU) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole.me/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db) [![X](https://img.shields.io/badge/@knole__me-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/knole_me)
+[![Live demo](https://img.shields.io/badge/Live-knole.me-0b0b0b?style=for-the-badge&logo=vercel&logoColor=white)](https://knole.me) [![Demo](https://img.shields.io/badge/Wave_3_demo-4:30-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/2LuewQZwMG4) [![Proof deck](https://img.shields.io/badge/Proof_deck-verify_it-7c6545?style=for-the-badge)](https://knole.me/proof-deck.html) [![Notion](https://img.shields.io/badge/Overview-Notion-000000?style=for-the-badge&logo=notion&logoColor=white)](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db) [![X](https://img.shields.io/badge/@knole__me-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/knole_me)
 
 ![0G](https://img.shields.io/badge/0G-Aristotle_mainnet-7c6f5b?style=flat-square) ![Anonymized](https://img.shields.io/badge/anonymized-before_the_model-2ea043?style=flat-square) ![iNFT](https://img.shields.io/badge/memory-iNFT_ERC--7857-7c6f5b?style=flat-square) ![Evals](https://img.shields.io/badge/evals-21%2F21-2ea043?style=flat-square) [![CI](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml/badge.svg)](https://github.com/Pratiikpy/Knole/actions/workflows/ci.yml) ![License](https://img.shields.io/badge/license-MIT-7c6f5b?style=flat-square)
 
@@ -14,14 +14,42 @@
 
 > **📖 Start here → [the full product overview on Notion](https://comfortable-goal-205.notion.site/Knole-3869c0ce78768120b4bbce690981b6db)** — the complete story: visuals, architecture, PMF research, the privacy model, and the build journey. **If you open one link, make it this one.** Everything below is a summary.
 
-## New
+## New in Wave 3
 
-- **Ask now searches like a librarian** — your question fans out into four angles (the feeling, the people, the events, the time) with date filters the model writes itself, then a cross-encoder keeps only what's actually about your question.
-- **The journal survives you leaving** — close the tab mid-reflection and it finishes anyway; the next visit hands it to you under _"Finished while you were away."_
-- **Polish, without losing your voice** — the AI proposes surgical edits to a draft as word-level diffs you approve or skip, one by one. Never a rewrite, never auto-applied.
-- **Voice is dictation now** — words appear in the composer while you speak.
-- **Share one reflection, keep the rest sealed** — a two-tap public link for a single entry + its reflection, revocable, ending on _"What would yours say back?"_
-- **Journal Mini** — `Ctrl/⌘+Shift+J` in the Chrome extension opens a five-second composer on any page; a thought saved there counts as real journaling.
+**[Watch the 4:30 demo →](https://youtu.be/2LuewQZwMG4)**
+
+The Wave 2 judge asked for two things: _dedicated Solidity tests for the new contract_, and _new
+development inside the window_. Both, in order:
+
+**Contracts — 112 Foundry tests, and a redeploy the tests forced.**
+The audit against 0G's own ERC-7857 reference found raw `transferFrom` left live, so a marketplace
+approval could move a token past the verifier gate and keep stale agent grants. **v1.1** blocks it
+and clears authorizations in `_update`, plus eight further audited fixes. The suite went 82 → **112
+tests — unit, fuzz and invariant**; the official 0G reference has no fuzz tests at all.
+
+**Real transactions, not just deploys.**
+Self-custody mint (token #2 on v1.1, `from == owner == the user's own wallet` — the server never
+signed) · user-signed on-chain grants and revoke · `JournalDayAnchor` wired into every reflected save
+· a real-money staking round-trip refunded to the wei.
+
+**Sealed inference, and it fails over.**
+Every reflection is composed inside a 0G TEE and gated on `processResponse` attestation — `sealed:true`
+is never set otherwise. Inference now walks a **list** of TeeML enclaves, so one provider dropping
+below its minimum reserve degrades latency, never the attestation guarantee.
+
+**The relationship layer — the thing no ordinary journal does.**
+Bi-temporal entity edges extracted from prose alone. `/people` and `/person/:name` show not just
+what is true but **what stopped being true, and when** — _"~~works at~~ Meridian Labs · true from
+Jul 9, 2026 until Aug 21, 2026"_ — read off the entries that said it, dated to them.
+
+**Duet, provably sealed.**
+One question a day for two; neither answer reaches the other browser until both have written. Proven
+with two real browsers: the partner's text is **absent from the payload**, not hidden by CSS.
+
+**Also this wave:** Commit (stake on showing up, settled against on-chain journaled days) · Monthly
+Archetype with verbatim-verified receipts · Wellbeing (PHQ-9/GAD-7, crisis routing gated on the item
+rather than the total) · Memory Passport · proactive automations · the emotions calendar · nudges
+that reference a real memory · self-hosted on AWS with real TLS.
 
 <div align="center">
 
