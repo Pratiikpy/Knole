@@ -1,0 +1,36 @@
+𝐖𝐀𝐕𝐄 𝟑 — 𝟏𝟐𝟕 𝐂𝐎𝐌𝐌𝐈𝐓𝐒
+
+Wave 2 shipped ZERO Solidity tests — the judge asked for them. Wave 3 has 112, and the first ones written exposed a live bug that forced a v1.1 redeploy. Plus 9 new routes, 2 new contracts, 8 major systems, 20+ bugs fixed.
+
+▸ Verify the contracts yourself: https://knole.me/verify
+
+𝟏. 𝐂𝐎𝐍𝐓𝐑𝐀𝐂𝐓𝐒 — 0 to 112 tests, and the redeploy they forced
+The suite found raw transferFrom left live — an approval could move a token past the verifier gate, keeping stale grants. v1.1 blocks it, clears authorizations in _update, plus 8 more audited fixes. Unit + fuzz + invariant; 0G's own reference ships zero fuzz tests.
+KnoleAgenticID v1.1: 0x0Fdbe7060Fd484343B7Ee3bF1F2965d4428957ca
+
+𝟐. 𝐑𝐄𝐀𝐋 𝐓𝐗𝐒, 𝐍𝐎𝐓 𝐃𝐄𝐏𝐋𝐎𝐘𝐒
+• Self-custody mint — token #2, from == owner == user's wallet; the server never signed.
+• User-signed on-chain grants + revoke, live registry.
+• JournalDayAnchor (0xBf3865…fe28Ac) — written on every reflected save.
+• KnoleCommitment (0xD79fAc…70f415) — habit staking settled against it, NO oracle; real-money round-trip refunded to the wei.
+• ERC-8004 agent #3363832 on 0G's Trustless-Agents registry.
+
+𝟑. 𝐑𝐄𝐋𝐀𝐓𝐈𝐎𝐍𝐒𝐇𝐈𝐏 𝐋𝐀𝐘𝐄𝐑
+Bi-temporal entity edges from prose alone; nobody types a field. /people and /person/:name show not just what is true but what STOPPED being true, and when: "works at Meridian Labs — true from Jul 9 until Aug 21, 2026", dated to the entry that said it.
+
+𝟒. 𝐃𝐔𝐄𝐓 — privacy you can watch being enforced
+Neither partner's answer reaches the other browser until both have written. Proven with two real browsers: their text is ABSENT from the payload, not hidden in CSS.
+
+𝟓. 𝐒𝐄𝐀𝐋𝐄𝐃 𝐈𝐍𝐅𝐄𝐑𝐄𝐍𝐂𝐄 𝐅𝐀𝐈𝐋𝐒 𝐎𝐕𝐄𝐑
+Every response gated on processResponse attestation. Inference walks a LIST of TeeML enclaves — one provider dying costs latency, not attestation.
+
+𝟔. 𝐀𝐔𝐃𝐈𝐓𝐀𝐁𝐋𝐄 𝐀𝐈 — a model we fine-tuned on 0G
+Qwen2.5-0.5B-Instruct, LoRA, 1,644 train / 100 held out. Published: both model hashes, the training data's 0G Storage root + SHA-256, a public dataset, an on-chain provenance commitment. Public and synthetic data only.
+
+𝟕. 𝐀𝐋𝐒𝐎 𝐒𝐇𝐈𝐏𝐏𝐄𝐃
+Monthly Archetype (verbatim-verified receipts) · Wellbeing (PHQ-9/GAD-7, crisis gated on the item, not the total) · Commit staking · Memory Passport · nudges · automations · emotions calendar · mood baseline · multi-step chat retrieval · sectioned entries · Echoes · filing strip · AWS self-host. Now 40+ features, 30 routes.
+
+𝟖. 𝐓𝐄𝐒𝐓𝐄𝐃 𝐀𝐒 𝐀 𝐑𝐄𝐀𝐋 𝐔𝐒𝐄𝐑
+Every route, lens, hostile input, 3 engines, two-party Duet, destructive paths — outcome judged, never the status code. Fixed: memories lost to truncated JSON; a crisis disclosure re-derived by a backfill; a receipt naming the wrong model; out-of-order entries duplicating a tie; the free tier resetting 11h late east of UTC.
+
+Honest scope: voice is down — 0G's Whisper returns a stale-pricing error. The UI says so and falls back to typing.

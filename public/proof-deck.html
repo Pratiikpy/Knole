@@ -912,7 +912,12 @@
         <p>
           Every frame below is a real screenshot from the live deploy — the seeded showcase and the
           guest onboarding path, captured this session. Read it top to bottom and you've seen the
-          whole product.
+          whole product. Prefer to watch?
+          <a href="https://youtu.be/2LuewQZwMG4" target="_blank" rel="noreferrer"
+            ><strong>The Wave 3 demo</strong></a
+          >
+          runs the same flow end to end — including the Duet seal held and released between two real
+          browsers.
         </p>
       </div>
 
@@ -1284,15 +1289,26 @@
       <!-- ════════ WAVE 3 ════════ -->
       <div class="band" id="wave3" style="border-top: 2px solid var(--tan, #7c6545)">
         <div class="kicker">WAVE 3 · BUILT IN THE WINDOW</div>
-        <h2>Wave 3: three contracts, five flagships, a daily gravity</h2>
+        <h2>Wave 3: three contracts, six flagships, a daily gravity</h2>
         <p>
           Everything below shipped inside the wave-3 window and is live at knole.me — a hardened
-          ERC-7857 v1.1 with a <strong>102-test Foundry suite</strong> (unit + fuzz + invariants), a
-          proof-of-journaling anchor, a no-oracle staking escrow, and the product around them. Every
-          frame is a real screenshot from production, captured during verification.
+          ERC-7857 v1.1 with a <strong>112-test Foundry suite</strong> (unit + fuzz + invariants,
+          up from <em>zero</em> at wave 2, and the first tests written exposed the live bug that
+          forced the redeploy), a proof-of-journaling anchor, a no-oracle staking escrow,
+          <strong>ERC-8004 registration</strong> on 0G's Trustless-Agents registry, and sealed
+          inference that now <strong>fails over across TeeML enclaves</strong> so one provider going
+          down costs latency, never the attestation. Every frame is a real screenshot from
+          production, captured during verification.
         </p>
       </div>
       <section class="section showcase" id="wave3-shots" style="margin-top: 28px">
+        <figure class="shot">
+          <img src="proof-shots/w3-people.webp" width="1080" height="1600" loading="lazy" decoding="async"
+            alt="A person's page - how things stand, what changed with the ended tie struck through and dated, and the story in order" />
+          <figcaption>
+            <strong>The relationship layer — what no ordinary journal does.</strong> Knole records not just what is true but <em>what stopped being true, and when</em>. Bi-temporal edges are extracted from your prose alone — nobody types a field — and dated to the entry that stated them. Here: <em>works at Corvid</em> now, and under <strong>What changed</strong>, <s>works at</s> Meridian Labs, <em>true from Jul 9, 2026 until Aug 21, 2026</em>. A tie is never deleted, only invalidated by the newer fact that contradicts it.
+          </figcaption>
+        </figure>
         <figure class="shot">
           <img src="proof-shots/w3-duet.webp" width="1080" height="1750" loading="lazy" decoding="async"
             alt="Duet - a repair question unlocked for both partners, with the weekly Us mirror below" />
